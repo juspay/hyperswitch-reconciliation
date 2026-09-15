@@ -1,0 +1,17 @@
+[package]
+name = "recon_derive"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+doctest = false
+
+[dependencies]
+syn = "2.0.101"
+proc-macro2 = "1.0.95"
+quote = "1.0.40"
+strum = { version = "0.27.1", features = ["derive"] }
+
+[lints]
+workspace = true

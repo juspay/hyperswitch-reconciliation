@@ -1,0 +1,17 @@
+# tarpaulin.toml
+[default]
+engine = "Llvm"
+ignore-tests = true
+exclude-files = [
+    "crates/recon_derive/src/*",                  # Procedural macro crate
+    "crates/diesel_models/src/schema.rs",         # Diesel auto-generated
+    "crates/diesel_models/src/query/generics.rs", # Diesel auto-generated
+    "crates/diesel_models/src/errors.rs",         # Diesel auto-generated
+    "crates/recon/src/bin/recon.rs",              # Binary entry point
+    "crates/recon/src/bin/generate-token.rs",     # Binary entry point
+    "crates/common_utils/src/logging.rs",         # Logging infrastructure
+]
+
+[report]
+out = ["Html", "Lcov"]
+output-dir = "target/coverage"

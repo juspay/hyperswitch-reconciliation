@@ -1,0 +1,5 @@
+[default.extend-words]
+# ISO 4217 Currency Codes that might be flagged as typos
+JOD = "JOD"  # Jordanian Dinar
+Hashi = "Hashi" # Common prefix in HashiCorp-related terms, to prevent false positives
+HashiCorp = "HashiCorp" # Company name, to prevent false positives

@@ -1,0 +1,69 @@
+# CI-specific configuration for automated testing and documentation generation
+
+[database]
+username = "db_user"
+password = "db_pass"
+host = "localhost"
+port = 5432
+dbname = "hyperswitch_recon"
+pool_size = 2  # Smaller pool for CI
+
+[server]
+host = "0.0.0.0"
+port = 8080
+workers = 2  # Fewer workers for CI
+shutdown_timeout = 5
+
+[logging]
+log_level = "INFO"  # Less verbose for CI
+console_output = true
+format = "json"  # Structured logs for CI parsing
+
+[auth]
+jwt_secret = "ci_test_secret_key_12345678901234567890"
+jwt_expiry_hours = 24
+admin_api_key = "ci_test_admin_12345678901234567890"
+
+[secrets_management]
+secrets_manager = "no_encryption"
+
+[file_storage]
+file_storage_backend = "file_system"
+
+[file_storage.file_system]
+base_path = "./ci-storage"
+create_directories = true
+
+[faas]
+faas_backend = "noop"
+
+[ingestion_service]
+transformation_base_url = "http://localhost:8080"
+
+# SFTP Internal ingestion uses a dedicated storage for CI
+[ingestion_service.sftp_file_storage]
+file_storage_backend = "file_system"
+
+[ingestion_service.sftp_file_storage.file_system]
+base_path = "./ci-storage/sftp-ingestion"
+create_directories = true
+
+[reporting_service]
+transaction_report_function = "noop-transaction-report"
+exception_report_function = "noop-exception-report"
+
+[proxy]
+bypass_proxy_hosts = "localhost"
+
+# Application encryption configuration
+# Choose between local_encryption or key_manager for data encryption strategy
+[application_encryption]
+encryption_mode = "local_encryption"
+
+[application_encryption.local_encryption]
+master_key = "IL8Pv59knVPvLme7p2Kxkkb3qv+drXhD3rzgkQ/qVoo="  # Base64 encoded 32-byte key
+
+# User client configuration
+# Use mock_user_client for CI (mock data, no external calls)
+[user_client]
+client_mode = "mock_user_client"

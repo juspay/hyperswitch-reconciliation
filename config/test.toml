@@ -1,0 +1,66 @@
+[database]
+username = "postgres"
+password = "postgres"
+host = "localhost"
+port = 5432
+dbname = "recon_test"
+
+[server]
+host = "127.0.0.1"
+port = 0
+workers = 1
+shutdown_timeout = 1
+
+[logging]
+log_level = "ERROR"
+console_output = false
+format = "json"
+
+[auth]
+jwt_secret = "test_secret_key_12345678901234567890"
+jwt_expiry_hours = 1
+admin_api_key = "test_admin_12345678901234567890"
+
+[secrets_management]
+secrets_manager = "no_encryption"
+
+[file_storage]
+file_storage_backend = "file_system"
+
+[file_storage.file_system]
+base_path = "./test-storage"
+create_directories = true
+
+[faas]
+faas_backend = "noop"
+
+[ingestion_service]
+transformation_base_url = "http://localhost:8080"
+
+# SFTP Internal ingestion uses a dedicated storage location for tests
+[ingestion_service.sftp_file_storage]
+file_storage_backend = "file_system"
+
+[ingestion_service.sftp_file_storage.file_system]
+base_path = "./test-storage/sftp-ingestion"
+create_directories = true
+
+[reporting_service]
+transaction_report_function = "noop-transaction-report"
+exception_report_function = "noop-exception-report"
+
+[proxy]
+bypass_proxy_hosts = "localhost"
+
+# Application encryption configuration
+# Choose between local_encryption or key_manager for data encryption strategy
+[application_encryption]
+encryption_mode = "local_encryption"
+
+[application_encryption.local_encryption]
+master_key = "IL8Pv59knVPvLme7p2Kxkkb3qv+drXhD3rzgkQ/qVoo="  # Base64 encoded 32-byte key
+
+# User client configuration
+# Use mock_user_client for tests (mock data, no external calls)
+[user_client]
+client_mode = "mock_user_client"

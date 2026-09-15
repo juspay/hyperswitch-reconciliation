@@ -1,0 +1,74 @@
+[package]
+name = "recon"
+version = "0.1.0"
+edition = "2021"
+default-run = "recon"
+
+[dependencies]
+actix-web = "4.11.0"
+actix-multipart = "0.7"
+async-trait = "0.1"
+base64 = "0.22"
+csv = "1.3"
+calamine = "0.34.0"
+futures = "0.3"
+infer = "0.16"
+mime = "0.3"
+serde = { version = "=1.0.219", features = ["derive"] }
+serde_json = "1.0"
+http = "0.2"
+tokio = { version = "1", features = ["full"] }
+diesel = { version = "2.3.2", features = ["postgres", "r2d2", "chrono"] }
+async-bb8-diesel = "0.2"
+bb8 = "0.8"
+error-stack = "0.4.1"
+config = "0.14"
+regex = "1.11.1"
+serde_path_to_error = "0.1"
+strum = { version = "0.27.1", features = ["derive"] }
+rustc-hash = "1.1.0"
+
+api_models = { path = "../api_models" }
+common_enums = { path = "../common_enums" }
+common_types = { path = "../common_types" }
+common_utils = { path = "../common_utils" }
+diesel_models = { path = "../diesel_models" }
+external_services = { path = "../external_services" }
+masking = { git = "https://github.com/juspay/hyperswitch.git",tag = "2025.10.22.0" }
+recon_interfaces = { path = "../recon_interfaces" }
+recon_domain_models = { path = "../recon_domain_models" }
+tracing-actix-web = "0.7.18"
+tracing-futures = "0.2"
+toml = "0.8"
+tracing = "0.1.41"
+thiserror = "2.0"
+utoipa = { version = "5.3.1", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web"] }
+jsonwebtoken = "9.0"
+clap = { version = "4.0", features = ["derive"] }
+uuid = { version = "1.6", features = ["v4"] }
+time = { version = "0.3.41", features = ["serde"] }
+reqwest = { version = "0.11.27", features = ["json", "stream", "gzip", "rustls-tls", "multipart"] }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
+
+[dev-dependencies]
+rstest = { workspace = true }
+pretty_assertions = { workspace = true }
+uuid = { version = "1.6", features = ["v4"] }
+serde_json = "1.0"
+rust_xlsxwriter = "0.79"
+
+[features]
+default = []
+
+[[bin]]
+name = "recon"
+path = "src/bin/recon.rs"
+
+[lints]
+workspace = true

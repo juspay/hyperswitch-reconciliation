@@ -1,0 +1,24 @@
+[package]
+name = "api_models"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.11"
+actix-multipart = { version = "0.7", features = ["derive"] }
+http = "0.2.12"
+mime = "0.3"
+serde = { version = "=1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+strum = { version = "0.27.1", features = ["derive"] }
+time = { version = "0.3.41", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+utoipa = { version = "5.3.1", features = ["chrono", "uuid", "time"] }
+
+common_enums = { path = "../common_enums", version = "0.1.0" }
+common_types = { path = "../common_types", version = "0.1.0" }
+common_utils = { path = "../common_utils", version = "0.1.0" }
+masking = { git = "https://github.com/juspay/hyperswitch.git",tag = "2025.10.22.0" }
+
+[lints]
+workspace = true

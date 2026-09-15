@@ -1,0 +1,18 @@
+/target
+.aider*
+TASKS.md
+/logs
+.claude
+lcov.info
+.sisyphus
+.omo
+
+# AI session files
+.ai/session/
+.claude
+.idea
+implementation_plan.md
+
+# File storage
+/storage
+crates/recon/test-storage

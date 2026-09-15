@@ -1,0 +1,91 @@
+# Production Configuration for AWS Deployment
+# This configuration uses AWS KMS for secret management
+
+[database]
+# RDS PostgreSQL configuration
+# Replace with your actual RDS endpoint
+username = "recon_prod_user"
+# Use environment variable for now, encrypt with KMS for actual deployment
+password = "${DB_PASSWORD}"
+host = "recon-prod-db.cluster-xxxxx.us-east-1.rds.amazonaws.com"
+port = 5432
+dbname = "recon_production"
+
+[server]
+# Production server configuration
+host = "0.0.0.0"
+port = 8080
+workers = 8
+shutdown_timeout = 30
+
+[logging]
+# Production logging configuration
+log_level = "DEBUG"
+console_output = true
+format = "json"
+
+[auth]
+# JWT configuration - use environment variable for now, encrypt with KMS for actual deployment
+jwt_secret = "${JWT_SECRET}"
+jwt_expiry_hours = 24
+admin_api_key = "${ADMIN_API_KEY}"
+
+[secrets_management]
+secrets_manager = "aws_kms"
+
+[secrets_management.aws_kms]
+key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+region = "us-east-1"
+
+[file_storage]
+file_storage_backend = "aws_s3"
+
+[file_storage.aws_s3]
+region = "us-east-1"
+bucket_name = "hyperswitch-recon"
+
+[faas]
+faas_backend = "aws_lambda"
+
+[faas.aws_lambda]
+region = "us-east-1"
+request_timeout_secs = 30
+
+[ingestion_service]
+transformation_base_url = "http://localhost:8080"
+
+# SFTP Internal ingestion uses a dedicated S3 bucket in production
+[ingestion_service.sftp_file_storage]
+file_storage_backend = "aws_s3"
+
+[ingestion_service.sftp_file_storage.aws_s3]
+region = "us-east-1"
+bucket_name = "hyperswitch-recon"
+
+[reporting_service]
+transaction_report_function = "recon-transactions-report"
+exception_report_function = "recon-exceptions-report"
+
+[proxy]
+https_url = "http://hyperswitch-outgoing-proxy-1f4d1706e4bc104d.elb.us-east-1.amazonaws.com:80"
+bypass_proxy_hosts = "localhost, cluster.local"
+
+[application_encryption]
+encryption_mode = "key_manager"
+
+[application_encryption.key_manager]
+enabled = true
+url = "https://keymanager.keymanager.svc.cluster.local"
+cert = ""
+ca = ""
+
+# User client configuration
+# Use hyperswitch for production (actual HTTP calls)
+[user_client]
+client_mode = "hyperswitch"
+
+[user_client.hyperswitch_config]
+base_url = "${HYPERSWITCH_CLIENT_BASE_URL}"
+internal_api_key = "${HYPERSWITCH_CLIENT_INTERNAL_API_KEY}"
+request_timeout_secs = 30
+client_idle_timeout = 90

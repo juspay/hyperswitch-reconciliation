@@ -1,0 +1,1 @@
+ALTER TABLE recon_rule DROP COLUMN IF EXISTS aging_config;

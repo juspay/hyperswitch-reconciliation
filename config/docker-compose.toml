@@ -1,0 +1,66 @@
+[database]
+username = "db_user"
+password = "db_pass"
+host = "postgres"
+port = 5432
+dbname = "recon"
+
+[server]
+host = "0.0.0.0"
+port = 8080
+workers = 4
+shutdown_timeout = 5
+
+[auth]
+jwt_secret = "docker_secret_key_12345678901234567890"
+jwt_expiry_hours = 24
+admin_api_key = "docker_test_admin_12345678901234567890"
+
+[logging]
+log_level = "DEBUG"
+console_output = true
+format = "json"
+
+[secrets_management]
+secrets_manager = "no_encryption"
+
+[file_storage]
+file_storage_backend = "file_system"
+
+[file_storage.file_system]
+base_path = "/app/storage"
+create_directories = true
+
+[faas]
+faas_backend = "noop"
+
+[ingestion_service]
+transformation_base_url = "http://localhost:8080"
+
+# SFTP Internal ingestion uses a dedicated storage in Docker
+[ingestion_service.sftp_file_storage]
+file_storage_backend = "file_system"
+
+[ingestion_service.sftp_file_storage.file_system]
+base_path = "/app/storage/sftp-ingestion"
+create_directories = true
+
+[reporting_service]
+transaction_report_function = "noop-transaction-report"
+exception_report_function = "noop-exception-report"
+
+[proxy]
+bypass_proxy_hosts = "localhost"
+
+# Application encryption configuration
+# Choose between local_encryption or key_manager for data encryption strategy
+[application_encryption]
+encryption_mode = "local_encryption"
+
+[application_encryption.local_encryption]
+master_key = "IL8Pv59knVPvLme7p2Kxkkb3qv+drXhD3rzgkQ/qVoo="  # Base64 encoded 32-byte key
+
+# User client configuration
+# Use mock_user_client for docker-compose (mock data, no external calls)
+[user_client]
+client_mode = "mock_user_client"

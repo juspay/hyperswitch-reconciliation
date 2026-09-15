@@ -1,0 +1,66 @@
+[database]
+username = "db_user"
+password = "db_pass"
+host = "localhost"
+port = 5432
+dbname = "recon"
+
+[server]
+host = "localhost"
+port = 8080
+workers = 4
+shutdown_timeout = 5
+
+[logging]
+log_level = "DEBUG"
+console_output = true
+format = "pretty"
+
+[auth]
+jwt_secret = "secret"
+jwt_expiry_hours = 24
+admin_api_key = "test_admin"
+
+[secrets_management]
+secrets_manager = "no_encryption"
+
+[file_storage]
+file_storage_backend = "file_system"
+
+[file_storage.file_system]
+base_path = "./storage"
+create_directories = true
+
+[faas]
+faas_backend = "noop"
+
+[ingestion_service]
+transformation_base_url = "http://localhost:8080"
+
+# SFTP Internal ingestion uses a dedicated S3 bucket
+[ingestion_service.sftp_file_storage]
+file_storage_backend = "file_system"
+
+[ingestion_service.sftp_file_storage.file_system]
+base_path = "./storage/sftp-ingestion"
+create_directories = true
+
+[reporting_service]
+transaction_report_function = "noop-transaction-report"
+exception_report_function = "noop-exception-report"
+
+[proxy]
+bypass_proxy_hosts = "localhost"
+
+# Application encryption configuration
+# Choose between local_encryption or key_manager for data encryption strategy
+[application_encryption]
+encryption_mode = "local_encryption"
+
+[application_encryption.local_encryption]
+master_key = "IL8Pv59knVPvLme7p2Kxkkb3qv+drXhD3rzgkQ/qVoo="  # Base64 encoded 32-byte key
+
+# User client configuration
+# Choose between mock_user_client (mock data) or hyperswitch (actual HTTP calls)
+[user_client]
+client_mode = "mock_user_client"

@@ -1,0 +1,17 @@
+[package]
+name = "common_enums"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.cargo-machete]
+ignored = ["diesel"]
+
+[dependencies]
+recon_derive = { version = "0.1.0", path = "../recon_derive" }
+strum = { version = "0.27.1", features = ["derive"] }
+serde = { version = "=1.0.219", features = ["derive"] }
+diesel = { version = "2.3.2", features = ["postgres"] }
+utoipa = "5.3.1"
+
+[lints]
+workspace = true

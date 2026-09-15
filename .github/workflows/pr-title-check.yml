@@ -1,0 +1,95 @@
+name: "[CI] PR Title"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+  merge_group:
+    types:
+      - checks_requested
+
+env:
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  convention:
+    name: Conventional commit check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cocogitto
+          checksum: true
+
+      - name: Configure git identity for cog
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify PR title follows conventional commit standards
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: cog verify "$TITLE"
+
+      - name: Verify PR title has a lowercase type, a scope, and a capitalized message
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! echo "$TITLE" | grep -qE '^[a-z]+\([^)]+\)!?: [A-Z]'; then
+            echo "PR title must match 'type(scope): Message' — type must be lowercase, scope is required, and the message must start with a capital letter." >&2
+            exit 1
+          fi
+
+      - name: Verify commit message follows conventional commit standards
+        if: ${{ github.event_name == 'merge_group' }}
+        shell: bash
+        env:
+          COMMIT_MESSAGE: ${{ github.event.merge_group.head_commit.message }}
+        run: cog verify "$COMMIT_MESSAGE"
+
+      - name: Verify commit message has a lowercase type, a scope, and a capitalized message
+        if: ${{ github.event_name == 'merge_group' }}
+        shell: bash
+        env:
+          COMMIT_MESSAGE: ${{ github.event.merge_group.head_commit.message }}
+        run: |
+          if ! echo "$COMMIT_MESSAGE" | grep -qE '^[a-z]+\([^)]+\)!?: [A-Z]'; then
+            echo "Commit message must match 'type(scope): Message' — type must be lowercase, scope is required, and the message must start with a capital letter." >&2
+            exit 1
+          fi
+
+  spell_check:
+    name: Spell check PR title
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Store PR title in a file
+        shell: bash
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$TITLE" > pr_title.txt
+
+      - name: Spell check
+        uses: crate-ci/typos@master
+        with:
+          files: ./pr_title.txt

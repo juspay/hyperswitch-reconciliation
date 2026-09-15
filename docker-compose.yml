@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: hs-recon-postgres
+    environment:
+      POSTGRES_DB: recon
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: db_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - recon-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hs-recon-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - recon-network
+
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: hs-recon-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    networks:
+      - recon-network
+
+  # Promtail for log collection
+  promtail:
+    image: grafana/promtail:latest
+    container_name: hs-recon-promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./config/promtail:/etc/promtail
+      - app_logs:/app/logs:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - recon-network
+    depends_on:
+      - loki
+
+  # Your application (optional - for development)
+  hs-recon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hs-recon-app
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://db_user:db_pass@postgres:5432/recon
+      - CONFIG_FILE=config/docker-compose.toml
+    depends_on:
+      - postgres
+      - loki
+    volumes:
+      - ./config:/app/config
+      - app_logs:/app/logs
+    networks:
+      - recon-network
+    labels:
+      - "logging=promtail"
+      - "service=hs-recon"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  grafana_data:
+  loki_data:
+  app_logs:
+
+networks:
+  recon-network:
+    driver: bridge
