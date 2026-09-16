@@ -38,7 +38,7 @@ use crate::{
     routes::AppState,
 };
 
-pub const MAX_ENTRIES_PER_TRANSACTION: usize = 10_000;
+pub const MAX_ENTRIES_PER_TRANSACTION: usize = 25_000;
 
 /// Hash string for privacy-preserving duplicate detection
 pub fn hash_string(value: &str) -> Secret<String> {
