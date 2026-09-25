@@ -24,9 +24,10 @@ pub trait IngestionHistoryInterface {
         profile_id: &str,
     ) -> StorageResult<IngestionHistory>;
 
-    async fn find_config_and_history_by_id(
+    async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
+        profile_id: &str,
     ) -> StorageResult<IngestionConfigHistoryView>;
 
     async fn list_ingestion_history_by_profile_id(
@@ -80,12 +81,13 @@ impl IngestionHistoryInterface for Store {
         IngestionHistory::find_by_id_and_profile(&conn, id, profile_id).await
     }
 
-    async fn find_config_and_history_by_id(
+    async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
+        profile_id: &str,
     ) -> StorageResult<IngestionConfigHistoryView> {
         let conn = self.get_connection().await?;
-        IngestionHistory::find_config_and_history_by_id(&conn, id).await
+        IngestionHistory::find_config_and_history_by_id_and_profile(&conn, id, profile_id).await
     }
 
     async fn list_ingestion_history_by_profile_id(

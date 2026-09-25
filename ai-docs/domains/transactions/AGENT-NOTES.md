@@ -499,3 +499,23 @@
 - **Error Context Preservation**: Void validation errors use specific error types instead of generic database errors
   - **HTTP Status Codes**: Validation errors return proper 400 status instead of 500 database errors
   - **User Experience**: Clear error messages indicate why void operation failed and which states are valid
+
+<!-- AI-UPDATED: 2026-09-24 - Entry tenant-scoping and POST /entries removal -->
+## Entry Tenant Scoping Gotchas
+
+- **`entry` has no `profile_id` column** - only `merchant_id` (`schema.rs`). The tenant boundary for
+  an entry runs through the **account** it posts to, since an account belongs to exactly one profile
+  (`RULES.md:39`). Scope entry reads with `find_account_by_profile_id_and_account_id` (single) or
+  `list_accounts_by_profile_id_and_account_ids` (batched), as `get_entry_by_id` and
+  `list_entries_by_transaction_id` do.
+- **Do NOT gate entry reads on the `transaction` table.** Manual entries historically produced no
+  `transaction` row, so a transaction-level guard 404s the owner on their own data. This was
+  attempted and broke `test_get_entries_by_transaction_id_{with_entries,empty}`.
+- **Two transaction id spaces.** `transaction.id` is the physical per-version PK
+  (`find_by_id_and_profile`, used by `POST /entries/list`); `transaction.transaction_id` is the
+  logical id stable across versions (`find_latest_transaction_by_logical_id_and_profile_id`, and what
+  `GET /transactions/{transaction_id}/entries` takes). Entries join on the logical id
+  (`entry.logical_transaction_id`). Mixing them 404s every legitimate request.
+- **Filter before decryption.** `entries_to_response` uses an encryptor keyed on `merchant_id`, so
+  foreign ciphertext reaching it decrypts with the wrong key (500 under `key_manager` mode). The
+  account filter must run *before* `entries_to_response`, not after.

@@ -71,7 +71,7 @@ pub async fn execute_transformation(
     ),
     responses(
         (status = 200, description = "Transformation history with config retrieved successfully", body = TransformationHistoryResponse),
-        (status = 404, description = "Transformation history not found"),
+        (status = 404, description = "Transformation history not found - does not exist or does not belong to authenticated user's profile"),
         (status = 500, description = "Internal server error")
     ),
     tag = "Transformations",
@@ -89,10 +89,11 @@ pub async fn find_transformation_history_with_config_by_id(
         JwtAuth::basic(Permission::ProfileReconTransformationRead),
         &http_req,
         state,
-        |state, _auth| async move {
+        |state, auth| async move {
             core::transformation::find_transformation_history_with_config_by_id(
                 &state,
                 &transformation_history_id,
+                &auth.profile_id,
             )
             .await
         },

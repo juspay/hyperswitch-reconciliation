@@ -34,15 +34,17 @@ impl IngestionHistory {
         .await
     }
 
-    pub async fn find_config_and_history_by_id(
+    pub async fn find_config_and_history_by_id_and_profile(
         conn: &PgPooledConn,
         id: &str,
+        profile_id: &str,
     ) -> StorageResult<IngestionConfigHistoryView> {
         let query = dsl::ingestion_history
             .inner_join(
                 ingestion_config::table.on(dsl::ingestion_config_id.eq(ingestion_config::id)),
             )
-            .filter(dsl::id.eq(id.to_owned()));
+            .filter(dsl::id.eq(id.to_owned()))
+            .filter(dsl::profile_id.eq(profile_id.to_owned()));
 
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 

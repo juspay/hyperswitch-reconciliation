@@ -1500,3 +1500,112 @@ async fn update_transformation_config_inactive_excluded_from_execution() {
         "Only the active config should be executed for the ingestion"
     );
 }
+
+#[actix_web::test]
+async fn test_find_transformation_history_is_scoped_to_profile() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+
+    let (merchant_id_1, profile_id_1, token_1) =
+        client.bootstrap("Test Merchant 1", "Test Profile 1").await;
+
+    let account_id_1 =
+        create_test_account(&client, &token_1, "Test Account", BalanceDirection::Debit).await;
+
+    let ingestion_config =
+        create_ingestion_config(&account_id_1, &profile_id_1, &merchant_id_1, &client).await;
+
+    create_transformation_config(
+        &profile_id_1,
+        &account_id_1,
+        Some(&ingestion_config.ingestion_id),
+        &merchant_id_1,
+        &token_1,
+        &client,
+        "order_id".parse().unwrap(),
+        StagingEntryProcessingMode::Transaction,
+        vec![],
+    )
+    .await;
+
+    // Trigger a transformation so profile 1 owns a history record
+    let trigger_request = TransformationTriggerRequest {
+        file_path: PathBuf::from("no_such_file_for_scoping_test.csv"),
+    };
+    client
+        .post(&format!(
+            "/transformations/{}/ing_hist_scoping_test/trigger",
+            ingestion_config.ingestion_id
+        ))
+        .json(&trigger_request)
+        .send()
+        .await;
+
+    let history_response = client
+        .get("/transformations/history")
+        .with_auth(&token_1)
+        .send()
+        .await;
+    assert_eq!(history_response.status(), 200);
+    let history: Vec<TransformationHistoryResponse> = client.expect_success(history_response).await;
+    let history_entry = history
+        .first()
+        .expect("Should have a transformation history entry");
+
+    // Create second profile
+    let (_merchant_id_2, _profile_id_2, token_2) =
+        client.bootstrap("Test Merchant 2", "Test Profile 2").await;
+
+    // Owner can read it
+    let owner_response = client
+        .get(&format!(
+            "/transformations/history/{}",
+            history_entry.transformation_history_id
+        ))
+        .with_auth(&token_1)
+        .send()
+        .await;
+
+    assert_eq!(
+        owner_response.status(),
+        200,
+        "Owning profile should be able to read its own transformation history"
+    );
+
+    // Another profile must not
+    let cross_tenant_response = client
+        .get(&format!(
+            "/transformations/history/{}",
+            history_entry.transformation_history_id
+        ))
+        .with_auth(&token_2)
+        .send()
+        .await;
+
+    assert_eq!(
+        cross_tenant_response.status(),
+        404,
+        "another profile's transformation history id must not resolve"
+    );
+}
+
+#[actix_web::test]
+async fn find_transformation_history_with_config_by_id_not_found() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+
+    let (_merchant_id, _profile_id, token) =
+        client.bootstrap("Test Merchant", "Test Profile").await;
+
+    let response = client
+        .get("/transformations/history/non_existent_history_id")
+        .with_auth(&token)
+        .send()
+        .await;
+
+    assert_eq!(
+        response.status(),
+        404,
+        "Expected 404 for a non-existent transformation history id"
+    );
+}

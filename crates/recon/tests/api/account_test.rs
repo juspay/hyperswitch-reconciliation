@@ -13,13 +13,34 @@ pub async fn create_test_account(
     name: &str,
     balance_direction: BalanceDirection,
 ) -> String {
-    use api_models::account::{AccountCreateRequest, GetAccountResponse};
+    create_test_account_with(
+        client,
+        token,
+        name,
+        balance_direction,
+        Currency::USD,
+        1000.0,
+    )
+    .await
+}
 
+/// Like [`create_test_account`], with an explicit currency and opening balance.
+///
+/// # Panics
+/// Panics if the account is not created or the HTTP response cannot be deserialized as JSON.
+pub async fn create_test_account_with(
+    client: &TestClient,
+    token: &str,
+    name: &str,
+    balance_direction: BalanceDirection,
+    currency: Currency,
+    initial_balance: f64,
+) -> String {
     let account_request = AccountCreateRequest {
         account_name: name.to_string(),
         account_type: balance_direction,
-        currency: Currency::USD,
-        initial_balance: FloatMajorUnit::new(1000.0),
+        currency,
+        initial_balance: FloatMajorUnit::new(initial_balance),
     };
 
     let response = client

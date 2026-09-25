@@ -1,7 +1,7 @@
 use async_bb8_diesel::AsyncRunQueryDsl;
 use common_types::transformation::ListTransformationHistoryFilters;
 use common_utils::logging;
-use diesel::{debug_query, pg::Pg, prelude::*};
+use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
 use error_stack::report;
 
 use crate::{
@@ -26,16 +26,18 @@ impl TransformationHistoryNew {
 }
 
 impl TransformationHistory {
-    pub async fn find_config_and_history_by_id(
+    pub async fn find_config_and_history_by_id_and_profile(
         conn: &PgPooledConn,
         id: &str,
+        profile_id: &str,
     ) -> StorageResult<TransformationConfigHistoryView> {
         let query = dsl::transformation_history
             .inner_join(
                 transformation_config::table
                     .on(dsl::transformation_config_id.eq(transformation_config::id)),
             )
-            .filter(dsl::id.eq(id.to_owned()));
+            .filter(dsl::id.eq(id.to_owned()))
+            .filter(dsl::profile_id.eq(profile_id.to_owned()));
 
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
@@ -43,10 +45,13 @@ impl TransformationHistory {
             .get_result_async::<(Self, TransformationConfig)>(conn)
             .await
             .map(|(history, config)| TransformationConfigHistoryView { config, history })
-            .map_err(|err| {
-                report!(errors::DatabaseError::Others).attach_printable(format!(
+            .map_err(|err| match err {
+                DieselError::NotFound => report!(err)
+                    .change_context(errors::DatabaseError::NotFound)
+                    .attach_printable(format!("Transformation history not found for id {id}")),
+                _ => report!(errors::DatabaseError::Others).attach_printable(format!(
                     "Error while fetching transformation history for id {id}: {err}"
-                ))
+                )),
             })
     }
 

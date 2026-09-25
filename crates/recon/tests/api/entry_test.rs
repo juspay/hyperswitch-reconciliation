@@ -1,13 +1,13 @@
 use crate::{
-    api::{account_test::create_test_account, transaction_test::create_test_recon_rule},
+    api::{
+        account_test::{create_test_account, create_test_account_with},
+        transaction_test::create_test_recon_rule,
+    },
     common::TestApp,
 };
 use api_models::{
     account::{AccountCreateRequest, GetAccountResponse},
-    entry::{
-        ApiEntryListFilters, EntryCreateRequest, EntryListPage, GetEntryResponse,
-        ListEntriesRequest,
-    },
+    entry::{ApiEntryListFilters, EntryListPage, GetEntryResponse, ListEntriesRequest},
     recon_rule::aging_config::AgingConfigApiRequest,
     transaction::{
         DirectTransactionEntry, GetTransactionResponse, TransactionEntry, TransactionRequest,
@@ -22,107 +22,126 @@ use common_types::{
     units::FloatMajorUnit,
 };
 use common_utils::id_generation::generate_id_with_default_len;
-use masking::{ExposeInterface, Secret};
+use masking::Secret;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
 
-// Helper function to create an entry request
-fn entry_request(
+// `POST /entries` was removed, so entries are seeded through the recon-engine path
+// (`POST /transactions`). The engine requires a recon rule and at least two entries whose debits
+// and credits balance, which the helpers below set up.
+
+/// Post `entries` as one transaction under a recon rule spanning the two given accounts.
+///
+/// Note that entries created this way come back `Matched`: `POST /transactions` runs them through
+/// the recon engine, which reconciles them on the spot. `POST /entries` was the only producer of
+/// `Pending` entries, so no test can create one any more.
+async fn seed_entries(
+    client: &crate::common::TestClient,
+    token: &str,
+    rule_source_account_id: &str,
+    rule_target_account_id: &str,
+    entries: Vec<TransactionEntry>,
+) -> GetTransactionResponse {
+    let rule_id = create_test_recon_rule(
+        client,
+        token,
+        &generate_id_with_default_len("seed"),
+        rule_source_account_id.to_string(),
+        rule_target_account_id.to_string(),
+        AgingConfigApiRequest::NoAging,
+    )
+    .await;
+
+    let response = client
+        .post("/transactions")
+        .with_auth(token)
+        .json(&TransactionRequest { entries, rule_id })
+        .send()
+        .await;
+    assert_eq!(
+        response.status(),
+        201,
+        "seeding entries via POST /transactions should succeed"
+    );
+    response.json().await.unwrap()
+}
+
+/// Seed `entries` against `account_id`, so it ends up holding exactly those entries.
+///
+/// The engine needs at least two entries whose debits and credits balance, so any net imbalance is
+/// absorbed by a single opposite entry on a throwaway counterpart account. The seeded entries land
+/// `Matched`, which moves `matched_balance` rather than `pending_balance`.
+async fn seed_entries_on_account(
+    client: &crate::common::TestClient,
+    token: &str,
     account_id: &str,
-    transaction_id: &str,
-    entry_type: BalanceDirection,
-    amount: f64,
     currency: Currency,
-) -> EntryCreateRequest {
-    EntryCreateRequest {
-        account_id: account_id.to_string(),
-        transaction_id: transaction_id.to_string(),
-        entry_type,
-        amount: FloatMajorUnit::new(amount),
+    entries: &[(BalanceDirection, f64)],
+) -> GetTransactionResponse {
+    let effective_at = common_utils::date_time::now();
+    let counterpart_account_id = create_test_account_with(
+        client,
+        token,
+        &format!("Counterpart {}", generate_id_with_default_len("acct")),
+        BalanceDirection::Credit,
         currency,
-        effective_at: common_utils::date_time::now(),
-        created_at: common_utils::date_time::now(),
-        metadata: Secret::new(json!({"test": "data"})),
-        order_id: "order_test".to_string(),
+        0.0,
+    )
+    .await;
+
+    let mut transaction_entries = entries
+        .iter()
+        .enumerate()
+        .map(|(index, (entry_type, amount))| {
+            direct_entry_in(
+                account_id,
+                *entry_type,
+                *amount,
+                currency,
+                effective_at,
+                &format!("order_{index}"),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let net = entries
+        .iter()
+        .map(|(entry_type, amount)| match entry_type {
+            BalanceDirection::Debit => *amount,
+            BalanceDirection::Credit => -*amount,
+        })
+        .sum::<f64>();
+
+    if net != 0.0 {
+        let (balancing_type, balancing_amount) = if net > 0.0 {
+            (BalanceDirection::Credit, net)
+        } else {
+            (BalanceDirection::Debit, -net)
+        };
+        transaction_entries.push(direct_entry_in(
+            &counterpart_account_id,
+            balancing_type,
+            balancing_amount,
+            currency,
+            effective_at,
+            "order_balance",
+        ));
     }
+
+    seed_entries(
+        client,
+        token,
+        account_id,
+        &counterpart_account_id,
+        transaction_entries,
+    )
+    .await
 }
 
 // Helper function to generate unique transaction IDs
 fn unique_transaction_id() -> String {
     generate_id_with_default_len("transaction")
-}
-
-// Test create_entry with valid amount
-#[actix_web::test]
-async fn test_create_entry_valid() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let (_, _, token) = client.bootstrap("Test Merchant", "Test Profile").await;
-
-    // Create an account first
-    let account_id =
-        create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
-    let transaction_id = unique_transaction_id();
-    let request = entry_request(
-        &account_id,
-        &transaction_id,
-        BalanceDirection::Credit,
-        100.50,
-        Currency::USD,
-    );
-
-    let response = client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
-
-    assert_eq!(response.status(), 201);
-    let body: GetEntryResponse = response.json().await.unwrap();
-
-    assert_eq!(body.account_id, account_id);
-    assert_eq!(body.transaction_id, transaction_id);
-    assert_eq!(body.entry_type, BalanceDirection::Credit);
-    assert_eq!(body.amount.value.0, 100.50);
-    assert_eq!(body.amount.currency, Currency::USD);
-    assert_eq!(body.status, EntryStatus::Pending);
-    // Verify metadata exists by checking the inner value is not empty
-    assert!(!body.metadata.get_inner().clone().expose().is_null());
-    assert_eq!(body.discarded_at, None);
-}
-
-// Test create_entry with invalid amounts
-#[rstest]
-#[case(-100.0)] // Negative amount
-#[case(f64::INFINITY)] // Infinity amount
-#[actix_web::test]
-async fn test_create_entry_invalid(#[case] amount: f64) {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let (_, _, token) = client.bootstrap("Test Merchant", "Test Profile").await;
-
-    // Create an account first
-    let account_id =
-        create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
-    let transaction_id = unique_transaction_id();
-    let request = entry_request(
-        &account_id,
-        &transaction_id,
-        BalanceDirection::Credit,
-        amount,
-        Currency::USD,
-    );
-
-    let response = client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
-
-    assert_eq!(response.status(), 400);
 }
 
 // Test get_entry_by_id with valid ID
@@ -135,22 +154,20 @@ async fn test_get_entry_by_id_valid() {
     // Create an account first
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
-    let transaction_id = unique_transaction_id();
-    let request = entry_request(
+    let transaction = seed_entries_on_account(
+        &client,
+        &token,
         &account_id,
-        &transaction_id,
-        BalanceDirection::Credit,
-        100.50,
         Currency::USD,
-    );
-    let create_response = client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
-    let created_entry: GetEntryResponse = create_response.json().await.unwrap();
-    let entry_id = created_entry.entry_id;
+        &[(BalanceDirection::Credit, 100.50)],
+    )
+    .await;
+    let entry_id = transaction_entries(&client, &token, &transaction.transaction_id)
+        .await
+        .into_iter()
+        .find(|entry| entry.account_id == account_id)
+        .expect("seeded entry on the account under test")
+        .entry_id;
 
     let response = client
         .get(&format!("/entries/{entry_id}"))
@@ -197,37 +214,19 @@ async fn test_get_entries_by_account_id_with_entries() {
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
 
-    // Create multiple entries for the same account
-    let transaction_id1 = unique_transaction_id();
-    let transaction_id2 = unique_transaction_id();
-    let request1 = entry_request(
+    // Create one credit and one debit entry on the account. Amounts match so the pair balances
+    // on its own and no counterpart entry is needed.
+    seed_entries_on_account(
+        &client,
+        &token,
         &account_id,
-        &transaction_id1,
-        BalanceDirection::Credit,
-        100.0,
         Currency::USD,
-    );
-    let request2 = entry_request(
-        &account_id,
-        &transaction_id2,
-        BalanceDirection::Debit,
-        50.0,
-        Currency::USD,
-    );
-
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request1)
-        .send()
-        .await;
-
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request2)
-        .send()
-        .await;
+        &[
+            (BalanceDirection::Credit, 100.0),
+            (BalanceDirection::Debit, 100.0),
+        ],
+    )
+    .await;
 
     let response = client
         .get(&format!("/accounts/{account_id}/entries"))
@@ -280,7 +279,6 @@ async fn test_get_entries_by_transaction_id_with_entries() {
     let app = TestApp::new().await;
     let client = app.api_client();
     let (_, _, token) = client.bootstrap("Test Merchant", "Test Profile").await;
-    let transaction_id = unique_transaction_id();
 
     // Create accounts first
     let account_id1 =
@@ -288,35 +286,27 @@ async fn test_get_entries_by_transaction_id_with_entries() {
     let account_id2 =
         create_test_account(&client, &token, "Test Account 2", BalanceDirection::Credit).await;
 
-    // Create multiple entries for the same transaction
-    let request1 = entry_request(
+    // Create multiple entries under one transaction. The logical transaction id is server-minted,
+    // so it comes back on the create response rather than being chosen by the caller.
+    let now = common_utils::date_time::now();
+    let transaction = seed_entries(
+        &client,
+        &token,
         &account_id1,
-        &transaction_id,
-        BalanceDirection::Credit,
-        100.0,
-        Currency::USD,
-    );
-    let request2 = entry_request(
         &account_id2,
-        &transaction_id,
-        BalanceDirection::Debit,
-        100.0,
-        Currency::USD,
-    );
-
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request1)
-        .send()
-        .await;
-
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request2)
-        .send()
-        .await;
+        vec![
+            direct_entry(
+                &account_id1,
+                BalanceDirection::Credit,
+                100.0,
+                now,
+                "order_a",
+            ),
+            direct_entry(&account_id2, BalanceDirection::Debit, 100.0, now, "order_b"),
+        ],
+    )
+    .await;
+    let transaction_id = transaction.transaction_id;
 
     let response = client
         .get(&format!("/transactions/{transaction_id}/entries"))
@@ -367,19 +357,14 @@ async fn test_entries_time_range_validation(
     // Create an account and entry for testing
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
-    let request = entry_request(
+    seed_entries_on_account(
+        &client,
+        &token,
         &account_id,
-        &unique_transaction_id(),
-        BalanceDirection::Credit,
-        100.0,
         Currency::USD,
-    );
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
+        &[(BalanceDirection::Credit, 100.0)],
+    )
+    .await;
 
     // Build query string with time range
     let mut query_params = Vec::new();
@@ -429,11 +414,11 @@ async fn test_entries_time_range_validation(
 // Test get_entries_by_account_id with various filter combinations
 #[rstest]
 #[case(None, None, 4)] // No filters - returns all entries
-#[case(Some("pending"), None, 4)] // Status filter only
+#[case(Some("matched"), None, 4)] // Status filter only
 #[case(None, Some("credit"), 2)] // Entry type filter only - credit
 #[case(None, Some("debit"), 2)] // Entry type filter only - debit
-#[case(Some("pending"), Some("credit"), 2)] // Status + entry type
-#[case(Some("pending"), Some("debit"), 2)] // Status + entry type
+#[case(Some("matched"), Some("credit"), 2)] // Status + entry type
+#[case(Some("matched"), Some("debit"), 2)] // Status + entry type
 #[actix_web::test]
 async fn test_get_entries_by_account_id_with_filters(
     #[case] status: Option<&str>,
@@ -448,29 +433,21 @@ async fn test_get_entries_by_account_id_with_filters(
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
 
-    // Create multiple entries with different types
-    let entries_to_create = vec![
-        (BalanceDirection::Credit, 100.0),
-        (BalanceDirection::Credit, 50.0),
-        (BalanceDirection::Debit, 75.0),
-        (BalanceDirection::Debit, 25.0),
-    ];
-
-    for (entry_type, amount) in entries_to_create {
-        let request = entry_request(
-            &account_id,
-            &unique_transaction_id(),
-            entry_type,
-            amount,
-            Currency::USD,
-        );
-        client
-            .post("/entries")
-            .with_auth(&token)
-            .json(&request)
-            .send()
-            .await;
-    }
+    // Create four entries on the account: two credits and two debits. Amounts are paired so the
+    // set balances on its own, which the engine requires.
+    seed_entries_on_account(
+        &client,
+        &token,
+        &account_id,
+        Currency::USD,
+        &[
+            (BalanceDirection::Credit, 100.0),
+            (BalanceDirection::Credit, 50.0),
+            (BalanceDirection::Debit, 100.0),
+            (BalanceDirection::Debit, 50.0),
+        ],
+    )
+    .await;
 
     // Build query string
     let mut query_params = Vec::new();
@@ -528,19 +505,14 @@ async fn test_get_entries_with_time_range_filters(
     // Create account and entry
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
-    let request = entry_request(
+    seed_entries_on_account(
+        &client,
+        &token,
         &account_id,
-        &unique_transaction_id(),
-        BalanceDirection::Credit,
-        100.0,
         Currency::USD,
-    );
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
+        &[(BalanceDirection::Credit, 100.0)],
+    )
+    .await;
 
     // Build time range query
     let format =
@@ -580,7 +552,7 @@ async fn test_get_entries_with_time_range_filters(
 #[rstest]
 #[case("", "", "", 4)] // Empty filters return all
 #[case(",,", ",,", "", 4)] // Only commas return all
-#[case("pending,,posted", "credit,,debit", "", 4)] // Mixed empty values are filtered out
+#[case("matched,,posted", "credit,,debit", "", 4)] // Mixed empty values are filtered out
 #[actix_web::test]
 async fn test_get_entries_filter_edge_cases(
     #[case] status: &str,
@@ -596,29 +568,21 @@ async fn test_get_entries_filter_edge_cases(
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
 
-    // Create multiple entries
-    let entries_to_create = vec![
-        (BalanceDirection::Credit, 100.0),
-        (BalanceDirection::Credit, 50.0),
-        (BalanceDirection::Debit, 75.0),
-        (BalanceDirection::Debit, 25.0),
-    ];
-
-    for (entry_type_val, amount) in entries_to_create {
-        let request = entry_request(
-            &account_id,
-            &unique_transaction_id(),
-            entry_type_val,
-            amount,
-            Currency::USD,
-        );
-        client
-            .post("/entries")
-            .with_auth(&token)
-            .json(&request)
-            .send()
-            .await;
-    }
+    // Create four entries on the account: two credits and two debits. Amounts are paired so the
+    // set balances on its own, which the engine requires.
+    seed_entries_on_account(
+        &client,
+        &token,
+        &account_id,
+        Currency::USD,
+        &[
+            (BalanceDirection::Credit, 100.0),
+            (BalanceDirection::Credit, 50.0),
+            (BalanceDirection::Debit, 100.0),
+            (BalanceDirection::Debit, 50.0),
+        ],
+    )
+    .await;
 
     // Build query string
     let mut query_params = Vec::new();
@@ -649,7 +613,7 @@ async fn test_get_entries_filter_edge_cases(
 
 // Test get_entries_by_transaction_id with no entries
 #[actix_web::test]
-async fn test_get_entries_by_transaction_id_empty() {
+async fn test_get_entries_by_transaction_id_not_found() {
     let app = TestApp::new().await;
     let client = app.api_client();
     let (_, _, token) = client.bootstrap("Test Merchant", "Test Profile").await;
@@ -661,9 +625,7 @@ async fn test_get_entries_by_transaction_id_empty() {
         .send()
         .await;
 
-    assert_eq!(response.status(), 200);
-    let entries: Vec<GetEntryResponse> = response.json().await.unwrap();
-    assert_eq!(entries.len(), 0);
+    assert_eq!(response.status(), 404);
 }
 
 // Test unauthorized access
@@ -671,19 +633,6 @@ async fn test_get_entries_by_transaction_id_empty() {
 async fn test_unauthorized_access() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let account_id = "some_account_id";
-    let transaction_id = unique_transaction_id();
-    let request = entry_request(
-        account_id,
-        &transaction_id,
-        BalanceDirection::Credit,
-        100.0,
-        Currency::USD,
-    );
-
-    // Test create without auth
-    let response = client.post("/entries").json(&request).send().await;
-    assert_eq!(response.status(), 401);
 
     // Test get by id without auth
     let response = client.get("/entries/some_id").send().await;
@@ -744,19 +693,14 @@ async fn test_balance_updates_on_entry_creation(
         .await;
     let account: GetAccountResponse = response.json().await.unwrap();
 
-    let entry_request = entry_request(
+    seed_entries_on_account(
+        &client,
+        &token,
         &account.account_id,
-        &unique_transaction_id(),
-        entry_type,
-        entry_amount,
         Currency::USD,
-    );
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&entry_request)
-        .send()
-        .await;
+        &[(entry_type, entry_amount)],
+    )
+    .await;
 
     let response = client
         .get(&format!("/accounts/{}", account.account_id))
@@ -764,8 +708,13 @@ async fn test_balance_updates_on_entry_creation(
         .send()
         .await;
     let updated_account: GetAccountResponse = response.json().await.unwrap();
-    assert_eq!(updated_account.pending_balance.value.0, expected_balance);
-    assert_eq!(updated_account.posted_balance.value.0, initial_balance); // Posted unchanged for pending entries
+    // Engine-created entries land `Matched`. `matched_balance` is a pure delta - it excludes the
+    // opening balance - so the expected total is measured relative to it.
+    assert_eq!(
+        updated_account.matched_balance.value.0,
+        expected_balance - initial_balance
+    );
+    assert_eq!(updated_account.posted_balance.value.0, initial_balance); // Posted unchanged
 }
 
 // Test that different account types handle entries correctly
@@ -803,19 +752,14 @@ async fn test_balance_updates_for_different_account_types(
     let account: GetAccountResponse = response.json().await.unwrap();
 
     // Create an entry
-    let entry_request = entry_request(
+    seed_entries_on_account(
+        &client,
+        &token,
         &account.account_id,
-        &unique_transaction_id(),
-        entry_type,
-        entry_amount,
         Currency::USD,
-    );
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&entry_request)
-        .send()
-        .await;
+        &[(entry_type, entry_amount)],
+    )
+    .await;
 
     // Check balance
     let response = client
@@ -824,7 +768,10 @@ async fn test_balance_updates_for_different_account_types(
         .send()
         .await;
     let updated_account: GetAccountResponse = response.json().await.unwrap();
-    assert_eq!(updated_account.pending_balance.value.0, expected_balance);
+    assert_eq!(
+        updated_account.matched_balance.value.0,
+        expected_balance - _initial_balance
+    );
 }
 
 // Test multiple entries and complex balance calculations
@@ -843,28 +790,18 @@ async fn test_complex_balance_calculations() {
     .await;
 
     // Create multiple entries: Credit 200, Debit 50, Debit 300
-    let entries = [
-        (BalanceDirection::Credit, 200.0),
-        (BalanceDirection::Debit, 50.0),
-        (BalanceDirection::Debit, 300.0),
-    ];
-
-    for (entry_type, amount) in entries {
-        let transaction_id = unique_transaction_id();
-        let entry_request = entry_request(
-            &account_id,
-            &transaction_id,
-            entry_type,
-            amount,
-            Currency::USD,
-        );
-        client
-            .post("/entries")
-            .with_auth(&token)
-            .json(&entry_request)
-            .send()
-            .await;
-    }
+    seed_entries_on_account(
+        &client,
+        &token,
+        &account_id,
+        Currency::USD,
+        &[
+            (BalanceDirection::Credit, 200.0),
+            (BalanceDirection::Debit, 50.0),
+            (BalanceDirection::Debit, 300.0),
+        ],
+    )
+    .await;
 
     let response = client
         .get(&format!("/accounts/{account_id}"))
@@ -873,14 +810,15 @@ async fn test_complex_balance_calculations() {
         .await;
     let account: GetAccountResponse = response.json().await.unwrap();
 
-    // Debit account: 1000 - 200 + 50 + 300 = 1150
-    assert_eq!(account.pending_balance.value.0, 1150.0);
+    // Debit account, matched delta: -200 + 50 + 300 = 150 (opening balance 1000 is excluded)
+    assert_eq!(account.matched_balance.value.0, 150.0);
     assert_eq!(account.posted_balance.value.0, 1000.0); // Unchanged
 }
 
 // Test edge cases for balance updates
 #[rstest]
-#[case(0.0, 1000.0, 1000.0)] // Zero amount - no change
+// A zero-amount case used to live here. `POST /transactions` rejects non-positive amounts
+// (`validate_positive_amounts`), so it is no longer expressible now that `POST /entries` is gone.
 #[case(500_000.0, 1_000_000.0, 1_500_000.0)] // Large amounts
 #[case(25.75, 100.50, 126.25)] // Decimal precision
 #[actix_web::test]
@@ -908,20 +846,14 @@ async fn test_balance_update_edge_cases(
         .await;
     let account: GetAccountResponse = response.json().await.unwrap();
 
-    let entry_request = entry_request(
+    seed_entries_on_account(
+        &client,
+        &token,
         &account.account_id,
-        &unique_transaction_id(),
-        BalanceDirection::Debit,
-        entry_amount,
         Currency::USD,
-    );
-    let entry_response = client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&entry_request)
-        .send()
-        .await;
-    assert_eq!(entry_response.status(), 201);
+        &[(BalanceDirection::Debit, entry_amount)],
+    )
+    .await;
 
     let response = client
         .get(&format!("/accounts/{}", account.account_id))
@@ -929,14 +861,17 @@ async fn test_balance_update_edge_cases(
         .send()
         .await;
     let updated_account: GetAccountResponse = response.json().await.unwrap();
-    assert_eq!(updated_account.pending_balance.value.0, expected_balance);
+    assert_eq!(
+        updated_account.matched_balance.value.0,
+        expected_balance - initial_balance
+    );
     assert_eq!(updated_account.posted_balance.value.0, initial_balance); // Posted unchanged
 }
 
 // Test combined filters with time range validation for entries
 #[rstest]
-#[case(Some("pending"), Some("credit"), Some(1), Some(2), 200, 0)] // Valid time range with filters (future time = no entries)
-#[case(Some("pending"), Some("debit"), Some(2), Some(1), 400, 0)] // Invalid time range with filters
+#[case(Some("matched"), Some("credit"), Some(1), Some(2), 200, 0)] // Valid time range with filters (future time = no entries)
+#[case(Some("matched"), Some("debit"), Some(2), Some(1), 400, 0)] // Invalid time range with filters
 #[case(None, None, Some(-1), None, 200, 4)] // Past time with start only
 #[actix_web::test]
 async fn test_entries_combined_filters_with_time_range(
@@ -955,29 +890,20 @@ async fn test_entries_combined_filters_with_time_range(
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
 
-    // Create entries with different properties
-    let entries = vec![
-        (BalanceDirection::Credit, 100.0),
-        (BalanceDirection::Debit, 50.0),
-        (BalanceDirection::Credit, 75.0),
-        (BalanceDirection::Debit, 25.0),
-    ];
-
-    for (entry_type_val, amount) in entries {
-        let request = entry_request(
-            &account_id,
-            &unique_transaction_id(),
-            entry_type_val,
-            amount,
-            Currency::USD,
-        );
-        client
-            .post("/entries")
-            .with_auth(&token)
-            .json(&request)
-            .send()
-            .await;
-    }
+    // Create four entries on the account, paired so credits and debits balance.
+    seed_entries_on_account(
+        &client,
+        &token,
+        &account_id,
+        Currency::USD,
+        &[
+            (BalanceDirection::Credit, 100.0),
+            (BalanceDirection::Debit, 100.0),
+            (BalanceDirection::Credit, 75.0),
+            (BalanceDirection::Debit, 75.0),
+        ],
+    )
+    .await;
 
     // Build query string
     let mut query_params = Vec::new();
@@ -1059,19 +985,14 @@ async fn test_entries_time_range_edge_cases(
     // Create an account and entry for testing
     let account_id =
         create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
-    let request = entry_request(
+    seed_entries_on_account(
+        &client,
+        &token,
         &account_id,
-        &unique_transaction_id(),
-        BalanceDirection::Credit,
-        100.0,
         Currency::USD,
-    );
-    client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
+        &[(BalanceDirection::Credit, 100.0)],
+    )
+    .await;
 
     // Build query string with time range
     let mut query_params = Vec::new();
@@ -1132,29 +1053,16 @@ async fn test_multiple_entries_balance_aggregation() {
         (BalanceDirection::Debit, 200.0),
     ];
 
-    let mut expected_balance = 1000.0; // Initial balance from helper
-    for (entry_type, amount) in entries {
-        let entry_request = entry_request(
-            &account_id,
-            &unique_transaction_id(),
-            entry_type,
-            amount,
-            Currency::USD,
-        );
-        let response = client
-            .post("/entries")
-            .with_auth(&token)
-            .json(&entry_request)
-            .send()
-            .await;
-        assert_eq!(response.status(), 201);
+    seed_entries_on_account(&client, &token, &account_id, Currency::USD, &entries).await;
 
-        // Update expected balance based on entry type (debit account)
-        match entry_type {
-            BalanceDirection::Debit => expected_balance += amount,
-            BalanceDirection::Credit => expected_balance -= amount,
-        }
-    }
+    // Matched delta for a debit account: debits add, credits subtract
+    let expected_matched =
+        entries
+            .iter()
+            .fold(0.0, |balance, (entry_type, amount)| match entry_type {
+                BalanceDirection::Debit => balance + amount,
+                BalanceDirection::Credit => balance - amount,
+            });
 
     let response = client
         .get(&format!("/accounts/{account_id}"))
@@ -1162,7 +1070,7 @@ async fn test_multiple_entries_balance_aggregation() {
         .send()
         .await;
     let account: GetAccountResponse = response.json().await.unwrap();
-    assert_eq!(account.pending_balance.value.0, expected_balance); // 1000 + 100 - 50 + 200 = 1250
+    assert_eq!(account.matched_balance.value.0, expected_matched); // 100 - 50 + 200 = 250
 
     // Verify all entries exist
     let response = client
@@ -1192,25 +1100,20 @@ async fn test_entry_version_field_basic() {
         BalanceDirection::Debit,
     )
     .await;
-    let transaction_id = unique_transaction_id();
-    let request = entry_request(
-        &account_id,
-        &transaction_id,
-        BalanceDirection::Credit,
-        100.0,
-        Currency::USD,
-    );
-
     // Create entry and verify version = 1
-    let create_response = client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
-
-    assert_eq!(create_response.status(), 201);
-    let created_entry: GetEntryResponse = create_response.json().await.unwrap();
+    let transaction = seed_entries_on_account(
+        &client,
+        &token,
+        &account_id,
+        Currency::USD,
+        &[(BalanceDirection::Credit, 100.0)],
+    )
+    .await;
+    let created_entry = transaction_entries(&client, &token, &transaction.transaction_id)
+        .await
+        .into_iter()
+        .find(|entry| entry.account_id == account_id)
+        .expect("seeded entry on the account under test");
     assert_eq!(created_entry.version, 1);
 
     // Verify version persists through retrieval
@@ -1265,23 +1168,20 @@ async fn test_entry_version_field_scenarios(
         .await;
     let account: GetAccountResponse = account_response.json().await.unwrap();
 
-    let request = entry_request(
+    let transaction = seed_entries_on_account(
+        &client,
+        &token,
         &account.account_id,
-        &unique_transaction_id(),
-        entry_type,
-        amount,
         currency,
-    );
+        &[(entry_type, amount)],
+    )
+    .await;
 
-    let response = client
-        .post("/entries")
-        .with_auth(&token)
-        .json(&request)
-        .send()
-        .await;
-
-    assert_eq!(response.status(), 201);
-    let entry: GetEntryResponse = response.json().await.unwrap();
+    let entry = transaction_entries(&client, &token, &transaction.transaction_id)
+        .await
+        .into_iter()
+        .find(|entry| entry.account_id == account.account_id)
+        .expect("seeded entry on the account under test");
     assert_eq!(entry.version, 1);
     assert_eq!(entry.entry_type, entry_type);
     assert_eq!(entry.amount.value.0, amount);
@@ -1297,11 +1197,29 @@ fn direct_entry(
     effective_at: time::PrimitiveDateTime,
     order_id: &str,
 ) -> TransactionEntry {
+    direct_entry_in(
+        account_id,
+        entry_type,
+        amount,
+        Currency::USD,
+        effective_at,
+        order_id,
+    )
+}
+
+fn direct_entry_in(
+    account_id: &str,
+    entry_type: BalanceDirection,
+    amount: f64,
+    currency: Currency,
+    effective_at: time::PrimitiveDateTime,
+    order_id: &str,
+) -> TransactionEntry {
     TransactionEntry::Direct(DirectTransactionEntry {
         account_id: account_id.to_string(),
         entry_type,
         amount: FloatMajorUnit::new(amount),
-        currency: Currency::USD,
+        currency,
         effective_at,
         metadata: Secret::new(json!({"test": "data"})),
         staging_entry_id: None,
@@ -1752,6 +1670,58 @@ async fn test_list_entries_is_scoped_to_profile() {
         response.status(),
         404,
         "another profile's transaction id must not resolve"
+    );
+}
+
+#[actix_web::test]
+async fn test_list_entries_by_transaction_id_is_scoped_to_profile() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, _, token) = client.bootstrap("Test Merchant", "Test Profile").await;
+    let seeded = seed_transaction_entries(&client, &token, 1).await;
+
+    // The path parameter is the logical transaction id, not the physical version pk
+    let logical_transaction_id = seeded
+        .entries
+        .first()
+        .expect("seeded transaction has entries")
+        .transaction_id
+        .clone();
+
+    let (_, _, other_token) = client.bootstrap("Other Merchant", "Other Profile").await;
+
+    // Owner can read the transaction's entries
+    let owner_response = client
+        .get(&format!("/transactions/{logical_transaction_id}/entries"))
+        .with_auth(&token)
+        .send()
+        .await;
+
+    assert_eq!(
+        owner_response.status(),
+        200,
+        "Owning profile should be able to read its own transaction entries"
+    );
+    let owner_entries: Vec<GetEntryResponse> = owner_response.json().await.unwrap();
+    assert_eq!(
+        owner_entries.len(),
+        seeded.entries.len(),
+        "Owner should still receive every entry on the transaction"
+    );
+
+    // Another profile gets a 404. The transaction is validated against the caller's profile, so a
+    // foreign transaction id is indistinguishable from an unknown id, and the endpoint is not an
+    // oracle for which ids exist.
+    let cross_tenant_response = client
+        .get(&format!("/transactions/{logical_transaction_id}/entries"))
+        .with_auth(&other_token)
+        .send()
+        .await;
+
+    assert_eq!(
+        cross_tenant_response.status(),
+        404,
+        "another profile's transaction id must 404, same as an unknown id"
     );
 }
 

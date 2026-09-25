@@ -1151,6 +1151,78 @@ async fn download_ingested_file_not_processed() {
 }
 
 #[actix_web::test]
+async fn test_find_ingestion_history_is_scoped_to_profile() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+
+    // Create two separate merchants with different profiles
+    let (merchant_id_1, profile_id_1, token_1) = client.bootstrap("Merchant 1", "Profile 1").await;
+    let (_merchant_id_2, _profile_id_2, token_2) =
+        client.bootstrap("Merchant 2", "Profile 2").await;
+
+    // Setup account and config for merchant 1, then upload a file to produce history
+    let account_id =
+        create_test_account(&client, &token_1, "Test Account", BalanceDirection::Debit).await;
+    let config = create_test_ingestion_config(
+        &client,
+        &merchant_id_1,
+        &profile_id_1,
+        &account_id,
+        IngestionConfigData::Manual,
+        "Test Manual Upload",
+    )
+    .await;
+
+    upload_test_file(
+        &client,
+        &token_1,
+        &config.ingestion_id,
+        b"test,data\n1,2",
+        "test.csv",
+    )
+    .await;
+
+    let history_response = client
+        .get("/ingestions/history")
+        .with_auth(&token_1)
+        .send()
+        .await;
+    assert_eq!(history_response.status(), 200);
+    let history: IngestionHistoryListResponse = client.expect_success(history_response).await;
+
+    let processed_entry = history
+        .iter()
+        .find(|h| h.status == common_enums::IngestionStatus::Processed && h.discarded_at.is_none())
+        .expect("Should have processed entry");
+
+    // Owner can read it
+    let owner_response = client
+        .get(&format!("/ingestions/history/{}", processed_entry.id))
+        .with_auth(&token_1)
+        .send()
+        .await;
+
+    assert_eq!(
+        owner_response.status(),
+        200,
+        "Owning profile should be able to read its own ingestion history"
+    );
+
+    // Another profile must not
+    let cross_tenant_response = client
+        .get(&format!("/ingestions/history/{}", processed_entry.id))
+        .with_auth(&token_2)
+        .send()
+        .await;
+
+    assert_eq!(
+        cross_tenant_response.status(),
+        404,
+        "another profile's ingestion history id must not resolve"
+    );
+}
+
+#[actix_web::test]
 async fn find_ingestion_history_with_config_by_id_not_found() {
     let app = TestApp::new().await;
     let client = app.api_client();

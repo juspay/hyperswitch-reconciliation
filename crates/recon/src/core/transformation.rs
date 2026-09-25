@@ -326,12 +326,15 @@ pub async fn list_transformation_configs_by_profile_id(
 pub async fn find_transformation_history_with_config_by_id(
     state: &AppState,
     transformation_history_id: &str,
+    auth_profile_id: &str,
 ) -> TransformationResponse<TransformationHistoryResponse> {
     let data = state
         .store
-        .find_config_and_history_by_id(transformation_history_id)
+        .find_config_and_history_by_id_and_profile(transformation_history_id, auth_profile_id)
         .await
-        .change_context(TransformationError::InternalServerError)?;
+        .to_not_found_response(|| TransformationError::TransformationHistoryNotFound {
+            id: transformation_history_id.to_string(),
+        })?;
 
     let api_response = data.to_api_response();
 
@@ -346,18 +349,11 @@ pub async fn download_transformation_report(
 ) -> TransformationResponse<()> {
     let view = state
         .store
-        .find_config_and_history_by_id(transformation_history_id)
+        .find_config_and_history_by_id_and_profile(transformation_history_id, auth_profile_id)
         .await
         .to_not_found_response(|| TransformationError::TransformationHistoryNotFound {
             id: transformation_history_id.to_string(),
         })?;
-
-    if view.history.profile_id != auth_profile_id {
-        return Err(TransformationError::TransformationHistoryNotFound {
-            id: transformation_history_id.to_string(),
-        }
-        .into());
-    }
 
     let report_file_key = view
         .history
