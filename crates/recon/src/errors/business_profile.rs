@@ -16,6 +16,9 @@ pub enum BusinessProfileError {
 
     #[error("Profile ID cannot be empty")]
     ProfileIdEmpty,
+
+    #[error("Business profile not found: {profile_id}")]
+    ProfileNotFound { profile_id: String },
 }
 
 // Type alias for function signatures
@@ -27,6 +30,9 @@ impl From<BusinessProfileError> for ReconAppError {
             BusinessProfileError::InternalServerError => Self::InternalServerError,
             BusinessProfileError::ProfileNameEmpty => Self::ValidationError(error.to_string()),
             BusinessProfileError::ProfileIdEmpty => Self::ValidationError(error.to_string()),
+            BusinessProfileError::ProfileNotFound { .. } => {
+                Self::ResourceNotFound(error.to_string())
+            }
         }
     }
 }
@@ -49,6 +55,12 @@ impl ErrorSwitchFrom<BusinessProfileError> for ApiErrorPayload {
             BusinessProfileError::ProfileIdEmpty => {
                 Self::BadRequest(ApiError::new("RE", 202, "Profile ID cannot be empty", None))
             }
+            BusinessProfileError::ProfileNotFound { profile_id } => Self::NotFound(ApiError::new(
+                "RE",
+                203,
+                format!("Business profile not found: {profile_id}"),
+                None,
+            )),
         }
     }
 }

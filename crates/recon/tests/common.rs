@@ -7,6 +7,7 @@
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use common_types::timezone::Timezone;
 use common_utils::{id_generation::generate_id_with_default_len, id_type::MerchantId};
 use external_services::{user::client::mock_user_client::MockUserClient, UserResponse};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -131,24 +132,48 @@ impl TestClient {
         }
     }
 
-    /// Setup a complete test merchant with profile and return JWT token
+    /// Setup a complete test merchant with profile and return JWT token.
+    ///
+    /// Sends no `timezone`, so the profile is created at UTC through the request type's
+    /// `#[serde(default)]`.
     pub async fn bootstrap(
         &self,
         merchant_name: &str,
         profile_name: &str,
     ) -> (MerchantId, String, String) {
-        use api_models::auth::{TestMerchantSetupRequest, TestMerchantSetupResponse};
+        self.bootstrap_with_payload(serde_json::json!({
+            "merchant_name": merchant_name,
+            "profile_name": profile_name,
+        }))
+        .await
+    }
 
-        let request = TestMerchantSetupRequest {
-            merchant_name: merchant_name.to_string(),
-            profile_name: profile_name.to_string(),
-        };
+    /// Same as [`Self::bootstrap`], but creates the profile in an explicit timezone.
+    pub async fn bootstrap_with_timezone(
+        &self,
+        merchant_name: &str,
+        profile_name: &str,
+        timezone: Timezone,
+    ) -> (MerchantId, String, String) {
+        self.bootstrap_with_payload(serde_json::json!({
+            "merchant_name": merchant_name,
+            "profile_name": profile_name,
+            "timezone": timezone.to_string(),
+        }))
+        .await
+    }
+
+    async fn bootstrap_with_payload(
+        &self,
+        payload: serde_json::Value,
+    ) -> (MerchantId, String, String) {
+        use api_models::auth::TestMerchantSetupResponse;
 
         let response = self
             .client
             .post(format!("{}/auth/bootstrap", self.base_url))
             .header("api-key", "test_admin_12345678901234567890")
-            .json(&request)
+            .json(&payload)
             .send()
             .await
             .expect("Failed to setup test merchant");

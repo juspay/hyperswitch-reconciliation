@@ -8,6 +8,7 @@ generate_permissions! {
         ReconStagingEntry:   { scopes: [Read, Write], entities: [Profile] },
         ReconTransaction:    { scopes: [Read, Write], entities: [Profile] },
         ReconRule:           { scopes: [Read, Write], entities: [Profile] },
+        Account:             { scopes: [Read, Write], entities: [Profile] },
     ]
 }
 

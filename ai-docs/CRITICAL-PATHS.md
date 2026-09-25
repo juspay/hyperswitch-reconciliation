@@ -31,6 +31,7 @@
 
 ## Database Patterns
 - **Critical**: All tables use soft delete (discarded_at timestamp)
+- **Critical**: Timestamps stay naive UTC; profile timezone is metadata in `business_profile.timezone`, validated in Rust only
 - **Critical**: When soft deleting, capture status in discarded_status
 - **Critical**: Never use hard deletes - data is immutable for audit
 - **Critical**: All IDs are VARCHAR(64) with pattern "{type}_{base62_20}"

@@ -1,3 +1,4 @@
+use common_types::timezone::Timezone;
 use common_utils::id_type::MerchantId;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -6,6 +7,8 @@ use utoipa::ToSchema;
 pub struct TestMerchantSetupRequest {
     pub merchant_name: String,
     pub profile_name: String,
+    #[serde(default)]
+    pub timezone: Timezone,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -22,4 +25,6 @@ pub struct TestMerchantSetupWithIdsRequest {
     pub merchant_name: String,
     pub profile_id: String,
     pub profile_name: String,
+    #[serde(default)]
+    pub timezone: Timezone,
 }

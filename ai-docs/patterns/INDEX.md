@@ -22,6 +22,10 @@ Quick reference for implementation patterns. Read the full pattern file when imp
   - When: Any operation involving money
   - Key: AmountType for API, MinorUnit for DB, currency handling
 
+- **HANDLE-TIMEZONE.md** - Work with IANA timezones and profile-local time
+  - When: Timezones or per-profile local time
+  - Key: `Timezone` wrapper at every layer; stored only, no conversion yet
+
 - **DATABASE-QUERY.md** - Build database queries with Diesel
   - When: Querying with filters or complex conditions, or paginating lists
   - Key: Async diesel, optional filters, cursor/keyset pagination, proper error handling

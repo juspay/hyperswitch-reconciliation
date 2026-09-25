@@ -82,7 +82,8 @@ impl BusinessProfile {
                 web::scope("/{profile_id}")
                     .service(
                         web::resource("")
-                            .route(web::get().to(business_profile::get_business_profile)),
+                            .route(web::get().to(business_profile::get_business_profile))
+                            .route(web::put().to(business_profile::update_business_profile)),
                     )
                     .service(
                         web::resource("/recon_engine/status")

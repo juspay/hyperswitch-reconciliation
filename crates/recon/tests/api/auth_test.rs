@@ -1,6 +1,7 @@
 use api_models::auth::{
     TestMerchantSetupRequest, TestMerchantSetupResponse, TestMerchantSetupWithIdsRequest,
 };
+use common_types::timezone::Timezone;
 use common_utils::{id_type::MerchantId, GenerateId};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -16,6 +17,7 @@ async fn bootstrap_without_admin_key_fails() {
     let request = TestMerchantSetupRequest {
         merchant_name: "Test Merchant".to_string(),
         profile_name: "Test Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act - Try to bootstrap without admin API key
@@ -34,6 +36,7 @@ async fn bootstrap_success() {
     let request = TestMerchantSetupRequest {
         merchant_name: "Test Merchant".to_string(),
         profile_name: "Test Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act
@@ -70,6 +73,7 @@ async fn bootstrap_with_merchant_id_profile_id_success() {
         merchant_name: "Test Merchant from Hyperswitch".to_string(),
         profile_id: profile_id.clone(),
         profile_name: "Test Profile from Hyperswitch".to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act
@@ -99,6 +103,7 @@ async fn bootstrap_with_merchant_id_profile_id_without_admin_key_fails() {
         merchant_name: "Test Merchant".to_string(),
         profile_id: "profile_abcdefghij".to_string(),
         profile_name: "Test Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act - Try to bootstrap without admin API key
@@ -128,6 +133,7 @@ async fn bootstrap_with_merchant_id_profile_id_create_profile_in_existing_mercha
         merchant_name: "Test Merchant".to_string(),
         profile_id: format!("profile_first_{unique_suffix}"),
         profile_name: "First Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     let response1 = client
@@ -146,6 +152,7 @@ async fn bootstrap_with_merchant_id_profile_id_create_profile_in_existing_mercha
         merchant_name: "Test Merchant".to_string(),
         profile_id: format!("profile_second_{unique_suffix}"),
         profile_name: "Second Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act
@@ -182,6 +189,7 @@ async fn bootstrap_with_merchant_id_profile_id_both_exist_fails() {
         merchant_name: "Test Merchant".to_string(),
         profile_id: profile_id.clone(),
         profile_name: "Test Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     let response1 = client
@@ -200,6 +208,7 @@ async fn bootstrap_with_merchant_id_profile_id_both_exist_fails() {
         merchant_name: "Test Merchant".to_string(),
         profile_id: profile_id.clone(),
         profile_name: "Test Profile".to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act
@@ -235,6 +244,7 @@ async fn bootstrap_with_merchant_id_profile_id_validation_errors(
         merchant_name: merchant_name.to_string(),
         profile_id: profile_id.to_string(),
         profile_name: profile_name.to_string(),
+        timezone: Timezone::UTC,
     };
 
     // Act

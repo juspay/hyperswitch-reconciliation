@@ -1,0 +1,2 @@
+ALTER TABLE business_profile
+    ADD COLUMN timezone VARCHAR(64) NOT NULL DEFAULT 'UTC';

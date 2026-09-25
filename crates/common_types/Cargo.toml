@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 bigdecimal = "0.4"
+chrono-tz = "0.10"
 diesel = { version = "2.3.2", features = ["postgres", "r2d2", "chrono"] }
 error-stack = "0.4.1"
 rust_decimal = { version = "1.37", features = ["serde-with-str"] }

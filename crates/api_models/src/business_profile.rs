@@ -1,4 +1,5 @@
 use common_enums::ReconProcessorStatus;
+use common_types::timezone::Timezone;
 use common_utils::crypto::EncryptableName;
 use common_utils::id_type::MerchantId;
 use masking::Secret;
@@ -9,6 +10,14 @@ use utoipa::ToSchema;
 pub struct BusinessProfileCreateRequest {
     #[schema(value_type = String, example = "Default Profile")]
     pub profile_name: Secret<String>,
+    pub timezone: Timezone,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub struct BusinessProfileUpdateRequest {
+    #[schema(value_type = String, example = "Default Profile")]
+    pub profile_name: Option<Secret<String>>,
+    pub timezone: Option<Timezone>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -19,6 +28,7 @@ pub struct BusinessProfileResponse {
     pub merchant_id: MerchantId,
     #[schema(value_type = String, example = "Default Profile")]
     pub profile_name: EncryptableName,
+    pub timezone: Timezone,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

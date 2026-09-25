@@ -14,6 +14,9 @@
 - **Profile Switching**: Client must explicitly provide profile_id - no implicit selection
 - **Deletion Cascades**: Deleting a profile would orphan accounts/entries - handle carefully
 - **Name Uniqueness**: Profile names need not be unique even within a merchant
+<!-- AI-UPDATED: 2026-09-18 - Profile timezone -->
+- **Timezone**: `common_types::timezone::Timezone` at every layer; invalid zones fail at deserialize, so core has no validator. Details in `ai-docs/patterns/HANDLE-TIMEZONE.md`
+- **Bootstrap timezone**: optional via `#[serde(default)]` (UTC), so the app always writes an explicit value
 <!-- AI-UPDATED: 2025-01-08 - New bootstrap_with_ids endpoint gotchas -->
 - `/auth/bootstrap_with_ids` requires explicit conflict checking for profile_id before DB insertion
 - Empty profile_id validation happens in core layer, returns 400 (not 500)
@@ -24,6 +27,13 @@
 - Must call `get_encryptor_for_merchant()` before any profile operations involving names
 - Diesel → Domain conversion automatically decrypts profile names via `BusinessProfile::convert_back()`
 - API responses use `EncryptableName` type which handles display/serialization securely
+<!-- AI-UPDATED: 2026-09-18 - Profile update endpoint -->
+- Create/update trim `profile_name` and reject empty, inline in core. Trim before encrypting - padded encrypted names can't be fixed by SQL later
+- `update_business_profile` validates the name before any DB call, then issues one UPDATE per present field (`NameUpdate`, `TimezoneUpdate`); no fields → returns profile unchanged
+- Both fields = **two `UPDATE` statements, no transaction** - name may commit if timezone fails (same as `update_recon_rule`)
+- `PUT` uses `JwtAuth::with_profile(.., Permission::ProfileAccountWrite)`; `GET` is unpermissioned. New mutating endpoints need a permission
+- `Permission::ProfileAccount*` is hyperswitch RBAC for profile config - unrelated to recon's ledger `Account`
+- Test gotcha: bootstrap JWT is bound to its profile; read later-created profiles via the list endpoint
 
 ## Design Decisions
 - **Why Business Profiles**:
@@ -56,6 +66,7 @@
   - Never allow cross-profile data access
   - Validate profile belongs to authenticated merchant
   - Use `BusinessProfile::convert_back()` to decrypt profile names from diesel models
+  - Build `api::BusinessProfileResponse` with `BusinessProfileExt::to_api_response()` (`crates/recon/src/utils/business_profile.rs`), same pattern as `AccountExt::to_account_response`
 - **Profile Management**:
   - Consider implications of profile deletion
   - Implement proper cleanup for orphaned data
@@ -64,9 +75,9 @@
 
 ## API Behavior
 - **List Profiles**: Returns only profiles for authenticated merchant
-- **Create Profile**: Auto-generates profile_id, requires merchant authentication
+- **Create Profile**: Auto-generates profile_id, requires merchant authentication and a `timezone`
 - **Get Profile**: Validates merchant ownership before returning
-- **Update Profile**: Currently only supports name updates
+- **Update Profile**: `profile_name` and/or `timezone`; absent fields unchanged. Requires `ProfileAccountWrite`
 - **Delete Profile**: Should be soft delete with careful cascade handling
 - **Bootstrap Existing**: `/auth/bootstrap_with_ids` creates profile with provided profile_id (admin API key required)
 - **Conflict Detection**: Returns 409 if profile_id already exists (bootstrap_with_ids only)

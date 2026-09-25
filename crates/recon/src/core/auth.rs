@@ -79,6 +79,7 @@ pub async fn bootstrap(
         merchant_id: merchant_account.merchant_id.clone(),
         created_at: date_time::now(),
         last_modified_at: date_time::now(),
+        timezone: request.timezone,
     };
 
     let business_profile = state
@@ -195,6 +196,7 @@ pub async fn bootstrap_with_merchant_id_profile_id(
         merchant_id: merchant_account.merchant_id.clone(),
         created_at: date_time::now(),
         last_modified_at: date_time::now(),
+        timezone: request.timezone,
     };
 
     let business_profile = state

@@ -5,20 +5,28 @@ use crate::api::{
 use crate::common::TestApp;
 use api_models::{
     business_profile::{
-        BusinessProfileCreateRequest, BusinessProfileResponse, ReconStatusResponse,
+        BusinessProfileCreateRequest, BusinessProfileResponse, BusinessProfileUpdateRequest,
+        ReconStatusResponse,
     },
     merchant_account::{MerchantAccountCreateRequest, MerchantAccountResponse},
 };
 use common_enums::{BalanceDirection, Currency, ReconProcessorStatus, StagingEntryProcessingMode};
+use common_types::timezone::Timezone;
 use common_utils::crypto::Encryptable;
 use masking::{ExposeInterface, Secret};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
 // Test fixtures
+fn timezone(name: &str) -> Timezone {
+    name.parse()
+        .expect("test timezone should be a valid IANA name")
+}
+
 fn business_profile_request(profile_name: &str) -> BusinessProfileCreateRequest {
     BusinessProfileCreateRequest {
         profile_name: Secret::new(profile_name.to_string()),
+        timezone: Timezone::UTC,
     }
 }
 
@@ -74,6 +82,7 @@ async fn get_business_profile_success() {
             Secret::new("Test Profile".to_string()),
             Secret::new(Vec::new()),
         ),
+        timezone: Timezone::UTC,
     };
 
     // Act
@@ -137,6 +146,7 @@ async fn get_business_profile_wrong_merchant() {
             Secret::new("Test Profile".to_string()),
             Secret::new(Vec::new()),
         ),
+        timezone: Timezone::UTC,
     };
 
     // Act - Try to access merchant1's profile using merchant2's JWT token
@@ -203,6 +213,7 @@ async fn list_business_profiles_invalid_merchant_id() {
 
 #[rstest]
 #[case("", 400)] // Empty profile name
+#[case("   ", 400)] // Whitespace-only profile name
 #[case("a", 201)] // Valid minimal profile name
 #[case("Test Profile 123", 201)] // Valid profile name with numbers
 #[actix_web::test]
@@ -220,6 +231,7 @@ async fn create_business_profile_validation_with_auth(
 
     let request = BusinessProfileCreateRequest {
         profile_name: Secret::new(profile_name.to_string()),
+        timezone: Timezone::UTC,
     };
 
     let response = app
@@ -239,11 +251,61 @@ async fn create_business_profile_validation_with_auth(
 }
 
 #[actix_web::test]
+async fn create_business_profile_trims_name() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, _profile_id, token) = app
+        .api_client()
+        .bootstrap("Trim Merchant", "Initial Profile")
+        .await;
+
+    // Act - surrounding whitespace on the name
+    let response = app
+        .api_client()
+        .post("/business_profiles")
+        .with_auth(&token)
+        .json(&BusinessProfileCreateRequest {
+            profile_name: Secret::new("  Padded Name  ".to_string()),
+            timezone: Timezone::UTC,
+        })
+        .send()
+        .await;
+
+    // Assert - the trimmed value is what was stored, not just what was echoed
+    assert_eq!(response.status(), 201);
+    let created: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(
+        created.profile_name.get_inner().clone().expose(),
+        "Padded Name"
+    );
+
+    // The bootstrap token is bound to the bootstrap profile, so read the new one back
+    // through the merchant-scoped list endpoint.
+    let response = app
+        .api_client()
+        .get("/business_profiles")
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let profiles: Vec<BusinessProfileResponse> = response.json().await.unwrap();
+    let retrieved = profiles
+        .iter()
+        .find(|profile| profile.profile_id == created.profile_id)
+        .expect("created profile should be listed");
+    assert_eq!(
+        retrieved.profile_name.get_inner().clone().expose(),
+        "Padded Name"
+    );
+}
+
+#[actix_web::test]
 async fn create_business_profile_without_auth() {
     let app = TestApp::new().await;
 
     let request = BusinessProfileCreateRequest {
         profile_name: Secret::new("Valid Profile".to_string()),
+        timezone: Timezone::UTC,
     };
 
     let response = app
@@ -314,6 +376,7 @@ async fn business_profile_lifecycle() {
             Secret::new("Lifecycle Profile".to_string()),
             Secret::new(Vec::new()),
         ),
+        timezone: Timezone::UTC,
     };
 
     // Act - Retrieve profile
@@ -406,6 +469,467 @@ async fn list_business_profiles_with_wrong_merchant_id_fails() {
     assert_eq!(response.status(), 200);
     let profiles: Vec<BusinessProfileResponse> = response.json().await.unwrap();
     assert_eq!(profiles.len(), 1); // Merchant B Alt has one business profile from setup
+}
+
+#[actix_web::test]
+async fn create_business_profile_with_timezone() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, _profile_id, token) = app
+        .api_client()
+        .bootstrap("Timezone Merchant", "Initial Profile")
+        .await;
+    let request = BusinessProfileCreateRequest {
+        profile_name: Secret::new("Timezone Profile".to_string()),
+        timezone: timezone("Asia/Kolkata"),
+    };
+
+    // Act
+    let response = app
+        .api_client()
+        .post("/business_profiles")
+        .with_auth(&token)
+        .json(&request)
+        .send()
+        .await;
+
+    // Assert - the requested timezone is stored, not the `UTC` default
+    assert_eq!(response.status(), 201);
+    let created: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(created.timezone, timezone("Asia/Kolkata"));
+
+    // The JWT is scoped to the bootstrap profile, so read back through the
+    // merchant-scoped list endpoint rather than `GET /business_profiles/{id}`.
+    let response = app
+        .api_client()
+        .get("/business_profiles")
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let profiles: Vec<BusinessProfileResponse> = response.json().await.unwrap();
+
+    let retrieved = profiles
+        .iter()
+        .find(|profile| profile.profile_id == created.profile_id)
+        .expect("created profile should be listed");
+    assert_eq!(retrieved.timezone, timezone("Asia/Kolkata"));
+
+    // The bootstrap payload omitted `timezone`, so its profile fell back to UTC.
+    let bootstrap_profile = profiles
+        .iter()
+        .find(|profile| profile.profile_id != created.profile_id)
+        .expect("bootstrap profile should be listed");
+    assert_eq!(bootstrap_profile.timezone, Timezone::UTC);
+}
+
+#[actix_web::test]
+async fn create_business_profile_without_timezone_is_rejected() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, _profile_id, token) = app
+        .api_client()
+        .bootstrap("Missing Timezone Merchant", "Initial Profile")
+        .await;
+
+    // Act - `timezone` is mandatory, so the payload fails to deserialize.
+    // Sent as raw JSON because `BusinessProfileCreateRequest` cannot express an absent timezone.
+    let response = app
+        .api_client()
+        .post("/business_profiles")
+        .with_auth(&token)
+        .json(&serde_json::json!({ "profile_name": "No Timezone Profile" }))
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 400);
+}
+
+/// `timezone` is optional on bootstrap, unlike `POST /business_profiles`. When it is sent, the
+/// profile is created in that zone instead of the `#[serde(default)]` UTC.
+#[actix_web::test]
+async fn bootstrap_creates_profile_in_requested_timezone() {
+    // Arrange & Act
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap_with_timezone(
+            "Bootstrap Timezone Merchant",
+            "Bootstrap Timezone Profile",
+            timezone("Asia/Kolkata"),
+        )
+        .await;
+
+    let response = app
+        .api_client()
+        .get(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 200);
+    let profile: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(profile.timezone, timezone("Asia/Kolkata"));
+}
+
+/// Sent as raw JSON rather than `BusinessProfileCreateRequest`: `Timezone` cannot
+/// represent an invalid zone, so the rejection now happens during deserialization.
+#[rstest]
+#[case("", 400)] // Empty timezone
+#[case("   ", 400)] // Whitespace-only timezone
+#[case("asia/kolkata", 400)] // IANA names are case-sensitive
+#[case("Mars/Olympus", 400)] // Well-formed but not a real zone
+#[case("Asia/Kolkata", 201)] // Valid timezone
+#[actix_web::test]
+async fn create_business_profile_timezone_validation(
+    #[case] requested_timezone: &str,
+    #[case] expected_status: u16,
+) {
+    let app = TestApp::new().await;
+    let (_merchant_id, _profile_id, token) = app
+        .api_client()
+        .bootstrap("Create Validation Merchant", "Initial Profile")
+        .await;
+
+    let response = app
+        .api_client()
+        .post("/business_profiles")
+        .with_auth(&token)
+        .json(&serde_json::json!({
+            "profile_name": "Timezone Validation Profile",
+            "timezone": requested_timezone,
+        }))
+        .send()
+        .await;
+
+    assert_eq!(response.status(), expected_status);
+}
+
+#[actix_web::test]
+async fn update_business_profile_timezone() {
+    // Arrange - bootstrap creates a profile that defaults to UTC
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Update Merchant", "Update Profile")
+        .await;
+
+    // Act - set the timezone
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: None,
+            timezone: Some(timezone("Europe/London")),
+        })
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 200);
+    let updated: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(updated.timezone, timezone("Europe/London"));
+    // The update must not disturb the other columns
+    assert_eq!(updated.profile_id, profile_id);
+    assert_eq!(
+        updated.profile_name.get_inner().clone().expose(),
+        "Update Profile"
+    );
+
+    // Act - overwrite it with a different value
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: None,
+            timezone: Some(timezone("America/New_York")),
+        })
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+
+    // Assert - the change is persisted, not just echoed back
+    let response = app
+        .api_client()
+        .get(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    let retrieved: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(retrieved.timezone, timezone("America/New_York"));
+}
+
+#[actix_web::test]
+async fn update_business_profile_without_any_field_is_a_no_op() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("No-op Merchant", "No-op Profile")
+        .await;
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: None,
+            timezone: Some(timezone("Asia/Tokyo")),
+        })
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+
+    // Act - an empty update must not clear the stored values
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: None,
+            timezone: None,
+        })
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 200);
+    let body: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(body.timezone, timezone("Asia/Tokyo"));
+    assert_eq!(
+        body.profile_name.get_inner().clone().expose(),
+        "No-op Profile"
+    );
+}
+
+#[actix_web::test]
+async fn update_business_profile_name() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Rename Merchant", "Original Name")
+        .await;
+
+    // Act - change only the name
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: Some(Secret::new("Renamed Profile".to_string())),
+            timezone: None,
+        })
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 200);
+    let updated: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(
+        updated.profile_name.get_inner().clone().expose(),
+        "Renamed Profile"
+    );
+    // The timezone must be left at its default
+    assert_eq!(updated.timezone, Timezone::UTC);
+
+    // Assert - the re-encrypted name round-trips out of the database
+    let response = app
+        .api_client()
+        .get(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    let retrieved: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(
+        retrieved.profile_name.get_inner().clone().expose(),
+        "Renamed Profile"
+    );
+}
+
+#[actix_web::test]
+async fn update_business_profile_name_and_timezone_together() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Combined Merchant", "Combined Profile")
+        .await;
+
+    // Act - both fields in a single request
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: Some(Secret::new("Both Updated".to_string())),
+            timezone: Some(timezone("Asia/Kolkata")),
+        })
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 200);
+    let updated: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(
+        updated.profile_name.get_inner().clone().expose(),
+        "Both Updated"
+    );
+    assert_eq!(updated.timezone, timezone("Asia/Kolkata"));
+}
+
+#[rstest]
+#[case("", 400)] // Empty name
+#[case("   ", 400)] // Whitespace-only name
+#[case("Valid Name", 200)] // Valid name
+#[actix_web::test]
+async fn update_business_profile_name_validation(
+    #[case] profile_name: &str,
+    #[case] expected_status: u16,
+) {
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Name Validation Merchant", "Name Validation Profile")
+        .await;
+
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: Some(Secret::new(profile_name.to_string())),
+            timezone: None,
+        })
+        .send()
+        .await;
+
+    assert_eq!(response.status(), expected_status);
+}
+
+#[actix_web::test]
+async fn update_business_profile_trims_name() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Trim Update Merchant", "Original Name")
+        .await;
+
+    // Act - surrounding whitespace on the new name
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: Some(Secret::new("  Padded Rename  ".to_string())),
+            timezone: None,
+        })
+        .send()
+        .await;
+
+    // Assert - the trimmed value is what was stored, not just what was echoed
+    assert_eq!(response.status(), 200);
+    let updated: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(
+        updated.profile_name.get_inner().clone().expose(),
+        "Padded Rename"
+    );
+
+    let response = app
+        .api_client()
+        .get(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    let retrieved: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(
+        retrieved.profile_name.get_inner().clone().expose(),
+        "Padded Rename"
+    );
+}
+
+/// Raw JSON for the same reason as `create_business_profile_timezone_validation`.
+#[rstest]
+#[case("", 400)] // Empty timezone
+#[case("   ", 400)] // Whitespace-only timezone
+#[case("Mars/Olympus", 400)] // Well-formed but not a real zone
+#[case("Asia/Kolkata", 200)] // Valid timezone
+#[actix_web::test]
+async fn update_business_profile_timezone_validation(
+    #[case] requested_timezone: &str,
+    #[case] expected_status: u16,
+) {
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Validation Merchant", "Validation Profile")
+        .await;
+
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&serde_json::json!({ "timezone": requested_timezone }))
+        .send()
+        .await;
+
+    assert_eq!(response.status(), expected_status);
+}
+
+/// Deprecated IANA aliases are accepted and stored verbatim, not canonicalized: the bundled tzdb
+/// keeps them as distinct `Tz` variants rather than mapping them to the current name.
+#[actix_web::test]
+async fn update_business_profile_preserves_deprecated_timezone_aliases() {
+    let app = TestApp::new().await;
+    let (_merchant_id, profile_id, token) = app
+        .api_client()
+        .bootstrap("Alias Merchant", "Alias Profile")
+        .await;
+
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: None,
+            timezone: Some(timezone("Asia/Calcutta")),
+        })
+        .send()
+        .await;
+
+    assert_eq!(response.status(), 200);
+    let updated: BusinessProfileResponse = response.json().await.unwrap();
+    assert_eq!(updated.timezone, timezone("Asia/Calcutta"));
+    assert_ne!(updated.timezone, timezone("Asia/Kolkata"));
+}
+
+#[actix_web::test]
+async fn update_business_profile_wrong_merchant_fails() {
+    // Arrange
+    let app = TestApp::new().await;
+    let (_merchant1_id, profile_id, _token1) =
+        app.api_client().bootstrap("Merchant 1", "Profile 1").await;
+    let (_merchant2_id, _profile2_id, token2) =
+        app.api_client().bootstrap("Merchant 2", "Profile 2").await;
+
+    // Act - merchant 2 tries to change merchant 1's timezone
+    let response = app
+        .api_client()
+        .put(&format!("/business_profiles/{profile_id}"))
+        .with_auth(&token2)
+        .json(&BusinessProfileUpdateRequest {
+            profile_name: None,
+            timezone: Some(timezone("Asia/Kolkata")),
+        })
+        .send()
+        .await;
+
+    // Assert
+    assert_eq!(response.status(), 401);
 }
 
 #[actix_web::test]

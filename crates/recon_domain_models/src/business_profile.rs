@@ -2,6 +2,7 @@ use crate::{
     behaviour::Conversion, encryption::ApplicationEncryptionInterface,
     type_encryption::CryptoOperation, EncryptionHandler,
 };
+use common_types::timezone::Timezone;
 use common_utils::{
     crypto::EncryptableName,
     errors::{CustomResult, ValidationError},
@@ -21,6 +22,7 @@ pub struct DomainBusinessProfile {
     pub merchant_id: MerchantId,
     pub created_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
+    pub timezone: Timezone,
 }
 
 #[async_trait::async_trait]
@@ -59,6 +61,7 @@ impl Conversion for DomainBusinessProfile {
             profile_name,
             created_at: item.created_at,
             last_modified_at: item.last_modified_at,
+            timezone: item.timezone,
         })
     }
 
@@ -73,6 +76,7 @@ impl Conversion for DomainBusinessProfile {
             merchant_id: self.merchant_id,
             created_at: self.created_at,
             last_modified_at: self.last_modified_at,
+            timezone: self.timezone,
         }
     }
 
@@ -84,6 +88,7 @@ impl Conversion for DomainBusinessProfile {
             merchant_id: self.merchant_id,
             created_at: self.created_at,
             last_modified_at: self.last_modified_at,
+            timezone: self.timezone,
         }
     }
 }

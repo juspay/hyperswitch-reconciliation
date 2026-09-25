@@ -126,6 +126,15 @@ impl JwtAuth {
             permission: None,
         }
     }
+
+    /// Create JWT auth that validates profile_id matches the provided value and checks the permission
+    pub fn with_profile(profile_id: String, permission: Permission) -> Self {
+        Self {
+            merchant_id: None,
+            profile_id: Some(profile_id),
+            permission: Some(permission),
+        }
+    }
 }
 
 impl AuthValidator for JwtAuth {

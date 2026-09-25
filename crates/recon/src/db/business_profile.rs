@@ -2,7 +2,7 @@ use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_utils::id_type::MerchantId;
 use diesel_models::{
-    business_profile::{BusinessProfile, BusinessProfileNew},
+    business_profile::{BusinessProfile, BusinessProfileNew, BusinessProfileUpdate},
     StorageResult,
 };
 
@@ -22,6 +22,12 @@ pub trait BusinessProfileInterface {
 
     async fn find_business_profile_by_id(&self, profile_id: &str)
         -> StorageResult<BusinessProfile>;
+
+    async fn update_business_profile(
+        &self,
+        profile_id: &str,
+        business_profile_update: BusinessProfileUpdate,
+    ) -> StorageResult<BusinessProfile>;
 }
 
 #[async_trait]
@@ -49,5 +55,20 @@ impl BusinessProfileInterface for Store {
     ) -> StorageResult<BusinessProfile> {
         let conn = self.get_connection().await?;
         BusinessProfile::find_by_profile_id(conn.as_async_conn(), profile_id).await
+    }
+
+    async fn update_business_profile(
+        &self,
+        profile_id: &str,
+        business_profile_update: BusinessProfileUpdate,
+    ) -> StorageResult<BusinessProfile> {
+        let conn = self.get_connection().await?;
+
+        BusinessProfile::update_by_profile_id(
+            conn.as_async_conn(),
+            profile_id,
+            business_profile_update.into(),
+        )
+        .await
     }
 }

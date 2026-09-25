@@ -40,6 +40,8 @@ diesel::table! {
         merchant_id -> Varchar,
         created_at -> Timestamp,
         last_modified_at -> Timestamp,
+        #[max_length = 64]
+        timezone -> Varchar,
     }
 }
 

@@ -37,6 +37,7 @@
 - **DateTime Serialization**: API models use `#[serde(with = "common_utils::custom_serde::iso8601")]` for consistent ISO8601 format
 - **Optional DateTime Fields**: Use `#[serde(with = "common_utils::custom_serde::iso8601::option")]` for Option<PrimitiveDateTime>
 - **UTC Storage**: All timestamps stored and retrieved in UTC, no timezone information preserved
+- **Profile timezone**: lives in `business_profile.timezone`, never in timestamp columns; intentionally no SQL constraint (see `ai-docs/patterns/HANDLE-TIMEZONE.md`)
 <!-- AI-UPDATED: 2025-07-16 - Version field for optimistic locking -->
 - **Version Field Pattern**: All entities with update operations should include `version: i32` field
   - Default value 1 for new records

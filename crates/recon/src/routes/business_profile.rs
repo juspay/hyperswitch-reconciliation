@@ -1,7 +1,9 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::business_profile::{
-    BusinessProfileCreateRequest, BusinessProfileResponse, ReconStatusResponse,
+    BusinessProfileCreateRequest, BusinessProfileResponse, BusinessProfileUpdateRequest,
+    ReconStatusResponse,
 };
+use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
 use super::AppState;
@@ -24,11 +26,13 @@ use crate::{
         list_business_profiles,
         create_business_profile,
         get_business_profile,
+        update_business_profile,
         get_recon_status,
     ),
     components(
         schemas(
             BusinessProfileCreateRequest,
+            BusinessProfileUpdateRequest,
             BusinessProfileResponse,
             ReconStatusResponse,
         )
@@ -133,6 +137,50 @@ pub async fn get_business_profile(
         state,
         |state, _auth| async move {
             core::business_profile::get_business_profile(state, profile_id).await
+        },
+    )
+    .await
+}
+
+/// Update mutable configuration on a business profile
+#[utoipa::path(
+    put,
+    path = "/business_profiles/{profile_id}",
+    tag = "Business Profile",
+    params(
+        ("profile_id" = String, Path, description = "Unique identifier of the business profile"),
+    ),
+    request_body = BusinessProfileUpdateRequest,
+    security(
+        ("Bearer" = [])
+    ),
+    responses(
+        (status = 200, description = "Business profile updated successfully", body = BusinessProfileResponse),
+        (status = 400, description = "Invalid request data"),
+        (status = 401, description = "Unauthorized - invalid or missing JWT token"),
+        (status = 500, description = "Internal server error"),
+    ),
+)]
+pub async fn update_business_profile(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    req: web::Json<BusinessProfileUpdateRequest>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    let profile_id = path.into_inner();
+    let request = req.into_inner();
+    api::server_wrap(
+        JwtAuth::with_profile(profile_id.clone(), Permission::ProfileAccountWrite),
+        &http_req,
+        state,
+        |state, auth| async move {
+            core::business_profile::update_business_profile(
+                state,
+                auth.merchant_id,
+                profile_id,
+                request,
+            )
+            .await
         },
     )
     .await

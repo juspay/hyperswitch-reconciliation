@@ -5,7 +5,7 @@ use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
 use error_stack::{report, ResultExt};
 
 use crate::{
-    business_profile::{BusinessProfile, BusinessProfileNew},
+    business_profile::{BusinessProfile, BusinessProfileNew, BusinessProfileUpdateInternal},
     errors,
     query::generics,
     schema::business_profile::{self, dsl},
@@ -46,6 +46,19 @@ impl BusinessProfile {
                 merchant_id.get_string_repr()
             )
         })
+    }
+
+    pub async fn update_by_profile_id(
+        conn: &PgPooledConn,
+        profile_id: &str,
+        business_profile_update: BusinessProfileUpdateInternal,
+    ) -> StorageResult<Self> {
+        generics::generic_update_by_id::<business_profile::table, _, _, _>(
+            conn,
+            profile_id.to_owned(),
+            business_profile_update,
+        )
+        .await
     }
 }
 
