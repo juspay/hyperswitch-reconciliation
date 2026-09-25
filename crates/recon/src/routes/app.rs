@@ -181,7 +181,6 @@ impl Entry {
     pub fn server(state: AppState) -> Scope {
         web::scope("/entries")
             .app_data(web::Data::new(state.clone()))
-            .service(web::resource("").route(web::post().to(entry::create_entry)))
             .service(web::resource("/list").route(web::post().to(entry::list_entries)))
             .service(web::resource("/{entry_id}").route(web::get().to(entry::get_entry_by_id)))
     }

@@ -5,36 +5,13 @@ use common_types::{
     entry::EntryListSortField,
     pagination::{CursorPage, CursorPagination},
     recon_rule::entry_field::EntryField,
-    units::FloatMajorUnit,
 };
-use common_utils::crypto::{EncryptableValue, SecretValue};
+use common_utils::crypto::EncryptableValue;
 use serde::{Deserialize, Serialize};
 use time::PrimitiveDateTime;
 use utoipa::ToSchema;
 
 use crate::account::AccountData;
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct EntryCreateRequest {
-    #[schema(example = "account_123")]
-    pub account_id: String,
-    #[schema(example = "transaction_123")]
-    pub transaction_id: String,
-    pub entry_type: BalanceDirection,
-    #[schema(example = 99.99)]
-    pub amount: FloatMajorUnit,
-    pub currency: Currency,
-    #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
-    #[serde(with = "common_utils::custom_serde::iso8601")]
-    pub effective_at: PrimitiveDateTime,
-    #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
-    #[serde(with = "common_utils::custom_serde::iso8601")]
-    pub created_at: PrimitiveDateTime,
-    #[schema(value_type = serde_json::Value)]
-    pub metadata: SecretValue,
-    #[schema(example = "order_123456")]
-    pub order_id: String,
-}
 
 /// Complete entry data with flattened account information
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]

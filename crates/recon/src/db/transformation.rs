@@ -72,9 +72,10 @@ pub trait TransformationHistoryInterface {
         transformation_history: TransformationHistoryNew,
     ) -> StorageResult<TransformationHistory>;
 
-    async fn find_config_and_history_by_id(
+    async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
+        profile_id: &str,
     ) -> StorageResult<TransformationConfigHistoryView>;
 
     async fn update_transformation_history_by_id(
@@ -197,12 +198,14 @@ impl TransformationHistoryInterface for Store {
         transformation_history.insert(&conn).await
     }
 
-    async fn find_config_and_history_by_id(
+    async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
+        profile_id: &str,
     ) -> StorageResult<TransformationConfigHistoryView> {
         let conn = self.get_connection().await?;
-        TransformationHistory::find_config_and_history_by_id(&conn, id).await
+        TransformationHistory::find_config_and_history_by_id_and_profile(&conn, id, profile_id)
+            .await
     }
 
     async fn update_transformation_history_by_id(

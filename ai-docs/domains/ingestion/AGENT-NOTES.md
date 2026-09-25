@@ -163,6 +163,18 @@ Ingestion service handles automated file retrieval from external sources (primar
 - New endpoint pattern: `/ingestions/history/{history_id}` returns both config and history data
   - Uses `IngestionConfigHistoryView` for efficient joined queries
   - Single database call replaces multiple separate queries
+
+<!-- AI-UPDATED: 2026-09-21 - Cross-tenant IDOR fix on GET /ingestions/history/{id} -->
+
+- **Profile scoping lives in the query, not the handler**: `find_config_and_history_by_id_and_profile`
+  filters on both `dsl::id` and `dsl::profile_id`
+  - There is deliberately **no** unscoped `find_config_and_history_by_id` variant left — an unscoped
+    point lookup on this view is never safe to hand back to a caller, and removing it makes omitting
+    the profile a compile error instead of a cross-tenant disclosure
+  - `JwtAuth::basic(Permission::…)` is class-level only; it never sees the `{id}`, so it cannot be
+    relied on for object-level authorization
+  - Wrong profile → same `IngestionHistoryNotFound` 404 as a missing row, never 403 (a 403 turns the
+    endpoint into an oracle for enumerating other tenants' record IDs)
 - API response evolution: `IngestionConfigResponse` structure changed significantly
   - Removed: `profile_id`, `account_id`, direct `config` field exposure
   - Added: `ingestion_id`, `last_synced_at`, typed `data` field with connection details

@@ -233,7 +233,7 @@ pub async fn update_ingestion_config(
     ),
     responses(
         (status = 200, description = "Ingestion config and history retrieved successfully", body = IngestionHistoryResponse),
-        (status = 404, description = "Ingestion history not found"),
+        (status = 404, description = "Ingestion history not found - does not exist or does not belong to authenticated user's profile"),
         (status = 401, description = "Unauthorized - invalid or missing JWT token"),
         (status = 500, description = "Internal server error"),
     ),
@@ -249,8 +249,9 @@ pub async fn find_ingestion_config_and_history_by_id(
         JwtAuth::basic(Permission::ProfileReconIngestionRead),
         &http_req,
         state,
-        |state, _auth| async move {
-            core::ingestion::find_ingestion_history_with_config_by_id(&state, &id).await
+        |state, auth| async move {
+            core::ingestion::find_ingestion_history_with_config_by_id(&state, &id, &auth.profile_id)
+                .await
         },
     )
     .await

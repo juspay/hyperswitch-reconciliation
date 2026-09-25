@@ -281,10 +281,11 @@ pub async fn update_ingestion_config(
 pub async fn find_ingestion_history_with_config_by_id(
     state: &AppState,
     id: &str,
+    auth_profile_id: &str,
 ) -> IngestionResponse<IngestionHistoryResponse> {
     let data = state
         .store
-        .find_config_and_history_by_id(id)
+        .find_config_and_history_by_id_and_profile(id, auth_profile_id)
         .await
         .to_not_found_response(|| IngestionError::IngestionHistoryNotFound {
             history_id: id.to_owned(),

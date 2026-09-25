@@ -1,7 +1,5 @@
 use actix_web::{web, HttpRequest, Responder};
-use api_models::entry::{
-    ApiEntryListFilters, EntryCreateRequest, EntryListPage, GetEntryResponse, ListEntriesRequest,
-};
+use api_models::entry::{ApiEntryListFilters, EntryListPage, GetEntryResponse, ListEntriesRequest};
 use common_types::{
     date_time::TimeRange,
     entry::{EntryEffectiveAtSortField, EntryListSortField, ListEntriesFilters},
@@ -20,7 +18,6 @@ use crate::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        create_entry,
         get_entry_by_id,
         list_entries,
         list_entries_by_account_id,
@@ -28,7 +25,6 @@ use crate::{
     ),
     components(
         schemas(
-            EntryCreateRequest,
             GetEntryResponse,
             common_types::amount::AmountResponse,
             common_enums::BalanceDirection,
@@ -50,34 +46,6 @@ use crate::{
     ),
 )]
 pub struct EntryApi;
-
-#[utoipa::path(
-    post,
-    path = "/entries",
-    tag = "Entries",
-    request_body = EntryCreateRequest,
-    responses(
-        (status = 201, description = "Entry created successfully", body = GetEntryResponse),
-        (status = 400, description = "Bad request - Invalid amount or validation error"),
-        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
-        (status = 404, description = "Account not found - Account does not exist or does not belong to authenticated user's profile"),
-        (status = 500, description = "Internal server error"),
-    ),
-    security(("Bearer" = []))
-)]
-pub async fn create_entry(
-    state: web::Data<AppState>,
-    req: web::Json<EntryCreateRequest>,
-    http_req: HttpRequest,
-) -> impl Responder {
-    api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
-        &http_req,
-        state,
-        |state, auth| async move { core::entry::create_entry(state, req.into_inner(), auth).await },
-    )
-    .await
-}
 
 #[utoipa::path(
     get,
@@ -148,15 +116,14 @@ pub async fn list_entries_by_account_id(
 
 #[utoipa::path(
     get,
-    path = "/entries/transactions/{transaction_id}/entries",
+    path = "/transactions/{transaction_id}/entries",
     tag = "Entries",
     params(
         ("transaction_id" = String, Path, description = "Transaction ID")
     ),
     responses(
-        (status = 200, description = "Entries found", body = Vec<GetEntryResponse>),
+        (status = 200, description = "Entries found - only entries on accounts belonging to the authenticated user's profile are returned; an unknown or foreign transaction id yields an empty list", body = Vec<GetEntryResponse>),
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
-        (status = 404, description = "Account not found - One or more accounts in transaction do not belong to authenticated user's profile"),
         (status = 500, description = "Internal server error"),
     ),
     security(("Bearer" = []))
