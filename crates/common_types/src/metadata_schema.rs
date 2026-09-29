@@ -49,6 +49,11 @@ pub struct ExposedKeys {
     pub searchable: Vec<String>,
 }
 
+pub static NO_EXPOSED_KEYS: ExposedKeys = ExposedKeys {
+    exposed: Vec::new(),
+    searchable: Vec::new(),
+};
+
 pub trait ExposedKeysProvider {
     fn exposed_keys(&self) -> ExposedKeys;
 }

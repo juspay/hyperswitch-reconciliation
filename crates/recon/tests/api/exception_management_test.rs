@@ -51,7 +51,7 @@ use time::{macros::format_description, Date, Duration, PrimitiveDateTime, Time};
 // ================================================================================================
 
 /// Bootstrap test environment and return basic test data
-async fn setup_test_environment() -> (
+pub async fn setup_test_environment() -> (
     TestApp,
     TestClient,
     String,

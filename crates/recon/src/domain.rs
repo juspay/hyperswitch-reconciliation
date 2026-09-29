@@ -7,4 +7,5 @@ pub mod parsing_engine;
 pub mod recon_engine;
 pub mod reporting;
 pub mod staging_entry;
+pub mod transaction;
 pub mod transformation;

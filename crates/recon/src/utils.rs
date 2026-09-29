@@ -1,6 +1,7 @@
 pub mod account;
 pub mod audit_trail;
 pub mod entry;
+pub mod exception_management;
 pub mod ingestion;
 pub mod metadata_schema;
 #[macro_use]

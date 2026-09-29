@@ -574,10 +574,11 @@
 - **Performance boundary**: This removes entry archival/cloning, duplicate churn, decryption of historical entries, and searchable-key re-emission. Updating PostgreSQL's growing `entry_ids` array still rewrites that array; a normalized membership table is required for a strictly O(1) append.
 
 <!-- AI-UPDATED: 2026-09-02 - 10k entry cap on the resolved entry set -->
+<!-- AI-UPDATED: 2026-09-28 - Cap raised to 25k; const now in domain/transaction.rs -->
 ### Entry Count Cap Per Transaction
 
 - **`Expected` entries are placeholders**: `build_image` drops them and `validate_entries` regenerates one while the transaction is unbalanced. So a confirmation swaps a placeholder for a real entry (count flat), while a source joining via search group adds one *and* keeps the placeholder (count +1).
-- **Hence the cap is on the resolved set**, checked in each growable flow's `determine_status` — not on the pre-existing row count, and not at entry load, which `create_transaction_context_without_search_group` and `create_incremental_transaction_context` bypass. Over 10k the staging entry parks in `NeedsManualReviewInternalError`.
+- **Hence the cap is on the resolved set**, checked in each growable flow's `determine_status` — not on the pre-existing row count, and not at entry load, which `create_transaction_context_without_search_group` and `create_incremental_transaction_context` bypass. Over `MAX_ENTRIES_PER_TRANSACTION` (25k, `recon/src/domain/transaction.rs`) the staging entry parks in `NeedsManualReviewInternalError`.
 - **Why cap at all**: every version re-inserts the whole entry set (`get_new_transaction_data`), so count drives per-confirmation write cost.
 - **Not applied in `one_to_many_account/one_to_one`**: that flow rebuilds no image (no `build_image`, no classification step) — it patches the matched `Expected` entry in place via `find_expected_entry`, so there is no resolved `Vec<EntryDataWithClassification>` to count. Its entry count is fixed at 1 source + configured targets regardless.
 

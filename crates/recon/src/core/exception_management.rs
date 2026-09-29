@@ -7,7 +7,13 @@ use crate::{
         transaction::TransactionInterface, transformation::TransformationConfigInterface,
     },
     domain::{
-        exception_management::ResolutionProvider,
+        exception_management::{
+            manual_reconciliation::{
+                build_new_entries, load_existing_entries_with_search_keys, prepare_staging_links,
+                resolve_transaction_data, MetadataProjection, MANUALLY_RECONCILABLE_STATUSES,
+            },
+            ResolutionProvider,
+        },
         metadata_schema::{
             data_validator::RowValidator, types::RowValidationOutcome, ParsedRow, RowMapper,
         },
@@ -24,6 +30,7 @@ use crate::{
     types::{transformers::ForeignFrom, ApplicationResponse},
     utils::{
         entry::EntryDataApiExt,
+        exception_management::{EntryOpsVecExt, PreparedEntryVecExt},
         staging_entry::{
             ApiStagingEntryStatusExt, DomainStagingEntryStatusExt, StagingEntryDataExt,
             StagingEntryExt,
@@ -37,7 +44,10 @@ use api_models::{
         ApiStagingEntryStatus, GetStagingEntryResponse, LinkableStagingEntryListV2Page,
         ListLinkableStagingEntriesV2Request,
     },
-    transaction::{ForceReconcileRequest, GetTransactionResponse, ManualReconciliationRequest},
+    transaction::{
+        ForceReconcileRequest, GetTransactionResponse, ManualReconciliationRequest,
+        ManualReconciliationV2Request,
+    },
     transformation::{
         ApiTransformationConfigData, ValidateEntryDataRequest, ValidateEntryDataResponse,
     },
@@ -66,13 +76,14 @@ use diesel_models::{
     entry::EntryNew,
     errors::DatabaseError,
     search_duplicate::SearchDuplicateNew,
+    search_entry_key::SearchEntryKeyNew,
     staging_entry::{
         StagingEntry as DieselStagingEntry, StagingEntryNew, StagingEntryUpdate,
         StagingEntryVersionUpdate,
     },
     transaction::{TransactionNew, TransactionVersionUpdate},
 };
-use error_stack::ResultExt;
+use error_stack::{Report, ResultExt};
 use external_services::user::interfaces::UserInterface;
 use futures::future;
 use masking::ExposeInterface;
@@ -364,51 +375,47 @@ pub async fn list_linkable_staging_entries_for_transaction(
                     .await
                     .change_context(TransactionError::InternalServerError)?;
 
-                Ok::<GetStagingEntryResponse, error_stack::Report<TransactionError>>(
-                    GetStagingEntryResponse {
-                        id: domain_staging_entry.id,
-                        staging_entry_id: domain_staging_entry.staging_entry_id,
-                        account: AccountData {
-                            account_id: staging_entry_view.account.id,
-                            account_name: staging_entry_view.account.name,
-                        },
-                        entry_type: domain_staging_entry.entry_type,
-                        amount: AmountResponse::from_minor_unit(
-                            domain_staging_entry.amount,
-                            domain_staging_entry.currency,
-                        )
-                        .change_context(TransactionError::InternalServerError)?,
-                        status: domain_staging_entry.status.to_api_response().coarse(),
-                        detailed_status: domain_staging_entry.status.to_api_response(),
-                        processing_mode: domain_staging_entry.processing_mode,
-                        effective_at: domain_staging_entry.effective_at,
-                        metadata: domain_staging_entry.metadata,
-                        exposed_metadata: domain_staging_entry.exposed_metadata,
-                        searchable_metadata: domain_staging_entry.searchable_metadata,
-                        transformation_id: domain_staging_entry.transformation_id.clone(),
-                        transformation_config: ApiTransformationConfigData {
-                            transformation_config_id: domain_staging_entry.transformation_id,
-                            transformation_config_name: staging_entry_view
-                                .transformation_config
-                                .name,
-                        },
-                        transformation_history_id: domain_staging_entry.transformation_history_id,
-                        data: domain_staging_entry.data.to_api_response(),
-                        version: domain_staging_entry.version,
-                        discarded_at: domain_staging_entry.discarded_at,
-                        discarded_status: domain_staging_entry
-                            .discarded_status
-                            .map(|status| status.to_api_response().coarse()),
-                        detailed_discarded_status: domain_staging_entry
-                            .discarded_status
-                            .map(DomainStagingEntryStatus::to_api_response),
-                        discarded_data: domain_staging_entry
-                            .discarded_data
-                            .map(|d| d.to_api_response()),
-                        order_id: domain_staging_entry.order_id,
-                        modified_by: staging_entry_modified_by,
+                Ok::<GetStagingEntryResponse, Report<TransactionError>>(GetStagingEntryResponse {
+                    id: domain_staging_entry.id,
+                    staging_entry_id: domain_staging_entry.staging_entry_id,
+                    account: AccountData {
+                        account_id: staging_entry_view.account.id,
+                        account_name: staging_entry_view.account.name,
                     },
-                )
+                    entry_type: domain_staging_entry.entry_type,
+                    amount: AmountResponse::from_minor_unit(
+                        domain_staging_entry.amount,
+                        domain_staging_entry.currency,
+                    )
+                    .change_context(TransactionError::InternalServerError)?,
+                    status: domain_staging_entry.status.to_api_response().coarse(),
+                    detailed_status: domain_staging_entry.status.to_api_response(),
+                    processing_mode: domain_staging_entry.processing_mode,
+                    effective_at: domain_staging_entry.effective_at,
+                    metadata: domain_staging_entry.metadata,
+                    exposed_metadata: domain_staging_entry.exposed_metadata,
+                    searchable_metadata: domain_staging_entry.searchable_metadata,
+                    transformation_id: domain_staging_entry.transformation_id.clone(),
+                    transformation_config: ApiTransformationConfigData {
+                        transformation_config_id: domain_staging_entry.transformation_id,
+                        transformation_config_name: staging_entry_view.transformation_config.name,
+                    },
+                    transformation_history_id: domain_staging_entry.transformation_history_id,
+                    data: domain_staging_entry.data.to_api_response(),
+                    version: domain_staging_entry.version,
+                    discarded_at: domain_staging_entry.discarded_at,
+                    discarded_status: domain_staging_entry
+                        .discarded_status
+                        .map(|status| status.to_api_response().coarse()),
+                    detailed_discarded_status: domain_staging_entry
+                        .discarded_status
+                        .map(DomainStagingEntryStatus::to_api_response),
+                    discarded_data: domain_staging_entry
+                        .discarded_data
+                        .map(|d| d.to_api_response()),
+                    order_id: domain_staging_entry.order_id,
+                    modified_by: staging_entry_modified_by,
+                })
             },
         ))
         .await?;
@@ -638,7 +645,7 @@ pub async fn manual_transaction_reconciliation(
 
                 Ok::<
                     (DomainStagingEntry, StagingEntryNew, SearchDuplicateNew),
-                    error_stack::Report<TransactionError>,
+                    Report<TransactionError>,
                 >((
                     domain_staging_entry.clone(),
                     processed_staging_entry,
@@ -715,6 +722,8 @@ pub async fn manual_transaction_reconciliation(
         )
     }) {
         return Err(TransactionError::InvalidEntryStatus {
+            // TODO: This api is to be deprecated
+            entry_id: "".to_string(),
             status: EntryStatus::from(
                 &invalid_entry
                     .data
@@ -802,7 +811,7 @@ pub async fn manual_transaction_reconciliation(
                     serde_json::json!({}),
                 );
 
-                Ok::<EntryNew, error_stack::Report<TransactionError>>(entry_new)
+                Ok::<EntryNew, Report<TransactionError>>(entry_new)
             },
         ))
         .await?;
@@ -960,4 +969,208 @@ pub async fn list_assignees(
     let users = assignees.into_iter().map(User::foreign_from).collect();
 
     Ok(ApplicationResponse::json(users))
+}
+
+pub async fn manual_transaction_reconciliation_v2(
+    state: &AppState,
+    id: String,
+    request: ManualReconciliationV2Request,
+    auth_context: AuthContext,
+) -> TransactionResponse<GetTransactionResponse> {
+    let ManualReconciliationV2Request { entry_ops, reason } = request;
+
+    let existing_transaction = state
+        .store
+        .find_by_id_and_profile(&id, &auth_context.profile_id)
+        .await
+        .to_not_found_response(|| TransactionError::TransactionNotFound { id: id.clone() })?;
+
+    if !MANUALLY_RECONCILABLE_STATUSES.contains(&existing_transaction.status) {
+        return Err(TransactionError::InvalidTransactionStatus {
+            expected_statuses: MANUALLY_RECONCILABLE_STATUSES.to_vec(),
+        }
+        .into());
+    }
+
+    entry_ops.validate_payload(&existing_transaction)?;
+
+    let transaction_currency = existing_transaction.currency;
+    let merchant_encryptor = state
+        .encryption_client
+        .get_encryptor_for_merchant(auth_context.merchant_id.clone());
+
+    let recon_rule = state
+        .store
+        .find_recon_rule_by_profile_id_and_rule_id(
+            &existing_transaction.profile_id,
+            &existing_transaction.rule_id,
+        )
+        .await
+        .to_not_found_response(|| TransactionError::ReconRuleNotFound {
+            rule_id: existing_transaction.rule_id.clone(),
+        })?;
+
+    let existing_entries = load_existing_entries_with_search_keys(
+        state,
+        &auth_context.profile_id,
+        &existing_transaction,
+    )
+    .await?;
+
+    entry_ops.validate_with_old_entries(&existing_entries)?;
+
+    entry_ops
+        .validate_referenced_accounts_from_db(&auth_context, state, transaction_currency)
+        .await?;
+
+    let staging_links = prepare_staging_links(
+        state,
+        &auth_context,
+        &entry_ops,
+        transaction_currency,
+        &merchant_encryptor,
+    )
+    .await?;
+
+    let config_ids = entry_ops
+        .referenced_config_ids(&existing_entries)
+        .into_iter()
+        .chain(
+            staging_links
+                .values()
+                .map(|link| link.snapshot.transformation_id.clone()),
+        )
+        .collect();
+
+    let projection =
+        MetadataProjection::resolve(state, &auth_context.profile_id, config_ids).await?;
+
+    for (config_id, account_id) in entry_ops.transformations_to_validate(&existing_entries)? {
+        let config = projection.config(config_id)?;
+
+        if config.account_id != account_id {
+            return Err(TransactionError::TransformationConfigAccountMismatch {
+                config_id: config_id.to_string(),
+                account_id: account_id.to_string(),
+            }
+            .into());
+        }
+    }
+
+    let mut prepared_entries = build_new_entries(
+        existing_entries,
+        entry_ops,
+        &existing_transaction,
+        &auth_context,
+        &staging_links,
+        &projection,
+        &merchant_encryptor,
+    )
+    .await?;
+
+    prepared_entries.validate_rule_account_coverage(&recon_rule)?;
+
+    let transaction_data = resolve_transaction_data(&mut prepared_entries, reason);
+
+    let entry_count = prepared_entries.len();
+    let (new_entries, entry_search_keys) = prepared_entries.into_iter().fold(
+        (Vec::with_capacity(entry_count), Vec::new()),
+        |(mut entries, mut search_keys), prepared| {
+            search_keys.extend(
+                prepared
+                    .search_keys
+                    .into_iter()
+                    .map(|key| (prepared.entry.id.clone(), key)),
+            );
+            entries.push(prepared.entry);
+            (entries, search_keys)
+        },
+    );
+
+    let conn = state
+        .store
+        .get_connection()
+        .await
+        .change_context(TransactionError::InternalServerError)?;
+
+    let user_id = auth_context.user_id.clone();
+
+    let transaction = conn
+        .transaction_async(|conn| async move {
+            let (transaction, _, _, _) = state
+                .store
+                .discard_transaction_with_entries_and_expectations(&conn, existing_transaction)
+                .await
+                .map_err(|e| *e.current_context())?;
+
+            for link in staging_links.into_values() {
+                DieselStagingEntry::update_by_id(
+                    &conn,
+                    &link.snapshot.id,
+                    StagingEntryUpdate::DiscardUpdate {
+                        original_data: link.snapshot.data,
+                    }
+                    .into(),
+                )
+                .await
+                .map_err(|e| *e.current_context())?;
+                link.processed
+                    .insert(&conn)
+                    .await
+                    .map_err(|e| *e.current_context())?;
+                link.search_duplicate
+                    .insert(&conn)
+                    .await
+                    .map_err(|e| *e.current_context())?;
+            }
+
+            let inserted_entries = EntryNew::batch_insert_chunked(&conn, new_entries)
+                .await
+                .map_err(|e| *e.current_context())?;
+
+            let transaction = TransactionNew::new_versioned(
+                transaction,
+                TransactionVersionUpdate {
+                    new_entries: inserted_entries,
+                    data: transaction_data,
+                },
+                Some(user_id),
+            )
+            .insert(&conn)
+            .await
+            .map_err(|e| *e.current_context())?;
+
+            let search_entry_keys = entry_search_keys
+                .into_iter()
+                .map(|(entry_id, key)| {
+                    key.get_search_entry_key(
+                        transaction.profile_id.clone(),
+                        entry_id,
+                        transaction.id.clone(),
+                    )
+                    .construct_new()
+                })
+                .collect();
+
+            SearchEntryKeyNew::batch_insert(search_entry_keys, &conn)
+                .await
+                .map_err(|e| *e.current_context())?;
+
+            Result::<_, DatabaseError>::Ok(transaction)
+        })
+        .await
+        .change_context(TransactionError::InternalServerError)?;
+
+    let transaction: DomainTransaction = transaction
+        .convert_back(&merchant_encryptor)
+        .await
+        .change_context(TransactionError::InternalServerError)?;
+
+    let modified_by = transaction
+        .get_modified_by(state, auth_context.merchant_id, auth_context.profile_id)
+        .await?;
+
+    Ok(ApplicationResponse::json(
+        transaction.to_response(&recon_rule.aging_config, modified_by)?,
+    ))
 }

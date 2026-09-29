@@ -70,6 +70,23 @@ pub async fn create_new_search_duplicate<T: ApplicationEncryptionInterface>(
         .await
         .to_not_found_response(|| ProcessingError::DatabaseError)?;
 
+    build_search_duplicate(
+        staging_entry,
+        processed_staging_entry,
+        transformation_config,
+        &metadata_schema,
+        encryptor,
+    )
+    .await
+}
+
+pub async fn build_search_duplicate<T: ApplicationEncryptionInterface>(
+    staging_entry: &DomainStagingEntry,
+    processed_staging_entry: &StagingEntryNew,
+    transformation_config: &TransformationConfig,
+    metadata_schema: &MetadataSchema,
+    encryptor: &EncryptionHandler<T>,
+) -> ProcessingResult<SearchDuplicateNew> {
     let unique_constraint = metadata_schema.schema_data.get_unique_constraint();
     let (field_name, field_value) = extract_unique_field(
         unique_constraint.extract_unique_value(staging_entry),

@@ -1,0 +1,1 @@
+pub const MAX_ENTRIES_PER_TRANSACTION: usize = 25_000;

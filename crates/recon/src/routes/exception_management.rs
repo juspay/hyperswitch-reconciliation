@@ -4,7 +4,11 @@ use api_models::{
         ApiLinkableStagingEntryListFiltersV2, GetStagingEntryResponse,
         LinkableStagingEntryListV2Page, ListLinkableStagingEntriesV2Request,
     },
-    transaction::{ForceReconcileRequest, GetTransactionResponse, ManualReconciliationRequest},
+    transaction::{
+        EntryOp, EntryOverrides, ForceReconcileRequest, GetTransactionResponse,
+        ManualReconciliationRequest, ManualReconciliationV2Request, NewEntry,
+        StagingEntryOverrides,
+    },
     transformation::{ValidateEntryDataRequest, ValidateEntryDataResponse},
     user::User,
 };
@@ -32,6 +36,7 @@ use crate::{
         list_linkable_staging_entries_for_transaction,
         list_linkable_staging_entries_for_transaction_v2,
         manual_transaction_reconciliation,
+        manual_transaction_reconciliation_v2,
         validate_raw_entry_data,
         list_assignees,
     ),
@@ -49,6 +54,11 @@ use crate::{
             CursorDirection,
             LinkableStagingEntryListV2Page,
             ManualReconciliationRequest,
+            ManualReconciliationV2Request,
+            EntryOp,
+            NewEntry,
+            EntryOverrides,
+            StagingEntryOverrides,
             ValidateEntryDataRequest,
             User,
         )
@@ -273,6 +283,48 @@ pub async fn manual_transaction_reconciliation(
         state,
         |state, auth| async move {
             core::exception_management::manual_transaction_reconciliation(
+                &state,
+                id,
+                req.into_inner(),
+                auth,
+            )
+            .await
+        },
+    )
+    .await
+}
+
+#[utoipa::path(
+    post,
+    path = "/exception_management/transactions/{id}/manual_reconciliation/v2",
+    tag = "Exception Management",
+    request_body = ManualReconciliationV2Request,
+    security(("Bearer" = [])),
+    params(
+        ("id" = String, Path, description = "Primary ID of the transaction version being edited")
+    ),
+    responses(
+        (status = 200, description = "Transaction reconciliation complete", body = GetTransactionResponse),
+        (status = 400, description = "Bad request - Invalid request or validation error"),
+        (status = 401, description = "Unauthorized - invalid or missing JWT token"),
+        (status = 404, description = "Transaction not found or does not belong to authenticated user's profile"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn manual_transaction_reconciliation_v2(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    req: web::Json<ManualReconciliationV2Request>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    let id = path.into_inner();
+
+    api::server_wrap(
+        JwtAuth::basic(Permission::ProfileReconExceptionWrite),
+        &http_req,
+        state,
+        |state, auth| async move {
+            core::exception_management::manual_transaction_reconciliation_v2(
                 &state,
                 id,
                 req.into_inner(),

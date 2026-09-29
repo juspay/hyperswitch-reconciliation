@@ -1,6 +1,7 @@
 # Transactions - Agent Notes
 
-> **Note**: Also read `OVERVIEW-API.md` when changing profile overview aggregation.
+> **Note**: Also read `OVERVIEW-API.md` when changing profile overview aggregation, and
+> `MANUAL-RECONCILIATION.md` when changing either manual reconciliation endpoint.
 
 ## Critical Rules
 - **Entry Array Linking**: Transactions link multiple entries via `entry_id` array field
@@ -356,7 +357,8 @@
 - **ManySingle Expected Append Exception**: While an existing `OneToOneManySingleV1` transaction remains `V3::Expected` (no target), additional transaction-mode sources are appended to the same primary transaction id/version. Existing entries do not change classification, so only the new Pending source, the residual Expected entry, and transaction aggregates change. Any target arrival or non-Expected state returns to normal copy-and-replace transaction versioning. See reconciliation AGENT-NOTES for the eligibility and locking contract.
 
 <!-- AI-UPDATED: 2026-09-02 - Entry count cap on recon-driven versioning -->
-- **Entry Count Cap**: Recon-driven versioning refuses to build a transaction holding more than `MAX_ENTRIES_PER_TRANSACTION` (10k) entries, `Expected` placeholder included, because each version re-inserts the whole entry set. See reconciliation AGENT-NOTES for where it is enforced and why a confirmation at the cap still passes.
+<!-- AI-UPDATED: 2026-09-28 - Cap is 25k; const moved to domain/transaction.rs and shared with manual recon v2 -->
+- **Entry Count Cap**: Recon-driven versioning refuses to build a transaction holding more than `MAX_ENTRIES_PER_TRANSACTION` (25 000, `recon/src/domain/transaction.rs`) entries, `Expected` placeholder included, because each version re-inserts the whole entry set. See reconciliation AGENT-NOTES for where it is enforced and why a confirmation at the cap still passes. Manual reconciliation v2 checks the same constant before loading anything (`MANUAL-RECONCILIATION.md`); v1 does not check it.
 
 <!-- AI-UPDATED: 2025-01-22 - Transaction versioning and void functionality -->
 - **Transaction Versioning System**: Transactions implement full versioning pattern similar to hyperswitch core
@@ -468,22 +470,25 @@
 <!-- AI-UPDATED: 2025-12-19 - Reconcile Transaction API for Exception Management -->
 ## Exception Management - Reconcile Transaction API
 
-- **Flexible Reconciliation Method**: New reconcile API that accepts any transaction state and processes based on balance
-- **API Endpoint**: `POST /exception_management/transactions/{id}/reconcile` with `ManualReconciliationRequest` body
+<!-- AI-UPDATED: 2026-09-22 - v2 delta endpoint added; see MANUAL-RECONCILIATION.md -->
+<!-- AI-UPDATED: 2026-09-28 - Corrected v1 request shape, accepted statuses and resulting status against the code -->
+> This section describes **v1**. The delta endpoint (`.../manual_reconciliation/v2`), what v1 silently
+> loses that v2 fixes, and the metadata/search-key rules both depend on are in `MANUAL-RECONCILIATION.md`.
+
+- **Replace-the-whole-set semantics**: the client sends every entry of the new version; all existing entries are archived and the set is rebuilt from the request
+- **API Endpoint**: `POST /exception_management/transactions/{id}/manual_reconciliation` with `ManualReconciliationRequest` body; `{id}` is the version's primary id
 - **Request Structure**:
-  - `transaction_entries: Vec<TransactionEntryWithData>` - Transaction entries with their data states
-  - `staging_entry_ids: Vec<String>` - List of staging entry IDs to process
-- **Balance-Based Status Logic**: 
-  - Balanced transactions → `Posted` status with `PostedData::V1(PostedDataV1::Reconciled)`
-  - Unbalanced transactions → `PartiallyReconciled` status
-- **Transaction State Acceptance**: Accepts transactions in `Mismatched`, `Expected`, or `PartiallyReconciled` status
-- **No Search Expectations**: Does not create or store search expectations (simplified processing)
-- **Entry Processing**: Uses `create_combined_transaction_entries()` with empty old entries for fresh state creation
-- **Recon Engine Integration**: Leverages recon engine for entry creation but uses custom transaction status logic
+  - `transaction_entries: Vec<TransactionEntryWithData>` - each entry with its own `account_id`, `currency`, `data` state and optional `staging_entry_id` (the staging row's primary `id`)
+  - `reason: Option<String>` - stored on the resulting `Matched`/`PartiallyReconciled` data
+- **Transaction State Acceptance**: the same nine statuses as v2's `MANUALLY_RECONCILABLE_STATUSES`, hand-listed in a `match`; anything else is 400 `InvalidTransactionStatus`
+- **Status Logic** (custom, not the recon engine's):
+  - Any `Expected` entry sent → `PartiallyReconciled`; entries keep the states sent
+  - Otherwise balanced → `Matched(Manual)`, and every entry becomes `Matched`
+  - Otherwise → `PartiallyReconciled`; entries keep the states sent
+  - Entries sent as `Matched`/`Posted`/`Void`/`Archived` → 400 `InvalidEntryStatus`
+- **No Search Expectations**: Does not create or store search expectations
 - **Atomic Operations**: All operations wrapped in database transaction for consistency
-- **Staging Entry Processing**: Archives original staging entries and creates processed versions with search duplicates
-- **Custom Logic Pattern**: Ignores recon engine status determination, implements custom balance-based logic for exception scenarios
-- **Resolution Integration**: Available as `ReconcileTransaction` resolution action for multiple transaction statuses including `PartiallyReconciled`
+- **Staging Entry Processing**: Archives original staging entries and creates processed versions with search duplicates (`create_new_search_duplicate`). Staging entries already `Processed` are skipped, which is how re-sent entries lose their lineage
 
 <!-- AI-UPDATED: 2025-11-08 - Void validation implementation -->
 ## Void Operation Validation Gotchas
