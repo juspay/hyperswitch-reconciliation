@@ -522,6 +522,10 @@ impl ExceptionManagement {
                         )
                         .service(web::resource("/manual_reconciliation").route(
                             web::post().to(exception_management::manual_transaction_reconciliation),
+                        ))
+                        .service(web::resource("/manual_reconciliation/v2").route(
+                            web::post()
+                                .to(exception_management::manual_transaction_reconciliation_v2),
                         )),
                 ),
             )

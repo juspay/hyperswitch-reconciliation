@@ -34,11 +34,12 @@ use crate::{
         metadata_schema::MetadataSchemaInterface, search_expectation::SearchExpectationInterface,
         transformation::TransformationConfigInterface,
     },
-    domain::recon_engine::{ProcessingError, ProcessingResult},
+    domain::{
+        recon_engine::{ProcessingError, ProcessingResult},
+        transaction::MAX_ENTRIES_PER_TRANSACTION,
+    },
     routes::AppState,
 };
-
-pub const MAX_ENTRIES_PER_TRANSACTION: usize = 25_000;
 
 /// Hash string for privacy-preserving duplicate detection
 pub fn hash_string(value: &str) -> Secret<String> {

@@ -467,3 +467,110 @@ pub struct ListTransactionsV2Request {
 
 pub type TransactionListV2Page =
     CursorPage<TransactionWithEntriesResponse, TransactionListSortField>;
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct ManualReconciliationV2Request {
+    pub entry_ops: Vec<EntryOp>,
+    #[schema(example = "Linked the missing settlement line")]
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum EntryOp {
+    UpdateEntry {
+        #[schema(example = "entry_1234567890")]
+        entry_id: String,
+        #[serde(default)]
+        overrides: EntryOverrides,
+    },
+    MarkReceived {
+        #[schema(example = "entry_1234567890")]
+        entry_id: String,
+        #[serde(default)]
+        overrides: EntryOverrides,
+    },
+    CreateEntry {
+        entry: NewEntry,
+    },
+    CreateWithStagingEntry {
+        #[schema(example = "stag_ent_1234567890")]
+        staging_entry_id: String,
+        #[serde(default)]
+        overrides: StagingEntryOverrides,
+    },
+    ReplaceWithStagingEntry {
+        #[schema(example = "entry_1234567890")]
+        entry_id: String,
+        #[schema(example = "stag_ent_1234567890")]
+        staging_entry_id: String,
+        #[serde(default)]
+        overrides: StagingEntryOverrides,
+    },
+    RemoveEntry {
+        #[schema(example = "entry_1234567890")]
+        entry_id: String,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum NewEntry {
+    Direct {
+        #[schema(example = "account_123")]
+        account_id: String,
+        entry_type: BalanceDirection,
+        #[schema(example = 100.50)]
+        amount: FloatMajorUnit,
+        #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
+        #[serde(with = "common_utils::custom_serde::iso8601")]
+        effective_at: PrimitiveDateTime,
+        #[schema(value_type = serde_json::Value)]
+        metadata: SecretValue,
+        #[schema(example = "order_123456")]
+        order_id: String,
+        #[schema(example = "tran_conf_xyz789")]
+        transformation_id: Option<String>,
+    },
+    Expected {
+        #[schema(example = "account_123")]
+        account_id: String,
+        entry_type: BalanceDirection,
+        #[schema(example = 100.50)]
+        amount: FloatMajorUnit,
+        #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
+        #[serde(with = "common_utils::custom_serde::iso8601")]
+        effective_at: PrimitiveDateTime,
+        #[schema(value_type = serde_json::Value)]
+        metadata: SecretValue,
+        #[schema(example = "order_123456")]
+        order_id: String,
+    },
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct EntryOverrides {
+    pub entry_type: Option<BalanceDirection>,
+    #[schema(example = 100.50)]
+    pub amount: Option<FloatMajorUnit>,
+    #[schema(value_type = Option<String>, example = "2024-01-01T00:00:00Z")]
+    #[serde(default, with = "common_utils::custom_serde::iso8601::option")]
+    pub effective_at: Option<PrimitiveDateTime>,
+    #[schema(value_type = Option<serde_json::Value>)]
+    pub metadata: Option<SecretValue>,
+    #[schema(example = "order_123456")]
+    pub order_id: Option<String>,
+    #[schema(example = "transformation_123")]
+    pub transformation_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct StagingEntryOverrides {
+    #[schema(value_type = Option<String>, example = "2024-01-01T00:00:00Z")]
+    #[serde(default, with = "common_utils::custom_serde::iso8601::option")]
+    pub effective_at: Option<PrimitiveDateTime>,
+    #[schema(value_type = Option<serde_json::Value>)]
+    pub metadata: Option<SecretValue>,
+    #[schema(example = "order_123456")]
+    pub order_id: Option<String>,
+}

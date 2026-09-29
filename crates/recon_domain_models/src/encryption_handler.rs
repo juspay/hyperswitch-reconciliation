@@ -76,6 +76,30 @@ where
             })
     }
 
+    pub async fn decrypt_json_value(
+        &self,
+        value: Encryption,
+    ) -> CustomResult<Encryptable<Secret<serde_json::Value>>, ValidationError> {
+        let identifier = Identifier::ReconMerchant(self.merchant_id.clone());
+
+        let decrypted_result = self
+            .client
+            .crypto_operation(
+                CryptoOperation::<serde_json::Value, masking::WithType>::Decrypt(value),
+                identifier,
+            )
+            .await
+            .change_context(ValidationError::InvalidValue {
+                message: "JSON decryption operation failed".to_string(),
+            })?;
+
+        decrypted_result
+            .try_into_operation()
+            .change_context(ValidationError::InvalidValue {
+                message: "Failed to extract decrypted JSON data".to_string(),
+            })
+    }
+
     /// Encrypt an optional string value
     pub async fn encrypt_optional_string(
         &self,

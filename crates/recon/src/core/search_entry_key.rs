@@ -18,7 +18,7 @@ pub async fn list_search_entry_keys_by_entry_ids(
     let search_entry_keys = state
         .store
         .list_search_entry_keys_by_entry_ids_and_profile_id(
-            &request.entry_ids,
+            request.entry_ids,
             &auth.profile_id,
             None,
         )

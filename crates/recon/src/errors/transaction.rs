@@ -69,14 +69,35 @@ pub enum TransactionError {
     #[error("Staging entry not found")]
     StagingEntryNotFound { staging_entry_id: String },
 
-    #[error("Invalid entry status: {status:?}. Expected statuses: {expected_statuses:?}")]
+    #[error("Invalid entry status: {status:?} with id: {entry_id:?}. Expected statuses: {expected_statuses:?}")]
     InvalidEntryStatus {
+        entry_id: String,
         status: EntryStatus,
         expected_statuses: Vec<EntryStatus>,
     },
 
     #[error("Transformation config not found: {config_id}")]
     TransformationConfigNotFound { config_id: String },
+
+    #[error("Transaction entry count {count} exceeds limit {limit}")]
+    TooManyEntries { count: usize, limit: usize },
+
+    #[error("At least one entry operation is required")]
+    EmptyEntryOps,
+
+    #[error("Entry operation target {target_id} appears more than once")]
+    DuplicateEntryOpTarget { target_id: String },
+
+    #[error("Transformation config {config_id} does not belong to account {account_id}")]
+    TransformationConfigAccountMismatch {
+        config_id: String,
+        account_id: String,
+    },
+
+    #[error(
+        "Transaction must retain an entry for every account on its rule. Missing: {account_ids:?}"
+    )]
+    MissingRuleAccountEntries { account_ids: Vec<String> },
 }
 
 pub type TransactionResponse<T> = Result<ApplicationResponse<T>, Report<TransactionError>>;
@@ -105,7 +126,12 @@ impl From<TransactionError> for ReconAppError {
             | TransactionError::EmptyStagingEntryList
             | TransactionError::StagingEntryNotLinkable { .. }
             | TransactionError::StagingEntryCurrencyMismatch { .. }
-            | TransactionError::InvalidEntryStatus { .. } => {
+            | TransactionError::InvalidEntryStatus { .. }
+            | TransactionError::TooManyEntries { .. }
+            | TransactionError::EmptyEntryOps
+            | TransactionError::DuplicateEntryOpTarget { .. }
+            | TransactionError::TransformationConfigAccountMismatch { .. }
+            | TransactionError::MissingRuleAccountEntries { .. } => {
                 Self::ValidationError(error.to_string())
             }
         }
@@ -214,10 +240,10 @@ impl ErrorSwitchFrom<TransactionError> for ApiErrorPayload {
                     None,
                 ))
             }
-            TransactionError::InvalidEntryStatus { status, expected_statuses } => Self::BadRequest(ApiError::new(
+            TransactionError::InvalidEntryStatus { entry_id, status, expected_statuses } => Self::BadRequest(ApiError::new(
                 "RE",
                 616,
-                format!("Invalid entry status: {status:?}. Expected statuses: {expected_statuses:?}"),
+                format!("Invalid entry status: {status:?} with id: {entry_id:?}. Expected statuses: {expected_statuses:?}"),
                 None,
             )),
             TransactionError::ReconRuleNotFound { rule_id } => Self::NotFound(ApiError::new(
@@ -232,12 +258,46 @@ impl ErrorSwitchFrom<TransactionError> for ApiErrorPayload {
                 format!("Filtering by status '{status}' is not supported"),
                 None,
             )),
-            TransactionError::TransformationConfigNotFound { config_id } => Self::BadRequest(ApiError::new(
+            TransactionError::TransformationConfigNotFound { config_id } => Self::NotFound(ApiError::new(
                 "RE",
                 619,
                 format!("Transformation Config not found: {config_id}"),
                 None,
-            ))
+            )),
+            TransactionError::TooManyEntries { count, limit } => Self::BadRequest(ApiError::new(
+                "RE",
+                620,
+                format!("Transaction would have {count} entries, which exceeds the limit of {limit}"),
+                None,
+            )),
+            TransactionError::EmptyEntryOps => Self::BadRequest(ApiError::new(
+                "RE",
+                621,
+                "At least one entry operation is required".to_string(),
+                None,
+            )),
+            TransactionError::DuplicateEntryOpTarget { target_id } => Self::BadRequest(ApiError::new(
+                "RE",
+                622,
+                format!("Entry operation target {target_id} appears more than once"),
+                None,
+            )),
+            TransactionError::TransformationConfigAccountMismatch { config_id, account_id } => Self::BadRequest(ApiError::new(
+                "RE",
+                623,
+                format!("Transformation config {config_id} does not belong to account {account_id}"),
+                None,
+            )),
+            TransactionError::MissingRuleAccountEntries { account_ids } => Self::BadRequest(ApiError::new(
+                "RE",
+                624,
+                format!(
+                    "Transaction must retain an entry for every account on its rule. Missing: {}",
+                    account_ids.join(", ")
+                ),
+                None,
+            )),
+
         }
     }
 }

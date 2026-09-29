@@ -2,6 +2,7 @@ pub mod account;
 pub mod audit_trail;
 pub mod business_profile;
 pub mod entry;
+pub mod exception_management;
 pub mod ingestion;
 pub mod metadata_schema;
 #[macro_use]

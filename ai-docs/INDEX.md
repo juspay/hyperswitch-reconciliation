@@ -30,6 +30,7 @@ Look in `domains/[feature]/` and read ALL files present:
 - `audit-trail/` - Chronological activity tracking with event grouping and profile-scoped views
 - `transactions/` - Transaction lifecycle, versioning, entries, and profile overview aggregation
   - `OVERVIEW-API.md` - Non-obvious aggregation, status, and time-range semantics
+  - `MANUAL-RECONCILIATION.md` - Exception-management reconcile endpoints (v1 and the v2 delta API)
 - `reporting/` - Triggers per-rule transaction/exception reports via the generic FaaS invocation client
   - `AGENT-NOTES.md` - Why validation lives in core, the Lambda `event` contract, and gotchas
 

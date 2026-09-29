@@ -7,7 +7,7 @@ use super::Store;
 pub trait SearchEntryKeyInterface {
     async fn list_search_entry_keys_by_entry_ids_and_profile_id(
         &self,
-        entry_ids: &[String],
+        entry_ids: Vec<String>,
         profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<SearchEntryKey>>;
@@ -17,7 +17,7 @@ pub trait SearchEntryKeyInterface {
 impl SearchEntryKeyInterface for Store {
     async fn list_search_entry_keys_by_entry_ids_and_profile_id(
         &self,
-        entry_ids: &[String],
+        entry_ids: Vec<String>,
         profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<SearchEntryKey>> {

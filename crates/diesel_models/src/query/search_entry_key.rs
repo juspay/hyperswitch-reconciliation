@@ -62,16 +62,16 @@ impl SearchEntryKeyNew {
 impl SearchEntryKey {
     pub async fn list_by_entry_ids_and_profile_id(
         conn: &PgPooledConn,
-        entry_ids: &[String],
+        entry_ids: Vec<String>,
         profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Self>> {
         use search_entry_key::dsl;
 
-        let entry_ids_owned = entry_ids.to_vec();
+        let entry_count = entry_ids.len();
         let mut query = dsl::search_entry_key
             .filter(dsl::profile_id.eq(profile_id.to_owned()))
-            .filter(dsl::entry_id.eq_any(entry_ids_owned))
+            .filter(dsl::entry_id.eq_any(entry_ids))
             .into_boxed();
 
         if let Some(limit_value) = limit {
@@ -88,7 +88,7 @@ impl SearchEntryKey {
         .change_context(DatabaseError::Others)
         .attach_printable_lazy(|| {
             format!(
-                "Error while listing search entry keys for profile_id: {profile_id} and entry_ids: {entry_ids:?}"
+                "Error while listing search entry keys for profile_id: {profile_id} and entry_count: {entry_count}"
             )
         })
     }
