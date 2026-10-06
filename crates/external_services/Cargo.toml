@@ -9,7 +9,7 @@ common_types = { path = "../common_types" }
 masking = { git = "https://github.com/juspay/hyperswitch.git",tag = "2025.10.22.0" }
 recon_domain_models = { path = "../recon_domain_models" }
 recon_interfaces = { path = "../recon_interfaces" }
-async-trait = "0.1"
+async-trait = "0.1.92"
 error-stack = "0.4.1"
 serde = { version = "=1.0.219", features = ["derive"] }
 serde_json = { version = "1.0" } 

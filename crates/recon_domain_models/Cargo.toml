@@ -17,7 +17,7 @@ masking = { git = "https://github.com/juspay/hyperswitch.git",tag = "2025.10.22.
 recon_derive = { version = "0.1.0", path = "../recon_derive" }
 
 # Third party deps
-async-trait = "0.1.88"
+async-trait = "0.1.92"
 error-stack = "0.4.1"
 futures = "0.3.31"
 http = "0.2.12"
