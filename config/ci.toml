@@ -23,6 +23,7 @@ format = "json"  # Structured logs for CI parsing
 jwt_secret = "ci_test_secret_key_12345678901234567890"
 jwt_expiry_hours = 24
 admin_api_key = "ci_test_admin_12345678901234567890"
+internal_api_key = "ci_test_internal_12345678901234567890"
 
 [secrets_management]
 secrets_manager = "no_encryption"

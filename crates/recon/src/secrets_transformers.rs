@@ -42,10 +42,14 @@ impl SecretsHandler for AuthConfig {
         let admin_api_key = secret_management_client
             .get_secret(auth.admin_api_key.clone())
             .await?;
+        let internal_api_key = secret_management_client
+            .get_secret(auth.internal_api_key.clone())
+            .await?;
 
         Ok(value.transition_state(|auth| Self {
             jwt_secret: Secret::new(jwt_secret.peek().clone()),
             admin_api_key: Secret::new(admin_api_key.peek().clone()),
+            internal_api_key: Secret::new(internal_api_key.peek().clone()),
             ..auth
         }))
     }

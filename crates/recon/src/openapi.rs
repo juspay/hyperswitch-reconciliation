@@ -84,6 +84,17 @@ pub fn create_openapi() -> OpenApi {
                         )
                     )
                 )
+                .security_scheme(
+                    "InternalApiKey",
+                    utoipa::openapi::security::SecurityScheme::ApiKey(
+                        utoipa::openapi::security::ApiKey::Header(
+                            utoipa::openapi::security::ApiKeyValue::with_description(
+                                "x-internal-api-key",
+                                "Service-to-service key. Held only by the recon service itself."
+                            )
+                        )
+                    )
+                )
                 .build()
         ))
         .build();

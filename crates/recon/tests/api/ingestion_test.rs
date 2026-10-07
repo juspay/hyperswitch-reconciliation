@@ -1239,3 +1239,97 @@ async fn find_ingestion_history_with_config_by_id_not_found() {
 
     assert_eq!(response.status(), 404);
 }
+
+/// Creates a config of the given type and returns `(ingestion_id, owner_token)`.
+async fn setup_trigger_config(
+    client: &crate::common::TestClient,
+    config: IngestionConfigData,
+    is_active: bool,
+) -> (String, String) {
+    let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
+    let account_id =
+        create_test_account(client, &token, "Test Account", BalanceDirection::Debit).await;
+
+    let request = IngestionConfigCreateRequest {
+        merchant_id,
+        profile_id,
+        name: "Trigger Auth Test".to_string(),
+        description: None,
+        account_id,
+        config,
+        is_active,
+    };
+    let response = client
+        .post("/ingestions/config")
+        .with_admin_key()
+        .json(&request)
+        .send()
+        .await;
+    assert_eq!(response.status(), 201, "Failed to create ingestion config");
+    let created: IngestionConfigResponse = client.expect_success(response).await;
+    (created.ingestion_id, token)
+}
+
+async fn assert_failed_ingestion_history(client: &crate::common::TestClient, token: &str) {
+    let response = client
+        .get("/ingestions/history")
+        .with_auth(token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let history: IngestionHistoryListResponse = client.expect_success(response).await;
+    assert!(
+        history
+            .iter()
+            .any(|entry| entry.status == common_enums::IngestionStatus::Failed),
+        "A trigger rejected at the parse step must be recorded as a failed ingestion history"
+    );
+}
+
+#[actix_web::test]
+async fn trigger_sftp_without_internal_key_is_rejected() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (ingestion_id, token) =
+        setup_trigger_config(&client, create_sftp_internal_config(), true).await;
+
+    let response = client
+        .post(&format!("/ingestions/{ingestion_id}/trigger"))
+        .json(&serde_json::json!({}))
+        .send()
+        .await;
+
+    // Auth runs in the parse step, so the rejection is a recorded parse failure
+    assert_eq!(response.status(), 400);
+    assert_failed_ingestion_history(&client, &token).await;
+}
+
+#[actix_web::test]
+async fn trigger_sftp_with_internal_key_passes_auth() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (ingestion_id, token) =
+        setup_trigger_config(&client, create_sftp_internal_config(), true).await;
+
+    let response = client
+        .post(&format!("/ingestions/{ingestion_id}/trigger"))
+        .with_internal_key()
+        .json(&serde_json::json!({}))
+        .send()
+        .await;
+
+    // The file is not in the test bucket, so a download failure is expected, but not an auth failure.
+    assert_ne!(response.status(), 401, "Valid internal key must pass auth");
+
+    let history_response = client
+        .get("/ingestions/history")
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(history_response.status(), 200);
+    let history: IngestionHistoryListResponse = client.expect_success(history_response).await;
+    assert!(
+        !history.is_empty(),
+        "An authenticated SFTP trigger should reach processing and record history"
+    );
+}

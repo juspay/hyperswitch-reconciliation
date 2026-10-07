@@ -4,7 +4,7 @@ use common_types::ingestion::{
 };
 use common_utils::errors::ReportSwitchExt;
 use error_stack::ResultExt;
-use masking::PeekInterface;
+use masking::{PeekInterface, Secret};
 use recon_domain_models::{
     behaviour::ReverseConversion,
     ingestion::sftp_internal::SftpInternalIngestionConfig as DomainSftpInternalIngestionConfig,
@@ -89,7 +89,10 @@ impl IngestionContext {
                     file_name: file_name.clone(),
                 })))
             }
-            Self::SftpInternal { .. } => Ok(TriggerData::V1(TriggerDataV1::SftpInternal)),
+            Self::SftpInternal(context) => {
+                sftp_internal::authenticate_sftp_internal(context)?;
+                Ok(TriggerData::V1(TriggerDataV1::SftpInternal))
+            }
         }
     }
 
@@ -159,6 +162,7 @@ pub trait IngestionConfigDataExt {
         &self,
         raw_payload: serde_json::Value,
         headers: HeaderMap,
+        internal_api_key: Secret<String>,
         encryptor: &EncryptionHandler<impl ApplicationEncryptionInterface>,
     ) -> IngestionResult<IngestionContext>;
 
@@ -175,6 +179,7 @@ impl IngestionConfigDataExt for IngestionConfigData {
         &self,
         raw_payload: serde_json::Value,
         headers: HeaderMap,
+        internal_api_key: Secret<String>,
         encryptor: &EncryptionHandler<impl ApplicationEncryptionInterface>,
     ) -> IngestionResult<IngestionContext> {
         match self {
@@ -206,6 +211,8 @@ impl IngestionConfigDataExt for IngestionConfigData {
                 Ok(IngestionContext::SftpInternal(Box::new(
                     sftp_internal::SftpInternalIngestionContext {
                         config: domain_config,
+                        headers,
+                        internal_api_key,
                     },
                 )))
             }

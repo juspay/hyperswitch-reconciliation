@@ -317,3 +317,4 @@ pub async fn list_things_by_profile_path(
 - Remember to export new modules and register endpoints
 - For profile-scoped paths, always use `JwtAuth::with_profile()` for security
 - NoAuth endpoints are publicly accessible - use only for system-level operations
+- Service-to-service calls use `InternalApiKeyAuth`, not `NoAuth`

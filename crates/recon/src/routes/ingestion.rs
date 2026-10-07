@@ -300,7 +300,7 @@ pub async fn list_ingestion_history(
     responses(
         (status = 200, description = "Ingestion triggered successfully"),
         (status = 404, description = "Ingestion config not found"),
-        (status = 400, description = "Ingestion config is not active"),
+        (status = 400, description = "Ingestion config is not active, or the payload or credentials failed validation"),
         (status = 500, description = "Internal server error"),
     ),
 )]

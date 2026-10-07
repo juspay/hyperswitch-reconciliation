@@ -10,7 +10,8 @@
 - All secrets MUST use `Secret<T>` wrapper for type safety
 - Use `.peek()` to access secret values, never direct field access
 - Secret transformers must wrap results in `Secret::new()`
-- All config secrets (jwt_secret, admin_api_key, db_password) use Secret<T>
+- All config secrets (jwt_secret, admin_api_key, internal_api_key, db_password) use Secret<T>
+- **Gotcha**: two unrelated keys are both called `internal_api_key`: `auth.internal_api_key` (recon's own service-to-service key, checked on incoming requests, KMS-decrypted in prod, must be non-empty) and `hyperswitch_client.internal_api_key` (sent to Hyperswitch). Do not mix them up
 <!-- AI-UPDATED: 2025-01-07 - File storage security -->
 - File keys MUST be validated before use - no empty keys, no directory traversal
 - S3 file keys cannot start with '/' or contain null characters

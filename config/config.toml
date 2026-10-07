@@ -20,6 +20,7 @@ format = "pretty"
 jwt_secret = "secret"
 jwt_expiry_hours = 24
 admin_api_key = "test_admin"
+internal_api_key = "test_internal"
 
 [secrets_management]
 secrets_manager = "no_encryption"

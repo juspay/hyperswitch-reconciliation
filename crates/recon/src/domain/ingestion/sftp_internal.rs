@@ -1,12 +1,17 @@
 use std::path::PathBuf;
 
+use actix_web::http::header::HeaderMap;
 use error_stack::{report, ResultExt};
+use masking::{PeekInterface, Secret};
 use recon_domain_models::ingestion::sftp_internal::SftpInternalIngestionConfig;
 
 use crate::{
     domain::ingestion::FileDownloadResult,
-    errors::ingestion::{DownloadStageError, DownloadStageResult},
+    errors::ingestion::{
+        DownloadStageError, DownloadStageResult, ParseStageError, ParseStageResult,
+    },
     routes::IngestionState,
+    services::auth::get_internal_api_key,
 };
 
 #[derive(Clone, Debug)]
@@ -17,6 +22,23 @@ pub struct SftpInternalFileDownloadContext {
 #[derive(Clone, Debug)]
 pub struct SftpInternalIngestionContext {
     pub config: SftpInternalIngestionConfig,
+    pub headers: HeaderMap,
+    pub internal_api_key: Secret<String>,
+}
+
+pub fn authenticate_sftp_internal(context: &SftpInternalIngestionContext) -> ParseStageResult<()> {
+    let invalid_authentication = || ParseStageError::InvalidAuthentication {
+        reason: "Missing or invalid internal API key".to_string(),
+    };
+
+    let request_internal_api_key =
+        get_internal_api_key(&context.headers).change_context(invalid_authentication())?;
+
+    if request_internal_api_key != context.internal_api_key.peek() {
+        return Err(report!(invalid_authentication()));
+    }
+
+    Ok(())
 }
 
 /// Download a file from S3 using the SFTP Internal configuration

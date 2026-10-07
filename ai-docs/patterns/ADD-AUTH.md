@@ -273,6 +273,12 @@ pub async fn protected_with_error_details(
 - **OpenAPI security**: Add `security(("api_key" = []))` to admin endpoints
 - **Use cases**: Merchant creation, bootstrap, token generation, system operations
 
+### Internal API Key Authentication
+- **Header-based**: `x-internal-api-key`, compared with `auth.internal_api_key` 
+- **No auth context**: `InternalApiKeyAuth` returns `()`; use it only for service-to-service calls such as the ingestion → transformation loopback
+- **Outside `server_wrap`**: there is no shared helper; compare the header with `get_header_value_by_key` inline (see `authenticate_sftp_internal`) and reject an empty configured key
+- **OpenAPI security**: `security(("InternalApiKey" = []))`
+
 ## Common Mistakes
 
 ### JWT Authentication
@@ -282,6 +288,10 @@ pub async fn protected_with_error_details(
 - Not handling auth errors gracefully
 - Passing raw JWT instead of using AuthContext
 - Validating auth after business logic instead of before
+
+### Internal API Key Authentication
+- Reusing the admin key for service-to-service calls; a leaked admin key could then create merchants
+- Leaving a system-triggered route on `NoAuth` when the caller can send the key
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin auth gotchas -->
