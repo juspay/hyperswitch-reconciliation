@@ -7,7 +7,10 @@ Transformation bridges ingestion and reconciliation by converting external file 
 
 ### Authentication Pattern
 <!-- AI-UPDATED: 2025-11-14 - V1 transformation configs removed -->
-- **Execute operations**: NoAuth - system-level automation (changed from AdminApiAuth)
+<!-- AI-UPDATED: 2026-10-05 - Execute uses InternalApiKeyAuth -->
+- **Execute**: `InternalApiKeyAuth` (`x-internal-api-key`). Loopback caller from ingestion (`notify_transformation_service`). Never downgrade to `NoAuth`.
+- **WHY**: `NoAuth` let anyone who knew an `ingestion_id` write staging entries into another tenant's ledger. See `ai-docs/security/INTERNAL-API-KEY-AUTH-PLAN.md`
+- **Gotcha**: a key mismatch makes ingestion report success while no transformation runs; it only shows up as an `error!` log `"Failed to trigger transformation ... HTTP 401"` from `notify_transformation_service`
 - **V2 CRUD operations**: JWT Bearer for both creation and reads (merchant_id/profile_id from auth context)
 - **WHY**: V2 uses JWT for tenant isolation and user context
 - **CRITICAL**: V2 endpoint `/transformations/v2/configs` requires Bearer token, not API key
@@ -104,8 +107,8 @@ Pending → Processing → Processed | Failed
 
 ## Design Decisions
 
-### Why Administrative Authentication for Execute?
-Transformation execution is system automation triggered by ingestion pipeline, not user-initiated operations. CRUD operations use JWT for profile isolation.
+### Why a Dedicated Internal Key for Execute?
+Transformation execution is system automation triggered by the ingestion pipeline, not user-initiated. It uses its own key instead of `AdminApiAuth` so a leak cannot create merchants or run recon, and so it can be rotated without breaking operators. CRUD operations use JWT for profile isolation.
 
 ### Why Parallel Config Processing?
 Single ingestion can feed multiple accounts/transformations simultaneously. Each config processes the same file data for different business contexts.

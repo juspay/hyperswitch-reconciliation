@@ -340,7 +340,12 @@ pub async fn trigger_ingestion(
 
     let context = ingestion_config
         .config
-        .create_context_from_webhook(raw_payload, headers.clone(), &merchant_encryptor)
+        .create_context_from_webhook(
+            raw_payload,
+            headers.clone(),
+            state.config.auth.get_inner().internal_api_key.clone(),
+            &merchant_encryptor,
+        )
         .await
         .change_context(IngestionError::InternalServerError)?;
 

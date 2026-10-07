@@ -277,4 +277,9 @@ impl RequestBuilder {
         // Use the admin API key from test config
         self.header("api-key", "test_admin_12345678901234567890")
     }
+
+    pub fn with_internal_key(self) -> Self {
+        // Use the internal service-to-service API key from test config
+        self.header("x-internal-api-key", "test_internal_12345678901234567890")
+    }
 }

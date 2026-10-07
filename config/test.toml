@@ -20,6 +20,7 @@ format = "json"
 jwt_secret = "test_secret_key_12345678901234567890"
 jwt_expiry_hours = 1
 admin_api_key = "test_admin_12345678901234567890"
+internal_api_key = "test_internal_12345678901234567890"
 
 [secrets_management]
 secrets_manager = "no_encryption"

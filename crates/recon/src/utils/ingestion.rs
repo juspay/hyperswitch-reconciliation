@@ -13,9 +13,11 @@ use diesel_models::ingestion_config::{IngestionConfigData, IngestionConfigPsp, I
 
 use common_utils::{errors::ReportSwitchExt, logging};
 use diesel_models::ingestion_history::IngestionConfigHistoryView;
+use masking::PeekInterface;
 
 use crate::{
     errors::ingestion::{IngestionResult, ParseStageError},
+    services::auth::auth_headers::X_INTERNAL_API_KEY,
     AppState,
 };
 
@@ -58,9 +60,12 @@ pub async fn notify_transformation_service(
         state.ingestion.config.transformation_base_url, ingestion_id, ingestion_history_id
     );
 
-    // No authentication required - transformation trigger uses NoAuth like ingestion trigger
     let result = client
         .post(&transformation_url)
+        .header(
+            X_INTERNAL_API_KEY,
+            state.config.auth.get_inner().internal_api_key.peek(),
+        )
         .json(&trigger_request)
         .send()
         .await;
@@ -68,18 +73,19 @@ pub async fn notify_transformation_service(
     // Log the result for debugging (but don't fail the ingestion)
     match result {
         Ok(response) => {
-            if response.status().is_success() {
+            let status = response.status();
+            if status.is_success() {
                 logging::info!(
                     "Transformation triggered successfully for ingestion {}, history {}",
                     ingestion_id,
                     ingestion_history_id
                 );
             } else {
-                logging::warn!(
+                logging::error!(
                     "Failed to trigger transformation for ingestion {}, history {}: HTTP {}",
                     ingestion_id,
                     ingestion_history_id,
-                    response.status()
+                    status
                 );
             }
         }

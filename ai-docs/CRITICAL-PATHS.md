@@ -9,6 +9,7 @@
 - **Critical**: JWT claims MUST include non-empty `user_id` - validation fails otherwise
 - **Critical**: AdminApiAuth uses `api-key` header, NOT `Authorization: Bearer`
 - **Critical**: Admin endpoints bypass JWT validation entirely - different auth flow
+- **Critical**: Service-to-service routes (transformation trigger) use `InternalApiKeyAuth` with the `x-internal-api-key` header and `auth.internal_api_key`, a different key from `admin_api_key`. Never use `NoAuth` for them
 - **Critical**: Admin API key required for merchant creation and bootstrap
 - **Critical**: Token generation API removed - clients must generate JWTs themselves using shared secret
 - **V2 Pattern**: Transformation Config V2 uses JWT authentication (not AdminApiAuth like V1)
@@ -68,7 +69,7 @@
 - **Critical**: All secrets wrapped in `Secret<T>` type for safety
 - **Critical**: Use `.peek()` to access secret values, never direct field access
 - **Critical**: Debug output shows `*** String ***` instead of actual secret values
-- **Critical**: Config secrets (jwt_secret, admin_api_key, db_password) all use Secret<T>
+- **Critical**: Config secrets (jwt_secret, admin_api_key, internal_api_key, db_password) all use Secret<T>
 - **Pattern**: Secret transformers must wrap results in Secret::new()
 - **Pattern**: Secrets are serde transparent - deserialize to inner type automatically
 

@@ -15,6 +15,7 @@ shutdown_timeout = 5
 jwt_secret = "docker_secret_key_12345678901234567890"
 jwt_expiry_hours = 24
 admin_api_key = "docker_test_admin_12345678901234567890"
+internal_api_key = "docker_test_internal_12345678901234567890"
 
 [logging]
 log_level = "DEBUG"

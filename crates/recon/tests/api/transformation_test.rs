@@ -1473,6 +1473,7 @@ async fn update_transformation_config_inactive_excluded_from_execution() {
             "/transformations/{}/ing_hist_is_active_test/trigger",
             ingestion_config.ingestion_id
         ))
+        .with_internal_key()
         .json(&trigger_request)
         .send()
         .await;
@@ -1537,6 +1538,7 @@ async fn test_find_transformation_history_is_scoped_to_profile() {
             "/transformations/{}/ing_hist_scoping_test/trigger",
             ingestion_config.ingestion_id
         ))
+        .with_internal_key()
         .json(&trigger_request)
         .send()
         .await;
@@ -1607,5 +1609,93 @@ async fn find_transformation_history_with_config_by_id_not_found() {
         response.status(),
         404,
         "Expected 404 for a non-existent transformation history id"
+    );
+}
+
+/// Sets up one profile with an ingestion and an active transformation config.
+/// Returns `(ingestion_id, owner_token)`.
+async fn setup_trigger_target(client: &crate::common::TestClient) -> (String, String) {
+    let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
+    let account_id =
+        create_test_account(client, &token, "Test Account", BalanceDirection::Debit).await;
+    let ingestion_config =
+        create_ingestion_config(&account_id, &profile_id, &merchant_id, client).await;
+    create_transformation_config(
+        &profile_id,
+        &account_id,
+        Some(&ingestion_config.ingestion_id),
+        &merchant_id,
+        &token,
+        client,
+        "order_id".parse().unwrap(),
+        StagingEntryProcessingMode::Transaction,
+        vec![],
+    )
+    .await;
+    (ingestion_config.ingestion_id, token)
+}
+
+fn trigger_path(ingestion_id: &str) -> String {
+    format!("/transformations/{ingestion_id}/ing_hist_internal_auth_test/trigger")
+}
+
+fn trigger_body() -> TransformationTriggerRequest {
+    TransformationTriggerRequest {
+        file_path: PathBuf::from("no_such_file_for_internal_auth_test.csv"),
+    }
+}
+
+#[actix_web::test]
+async fn trigger_without_internal_key_is_401() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (ingestion_id, token) = setup_trigger_target(&client).await;
+
+    let response = client
+        .post(&trigger_path(&ingestion_id))
+        .json(&trigger_body())
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    // A rejected trigger must not have written anything into the owner's ledger.
+    let history_response = client
+        .get("/transformations/history")
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(history_response.status(), 200);
+    let history: Vec<TransformationHistoryResponse> = client.expect_success(history_response).await;
+    assert!(
+        history.is_empty(),
+        "Unauthenticated trigger must not create transformation history"
+    );
+}
+
+#[actix_web::test]
+async fn trigger_with_internal_key_succeeds() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (ingestion_id, token) = setup_trigger_target(&client).await;
+
+    let response = client
+        .post(&trigger_path(&ingestion_id))
+        .with_internal_key()
+        .json(&trigger_body())
+        .send()
+        .await;
+    assert_ne!(response.status(), 401, "Valid internal key must pass auth");
+
+    let history_response = client
+        .get("/transformations/history")
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(history_response.status(), 200);
+    let history: Vec<TransformationHistoryResponse> = client.expect_success(history_response).await;
+    assert_eq!(
+        history.len(),
+        1,
+        "Authenticated trigger should create a transformation history row"
     );
 }

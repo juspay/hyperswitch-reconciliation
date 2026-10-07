@@ -124,6 +124,7 @@ pub struct AuthConfig {
     pub jwt_secret: Secret<String>,
     pub jwt_expiry_hours: u64,
     pub admin_api_key: Secret<String>,
+    pub internal_api_key: Secret<String>,
 }
 
 impl Default for AuthConfig {
@@ -132,7 +133,19 @@ impl Default for AuthConfig {
             jwt_secret: Secret::new("jwt_secret".to_string()),
             jwt_expiry_hours: 24,
             admin_api_key: Secret::new("admin_api_key".to_string()),
+            internal_api_key: Secret::new("internal_api_key".to_string()),
         }
+    }
+}
+
+impl AuthConfig {
+    pub fn validate(&self) -> ApplicationResult<()> {
+        if self.internal_api_key.peek().trim().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "auth.internal_api_key must not be empty".into(),
+            )));
+        }
+        Ok(())
     }
 }
 
@@ -245,6 +258,7 @@ impl Config<SecuredSecret> {
     pub fn validate(&self) -> ApplicationResult<()> {
         self.server.validate()?;
         self.database.get_inner().validate()?;
+        self.auth.get_inner().validate()?;
         self.application_encryption.get_inner().validate()?;
         self.user_client.get_inner().validate()?;
         self.reporting_service.validate()?;
