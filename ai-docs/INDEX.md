@@ -25,7 +25,8 @@ Look in `domains/[feature]/` and read ALL files present:
 - `recon-rules/` - Rule configuration and execution engine
   - `SCHEMA.md` - Complete recon_rule schema reference
   - `AGENT-NOTES.md` - Implementation details and critical gotchas
-- `external-services/` - Secret management, file storage, FaaS invocation, and external integrations
+- `external-services/` - Secret management, AWS S3/OCI file storage, FaaS invocation, and external integrations
+- `file-storage/` - File upload/download API validation, organization, and storage integration gotchas
 - `encryption/` - Application encryption system with LocalEncryption and KeymanagerService strategies
 - `audit-trail/` - Chronological activity tracking with event grouping and profile-scoped views
 - `transactions/` - Transaction lifecycle, versioning, entries, and profile overview aggregation

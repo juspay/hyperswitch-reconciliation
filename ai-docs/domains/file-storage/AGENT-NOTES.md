@@ -3,7 +3,9 @@
 ## Common Gotchas
 <!-- AI-UPDATED: 2025-01-04 - Multipart upload implementation -->
 - S3 bucket must exist before file uploads work - LocalStack requires manual bucket creation
-- Presigned URLs only work with S3 backend, not filesystem storage (returns None)
+<!-- AI-UPDATED: 2026-10-12 - OCI supports the same download interface -->
+- Presigned URLs work with AWS S3 and OCI Object Storage; filesystem storage returns `None`
+- OCI uses Customer Secret Keys via the AWS SDK credential chain; see [external-services/AGENT-NOTES.md](../external-services/AGENT-NOTES.md) for credential isolation and separate application/SFTP configuration gotchas
 - File keys cannot start with '/' - S3 validation will reject them
 - Multipart field names are case-sensitive: use "file", "file_name", "purpose" exactly
 - MIME type detection requires file content analysis - cannot rely on filename extensions

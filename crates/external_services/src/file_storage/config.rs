@@ -1,6 +1,7 @@
 //! File storage configuration
 
 use serde::Deserialize;
+use url::Url;
 
 /// Configuration for file storage backends
 #[derive(Debug, Clone, Deserialize)]
@@ -11,6 +12,10 @@ pub enum FileStorageConfig {
     AwsS3 {
         /// AWS S3 specific configuration
         aws_s3: AwsS3Config,
+    },
+    /// OCI Object Storage using its S3-compatible API
+    OciObjectStorage {
+        oci_object_storage: OciObjectStorageConfig,
     },
     /// Local file system storage configuration
     FileSystem {
@@ -49,6 +54,34 @@ impl AwsS3Config {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct OciObjectStorageConfig {
+    pub region: String,
+    pub bucket_name: String,
+    pub endpoint_url: String,
+    pub force_path_style: bool,
+}
+
+impl OciObjectStorageConfig {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.region.trim().is_empty() {
+            return Err("OCI Object Storage region cannot be empty".to_string());
+        }
+        if self.bucket_name.trim().is_empty() {
+            return Err("OCI Object Storage bucket name cannot be empty".to_string());
+        }
+        let endpoint = Url::parse(&self.endpoint_url)
+            .map_err(|_| "OCI Object Storage endpoint must be a valid HTTPS URL".to_string())?;
+        if endpoint.scheme() != "https" {
+            return Err("OCI Object Storage endpoint must use HTTPS".to_string());
+        }
+        if !endpoint.username().is_empty() || endpoint.password().is_some() {
+            return Err("OCI Object Storage endpoint cannot contain credentials".to_string());
+        }
+        Ok(())
+    }
+}
+
 /// Local file system storage configuration
 #[derive(Debug, Clone, Deserialize)]
 pub struct FileSystemConfig {
@@ -82,6 +115,7 @@ impl FileStorageConfig {
     pub fn validate(&self) -> Result<(), String> {
         match self {
             Self::AwsS3 { aws_s3 } => aws_s3.validate(),
+            Self::OciObjectStorage { oci_object_storage } => oci_object_storage.validate(),
             Self::FileSystem { file_system } => file_system.validate(),
         }
     }

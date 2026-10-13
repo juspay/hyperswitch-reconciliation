@@ -38,12 +38,16 @@
 - Must use `.peek()` for read access - no direct field access allowed
 - Secret transformers receive raw values but must return wrapped secrets
 - Config access patterns changed: `config.jwt_secret.peek()` not `config.jwt_secret`
+<!-- AI-UPDATED: 2026-10-12 - OCI storage uses the S3 protocol, not AWS storage -->
+- Presigned downloads work with AWS S3 and OCI Object Storage; FileSystem returns `None`
+- **OCI credentials**: set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to the OCI Customer Secret Key access key and secret; OCI API signing keys are not interchangeable
+- **Shared credential chain**: OCI uses the AWS S3 SDK against an OCI endpoint. Global OCI credentials also affect AWS KMS/Lambda clients; selecting OCI storage does not isolate credentials or migrate those services
+- **Separate storage configs**: `[file_storage]` and `[ingestion_service.sftp_file_storage]` must each select `oci_object_storage` to move both application storage and SFTP source retrieval to OCI
+- **OCI endpoint**: supply the namespace-specific HTTPS S3-compatible endpoint and OCI signing region; the production example uses `force_path_style = true`. Credentials belong in the SDK provider chain, not the URL or TOML
 <!-- AI-UPDATED: 2025-01-07 - File storage gotchas -->
-- AWS S3 presigned URLs only work with S3 backend, returns None for FileSystem
 - FileSystem storage creates parent directories automatically if `create_directories: true`
 - S3 file_exists() uses HEAD request - can be expensive for frequent checks
 - File keys are case-sensitive in both S3 and FileSystem backends
-- S3 endpoint_url is optional - only needed for S3-compatible services
 
 ## Design Decisions
 <!-- AI-UPDATED: 2026-08-20 - Lambda client construction -->
@@ -125,13 +129,16 @@ The user client system provides three related concepts: `user_client` (the abstr
 - `FileStorageInterface::retrieve_file(key)` returns Vec<u8> data
 - `FileStorageInterface::delete_file(key)` removes files
 - `FileStorageInterface::file_exists(key)` checks existence
-- `FileStorageInterface::generate_presigned_url(key, expires)` for S3 only
+<!-- AI-UPDATED: 2026-10-12 - OCI also supports presigned downloads -->
+- `FileStorageInterface::generate_presigned_url(key, expires)` returns `Some(url)` for AWS S3/OCI and `None` for FileSystem
 
 ## File Storage Backends
 <!-- AI-UPDATED: 2025-01-07 - Backend specifics -->
-- **AWS S3**: Full S3 integration with bucket, region, optional endpoint_url
+<!-- AI-UPDATED: 2026-10-12 - Distinguish AWS and OCI configuration -->
+- **AWS S3**: Bucket and region in TOML; endpoint overrides come from SDK configuration (e.g. `AWS_ENDPOINT_URL`), not an `AwsS3Config.endpoint_url` field
+- **OCI Object Storage**: Independent backend using the AWS S3 SDK; does not alter the AWS S3 backend or migrate existing objects
 - **FileSystem**: Local storage with configurable base_path and directory creation
-- **S3 features**: Presigned URLs, path-style addressing, custom endpoints
+- **S3-compatible features**: Presigned downloads for AWS/OCI; explicit endpoint and bucket-addressing options belong to the OCI config
 - **FileSystem security**: Canonical path validation prevents directory traversal
 - **Configuration**: Tagged enum with `file_storage_backend` field
 

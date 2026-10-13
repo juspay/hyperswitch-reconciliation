@@ -6,7 +6,7 @@ use error_stack::{Result, ResultExt};
 
 use super::{
     config::FileStorageConfig,
-    implementations::{AwsS3Storage, FileSystemStorage},
+    implementations::{AwsS3Storage, FileSystemStorage, OciObjectStorage},
     interfaces::{FileStorageError, FileStorageInterface},
 };
 
@@ -25,6 +25,9 @@ impl FileStorageHandler {
 
         let storage: Arc<dyn FileStorageInterface> = match config {
             FileStorageConfig::AwsS3 { aws_s3 } => Arc::new(AwsS3Storage::new(aws_s3).await?),
+            FileStorageConfig::OciObjectStorage { oci_object_storage } => {
+                Arc::new(OciObjectStorage::new(oci_object_storage).await?)
+            }
             FileStorageConfig::FileSystem { file_system } => {
                 Arc::new(FileSystemStorage::new(file_system)?)
             }

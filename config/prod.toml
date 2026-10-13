@@ -45,6 +45,17 @@ file_storage_backend = "aws_s3"
 region = "us-east-1"
 bucket_name = "hyperswitch-recon"
 
+# OCI alternative: replace the AWS storage blocks above.
+# Supply OCI Customer Secret Keys through the AWS SDK credential chain.
+# [file_storage]
+# file_storage_backend = "oci_object_storage"
+#
+# [file_storage.oci_object_storage]
+# region = "us-ashburn-1"
+# bucket_name = "hyperswitch-recon"
+# endpoint_url = "https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com"
+# force_path_style = true
+
 [faas]
 faas_backend = "aws_lambda"
 
@@ -62,6 +73,16 @@ file_storage_backend = "aws_s3"
 [ingestion_service.sftp_file_storage.aws_s3]
 region = "us-east-1"
 bucket_name = "hyperswitch-recon"
+
+# OCI alternative: replace the AWS SFTP storage blocks above.
+# [ingestion_service.sftp_file_storage]
+# file_storage_backend = "oci_object_storage"
+#
+# [ingestion_service.sftp_file_storage.oci_object_storage]
+# region = "us-ashburn-1"
+# bucket_name = "hyperswitch-recon"
+# endpoint_url = "https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com"
+# force_path_style = true
 
 [reporting_service]
 transaction_report_function = "recon-transactions-report"
