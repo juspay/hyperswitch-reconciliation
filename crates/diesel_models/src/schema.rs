@@ -77,6 +77,63 @@ diesel::table! {
         transformation_config_id -> Nullable<Varchar>,
         entry_identifier -> Text,
         exposed_metadata -> Jsonb,
+        #[max_length = 64]
+        linking_status -> Varchar,
+        linking_data -> Jsonb,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use common_enums::diesel_exports::*;
+
+    entry_link (id) {
+        #[max_length = 64]
+        id -> Varchar,
+        #[max_length = 64]
+        profile_id -> Varchar,
+        #[max_length = 64]
+        account_id -> Varchar,
+        #[max_length = 64]
+        link_config_id -> Varchar,
+        #[max_length = 64]
+        transaction_entry_id -> Varchar,
+        #[max_length = 64]
+        confirmation_entry_id -> Varchar,
+        encrypted_key -> Bytea,
+        #[max_length = 64]
+        hashed_key -> Varchar,
+        status -> Text,
+        created_at -> Timestamp,
+        last_modified_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use common_enums::diesel_exports::*;
+
+    entry_link_key (id) {
+        #[max_length = 64]
+        id -> Varchar,
+        #[max_length = 64]
+        profile_id -> Varchar,
+        #[max_length = 64]
+        account_id -> Varchar,
+        #[max_length = 64]
+        link_config_id -> Varchar,
+        #[max_length = 64]
+        entry_id -> Varchar,
+        #[max_length = 64]
+        rule_id -> Varchar,
+        target_side -> Text,
+        status -> Text,
+        target_key -> Text,
+        encrypted_value -> Bytea,
+        #[max_length = 64]
+        hashed_value -> Varchar,
+        created_at -> Timestamp,
+        last_modified_at -> Timestamp,
     }
 }
 
@@ -128,6 +185,31 @@ diesel::table! {
         version -> Int4,
         discarded_at -> Nullable<Timestamp>,
         discarded_status -> Nullable<IngestionStatus>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use common_enums::diesel_exports::*;
+
+    link_config (id) {
+        #[max_length = 64]
+        id -> Varchar,
+        #[max_length = 64]
+        profile_id -> Varchar,
+        #[max_length = 64]
+        account_id -> Varchar,
+        #[max_length = 64]
+        transaction_rule_id -> Varchar,
+        #[max_length = 64]
+        confirmation_rule_id -> Varchar,
+        transaction_trigger -> Jsonb,
+        confirmation_trigger -> Jsonb,
+        link_search_identifier -> Jsonb,
+        priority -> Int2,
+        is_active -> Bool,
+        created_at -> Timestamp,
+        last_modified_at -> Timestamp,
     }
 }
 
@@ -426,8 +508,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     account,
     business_profile,
     entry,
+    entry_link,
+    entry_link_key,
     ingestion_config,
     ingestion_history,
+    link_config,
     merchant_account,
     metadata_schema,
     recon_rule,

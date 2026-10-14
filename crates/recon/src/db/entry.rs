@@ -46,6 +46,8 @@ pub trait EntryInterface {
         filters: EntryListFilters,
         pagination: PaginationQuery<EntryListSortField>,
     ) -> StorageResult<EntryPage>;
+
+    async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>>;
 }
 
 #[async_trait]
@@ -122,5 +124,10 @@ impl EntryInterface for Store {
     ) -> StorageResult<EntryPage> {
         let conn = self.get_connection().await?;
         Entry::list_paginated(&conn, filters, pagination).await
+    }
+
+    async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>> {
+        let conn = self.get_connection().await?;
+        Entry::list_linking_pending(&conn, limit).await
     }
 }

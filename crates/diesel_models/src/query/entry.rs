@@ -16,7 +16,7 @@ use crate::{
     PgPooledConn, StorageResult,
 };
 
-use common_enums::{BalanceDirection, EntryStatus, SearchDuplicateStatus};
+use common_enums::{BalanceDirection, EntryLinkingStatus, EntryStatus, SearchDuplicateStatus};
 use common_types::{
     entry::{EntryListFilters, EntryListSortField, ListEntriesFilters},
     pagination::{CursorDirection, PaginationQuery},
@@ -450,6 +450,20 @@ impl EntryNew {
 }
 
 impl Entry {
+    pub async fn update_by_id(
+        conn: &PgPooledConn,
+        entry_id: &str,
+        entry_update: EntryUpdateInternal,
+    ) -> StorageResult<Self> {
+        generics::generic_update_with_unique_predicate_get_result::<entry::table, _, _, _>(
+            conn,
+            dsl::id.eq(entry_id.to_owned()),
+            entry_update,
+        )
+        .await
+        .attach_printable_lazy(|| format!("Error while updating entry for entry_id: {entry_id}"))
+    }
+
     pub async fn find_by_entry_id(conn: &PgPooledConn, entry_id: String) -> StorageResult<Self> {
         generics::generic_find_by_id::<entry::table, _, _>(conn, entry_id).await
     }
@@ -892,6 +906,16 @@ impl Entry {
         .await
         .change_context(DatabaseError::Others)
         .attach_printable_lazy(|| format!("Error while listing entries by IDs: {entry_ids:?}"))
+    }
+
+    pub async fn list_linking_pending(conn: &PgPooledConn, limit: u16) -> StorageResult<Vec<Self>> {
+        entry::table
+            .filter(entry::linking_status.eq(EntryLinkingStatus::Pending))
+            .order((entry::created_at.asc(), entry::id.asc()))
+            .limit(i64::from(limit))
+            .load_async(conn)
+            .await
+            .change_context(DatabaseError::Others)
     }
 }
 
