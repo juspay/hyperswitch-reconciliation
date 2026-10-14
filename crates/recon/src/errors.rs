@@ -7,6 +7,7 @@ pub mod conversions;
 pub mod entry;
 pub mod handlers;
 pub mod ingestion;
+pub mod linking_engine;
 pub mod merchant_account;
 pub mod metadata_schema;
 pub mod overview;
