@@ -1,6 +1,8 @@
 use std::num::{ParseFloatError, TryFromIntError};
 use utoipa::ToSchema;
 
+use crate::EntryLinkSide;
+
 /// Entry type for staging entries
 #[derive(
     Clone,
@@ -61,6 +63,20 @@ pub enum EntryStatus {
     Archived,
     Void,
     Matched,
+}
+
+impl EntryStatus {
+    pub fn is_posted(&self) -> bool {
+        match self {
+            Self::Archived
+            | Self::Expected
+            | Self::Matched
+            | Self::Mismatched
+            | Self::Pending
+            | Self::Void => false,
+            Self::Posted => true,
+        }
+    }
 }
 
 /// The three letter ISO currency code in uppercase. Eg: 'USD' for the United States Dollar.
@@ -1021,6 +1037,15 @@ pub enum DieselStagingEntryStatus {
 pub enum StagingEntryProcessingMode {
     Transaction,
     Confirmation,
+}
+
+impl StagingEntryProcessingMode {
+    pub fn get_entry_linking_side(&self) -> EntryLinkSide {
+        match self {
+            Self::Confirmation => EntryLinkSide::Confirmation,
+            Self::Transaction => EntryLinkSide::Transaction,
+        }
+    }
 }
 
 #[derive(
