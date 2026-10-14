@@ -19,6 +19,10 @@
 - Always validate file storage config before creating clients
 
 ## Common Gotchas
+<!-- AI-UPDATED: 2026-10-10 - OCI KMS rollout needs ciphertext migration and OKE identity -->
+- **Ciphertext migration**: Re-encrypt all secured config values before switching between AWS and OCI KMS. `prod.toml` keeps AWS as the default.
+- **OCI credentials**: Local runs use the OCI CLI profile; pods use OKE workload identity. Verify pod access separately with an enhanced cluster, service-account token/CA, and Vault key permissions.
+- **Separate encryption layers**: Switching config-secret KMS does not migrate KeyManagerService or encrypted database rows.
 <!-- AI-UPDATED: 2026-08-20 - FaaS invocation backend added -->
 - **FaaS defaults to `Noop`**: a missing `[faas]` config section deserializes to `Noop`, which logs and returns `Ok` - invocations vanish silently instead of failing loudly
 - **The abstraction is `faas`, the backend is `aws_lambda`**: vendor names belong in the variant only, same as `file_storage_backend` -> `AwsS3`; `FaasInterface::invoke_event` is the single operation
@@ -110,7 +114,8 @@ The user client system provides three related concepts: `user_client` (the abstr
 ## Secret Management Architecture
 <!-- AI-UPDATED: 2025-01-07 - Secrets system design -->
 - **SecretStateContainer<T, S>**: Type-safe state transitions between SecuredSecret and RawSecret
-- **SecretManagementInterface**: Common trait for AWS KMS and NoEncryption backends
+<!-- AI-UPDATED: 2026-10-10 - OCI added without changing secret transformers -->
+- **SecretManagementInterface**: Common trait for AWS KMS, OCI KMS and NoEncryption backends
 - **SecretsHandler**: Trait for converting secured secrets to raw secrets
 - **State transitions**: SecuredSecret -> RawSecret via `transition_state()` method
 - **Configuration**: Tagged enum with `secrets_manager` field selects backend
@@ -286,7 +291,8 @@ The user client system provides three related concepts: `user_client` (the abstr
   ```
 <!-- AI-UPDATED: 2025-01-07 - Environment differences -->
 - **Development**: Use NoEncryption for secrets, FileSystem for storage, LocalEncryption for data
-- **Production**: Use AWS KMS for secrets, S3 for storage, KeymanagerService for data
+<!-- AI-UPDATED: 2026-10-10 - OCI choice does not migrate other AWS integrations -->
+- **Production**: AWS KMS is the default; OCI KMS is opt-in after config-secret migration. Storage and application encryption are configured separately.
 - **Environment variables**: NoEncryption supports `${VAR}` substitution
 - **Local testing**: FileSystem creates "./storage" directory automatically
 - **AWS testing**: Requires valid AWS credentials and permissions

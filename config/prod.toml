@@ -32,29 +32,28 @@ admin_api_key = "${ADMIN_API_KEY}"
 internal_api_key = "${INTERNAL_API_KEY}"
 
 [secrets_management]
-secrets_manager = "aws_kms"
+secrets_manager = "aws_kms" # Options: aws_kms, oci_kms, no_encryption
 
 [secrets_management.aws_kms]
 key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 region = "us-east-1"
 
+[secrets_management.oci_kms]
+vault_crypto_endpoint = "https://example-crypto.kms.ap-hyderabad-1.oci.oraclecloud.com"
+key_id = "ocid1.key.oc1.ap-hyderabad-1.example"
+
 [file_storage]
-file_storage_backend = "aws_s3"
+file_storage_backend = "aws_s3" # Options: aws_s3, oci_object_storage, file_system
 
 [file_storage.aws_s3]
 region = "us-east-1"
 bucket_name = "hyperswitch-recon"
 
-# OCI alternative: replace the AWS storage blocks above.
-# Supply OCI Customer Secret Keys through the AWS SDK credential chain.
-# [file_storage]
-# file_storage_backend = "oci_object_storage"
-#
-# [file_storage.oci_object_storage]
-# region = "us-ashburn-1"
-# bucket_name = "hyperswitch-recon"
-# endpoint_url = "https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com"
-# force_path_style = true
+[file_storage.oci_object_storage]
+region = "ap-hyderabad-1"
+bucket_name = "hyperswitch-recon"
+endpoint_url = "https://example.compat.objectstorage.ap-hyderabad-1.oraclecloud.com"
+force_path_style = true
 
 [faas]
 faas_backend = "aws_lambda"
@@ -68,21 +67,17 @@ transformation_base_url = "http://localhost:8080"
 
 # SFTP Internal ingestion uses a dedicated S3 bucket in production
 [ingestion_service.sftp_file_storage]
-file_storage_backend = "aws_s3"
+file_storage_backend = "aws_s3" # Options: aws_s3, oci_object_storage, file_system
 
 [ingestion_service.sftp_file_storage.aws_s3]
 region = "us-east-1"
 bucket_name = "hyperswitch-recon"
 
-# OCI alternative: replace the AWS SFTP storage blocks above.
-# [ingestion_service.sftp_file_storage]
-# file_storage_backend = "oci_object_storage"
-#
-# [ingestion_service.sftp_file_storage.oci_object_storage]
-# region = "us-ashburn-1"
-# bucket_name = "hyperswitch-recon"
-# endpoint_url = "https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com"
-# force_path_style = true
+[ingestion_service.sftp_file_storage.oci_object_storage]
+region = "ap-hyderabad-1"
+bucket_name = "hyperswitch-recon"
+endpoint_url = "https://example.compat.objectstorage.ap-hyderabad-1.oraclecloud.com"
+force_path_style = true
 
 [reporting_service]
 transaction_report_function = "recon-transactions-report"

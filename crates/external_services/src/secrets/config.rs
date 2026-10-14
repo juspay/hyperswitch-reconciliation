@@ -1,12 +1,17 @@
 //! Secrets management configuration and client factory
 
-use error_stack::Result;
-use recon_interfaces::secrets_interface::{SecretManagementInterface, SecretsManagementError};
-use serde::Deserialize;
 use std::sync::Arc;
 
-use crate::secrets::implementations::aws_kms::{AwsKmsClient, AwsKmsConfig};
-use crate::secrets::implementations::no_encryption::NoEncryption;
+use error_stack::{Result, ResultExt};
+use serde::Deserialize;
+
+use recon_interfaces::secrets_interface::{SecretManagementInterface, SecretsManagementError};
+
+use crate::secrets::implementations::{
+    aws_kms::{AwsKmsClient, AwsKmsConfig},
+    no_encryption::NoEncryption,
+    oci_kms::{OciKmsClient, OciKmsConfig},
+};
 
 /// Enum representing configuration options for secrets management.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -17,6 +22,12 @@ pub enum SecretsManagementConfig {
     AwsKms {
         /// AWS KMS config
         aws_kms: AwsKmsConfig,
+    },
+
+    /// OCI Vault KMS configuration
+    OciKms {
+        /// OCI crypto endpoint and key
+        oci_kms: OciKmsConfig,
     },
 
     /// Variant representing no encryption
@@ -34,6 +45,12 @@ impl SecretsManagementConfig {
                     message: "AWS KMS configuration invalid".to_string(),
                 })
                 .map_err(error_stack::Report::new),
+            Self::OciKms { oci_kms } => oci_kms
+                .validate()
+                .map_err(|_| SecretsManagementError::InvalidConfiguration {
+                    message: "OCI KMS configuration invalid".to_string(),
+                })
+                .map_err(error_stack::Report::new),
             Self::NoEncryption => Ok(()),
         }
     }
@@ -45,6 +62,11 @@ impl SecretsManagementConfig {
         match self {
             Self::AwsKms { aws_kms } => {
                 let client = AwsKmsClient::new(aws_kms).await;
+                Ok(Arc::new(client))
+            }
+            Self::OciKms { oci_kms } => {
+                let client = OciKmsClient::new(oci_kms)
+                    .change_context(SecretsManagementError::ClientCreationFailed)?;
                 Ok(Arc::new(client))
             }
             Self::NoEncryption => Ok(Arc::new(NoEncryption)),

@@ -6,3 +6,4 @@
 pub mod no_encryption;
 
 pub mod aws_kms;
+pub mod oci_kms;

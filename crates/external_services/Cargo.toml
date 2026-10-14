@@ -24,6 +24,7 @@ quick-xml = { version = "0.31.0", features = ["serialize"] }
 hyper = "0.14.32"
 tracing = { version = "0.1.41" }
 sha2 = "0.10"
+oci_kms = { git = "https://github.com/juspay/hyperswitch.git", rev = "9986e5c0c201a20d2f7c06ae087d7b90fd2e899c" }
 
 # AWS dependencies
 aws-config = "1.0" 

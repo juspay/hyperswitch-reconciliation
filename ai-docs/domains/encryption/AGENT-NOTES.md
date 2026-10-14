@@ -39,6 +39,8 @@ ca = "..."
 - Both master_key (LocalEncryption) and cert/ca (KeyManager) fields are processed through KMS
 - Values in config files are KMS ciphertext in production, plain text in development
 - SecretsHandler implementation handles the SecuredSecret → RawSecret transition automatically
+<!-- AI-UPDATED: 2026-10-10 - OCI secret KMS is separate from data encryption -->
+- Switching config secrets to OCI KMS requires re-encrypting the configured master key or certificates, not merchant data. KeyManagerService remains separate.
 
 ### Key Management
 - LocalEncryption: Keys derived on-demand using SHA256(master_key + identifier), no storage needed
@@ -102,7 +104,8 @@ ca = "..."
 <!-- AI-UPDATED: 2025-08-04 - SecretsHandler implementation -->
 - ApplicationEncryptionConfig implements SecretsHandler trait for KMS encryption support
 - Master keys and certificates are now encrypted at rest using KMS in production
-- Works seamlessly with both no_encryption (dev) and aws_kms (prod) modes
+<!-- AI-UPDATED: 2026-10-10 - OCI only changes startup secret unwrapping -->
+- Supported secrets backends: `no_encryption`, `aws_kms`, and `oci_kms`.
 - Processed through fetch_raw_secrets() pipeline alongside DatabaseConfig and AuthConfig
 - Configuration values transition from SecuredSecret to RawSecret state during startup
 
