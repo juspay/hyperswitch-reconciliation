@@ -9,6 +9,7 @@ pub mod entry;
 pub mod exception_management;
 pub mod health;
 pub mod ingestion;
+pub mod linking_engine;
 pub mod merchant_account;
 pub mod metadata_schema;
 pub mod overview;
