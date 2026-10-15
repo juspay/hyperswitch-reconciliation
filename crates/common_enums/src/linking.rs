@@ -91,8 +91,8 @@ pub enum EntryLinkSide {
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum EntryLinkStatus {
-    Linked,
-    PostedLink,
+    Provisional,
+    Final,
 }
 
 #[derive(
@@ -114,25 +114,25 @@ pub enum EntryLinkStatus {
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum EntryLinkKeyStatus {
-    Unlinked,
-    Linked,
-    UnlinkedPosted,
-    LinkedPosted,
+    Open,
+    Matched,
+    PostedOpen,
+    PostedMatched,
 }
 
 impl EntryLinkKeyStatus {
     pub fn is_posted(&self) -> bool {
         match self {
-            Self::Linked | Self::Unlinked => false,
-            Self::LinkedPosted | Self::UnlinkedPosted => true,
+            Self::Open | Self::Matched => false,
+            Self::PostedOpen | Self::PostedMatched => true,
         }
     }
 
     pub fn from_posted_status(is_posted: bool) -> Vec<Self> {
         if is_posted {
-            vec![Self::LinkedPosted, Self::UnlinkedPosted]
+            vec![Self::PostedMatched, Self::PostedOpen]
         } else {
-            vec![Self::Linked, Self::Unlinked]
+            vec![Self::Open, Self::Matched]
         }
     }
 }
