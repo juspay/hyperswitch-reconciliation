@@ -5,7 +5,7 @@ use recon_domain_models::{entry::DomainEntry, transaction::DomainTransaction};
 
 use crate::{
     db::link_config::LinkConfigInterface,
-    domain::linking_engine::{
+    domain::linking_processor::{
         implementations::link_trigger::LinkTriggerExt, LinkProcessingResult, LinkingProcessingError,
     },
     routes::AppState,

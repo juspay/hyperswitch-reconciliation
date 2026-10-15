@@ -8,7 +8,7 @@ pub mod metadata_schema;
 #[macro_use]
 pub mod recon_engine;
 #[macro_use]
-pub mod linking_engine;
+pub mod linking_processor;
 pub mod bulk_operations;
 pub mod overview;
 pub mod recon_rule;

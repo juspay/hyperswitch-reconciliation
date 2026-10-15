@@ -7,18 +7,19 @@ use common_utils::errors::ErrorSwitchFrom;
 use crate::types::ApplicationResponse;
 
 #[derive(Debug, Clone, Error)]
-pub enum LinkingEngineError {
+pub enum LinkingProcessorError {
     #[error("An internal error occurred")]
     InternalServerError,
 }
 
-pub type LinkingEngineResult<T> = Result<T, Report<LinkingEngineError>>;
-pub type LinkingEngineResponse<T> = Result<ApplicationResponse<T>, Report<LinkingEngineError>>;
+pub type LinkingProcessorResult<T> = Result<T, Report<LinkingProcessorError>>;
+pub type LinkingProcessorResponse<T> =
+    Result<ApplicationResponse<T>, Report<LinkingProcessorError>>;
 
-impl ErrorSwitchFrom<LinkingEngineError> for ApiErrorPayload {
-    fn switch_from(error: &LinkingEngineError) -> Self {
+impl ErrorSwitchFrom<LinkingProcessorError> for ApiErrorPayload {
+    fn switch_from(error: &LinkingProcessorError) -> Self {
         match error {
-            LinkingEngineError::InternalServerError => Self::InternalServerError(ApiError::new(
+            LinkingProcessorError::InternalServerError => Self::InternalServerError(ApiError::new(
                 "LE",
                 800,
                 "An internal error occurred",

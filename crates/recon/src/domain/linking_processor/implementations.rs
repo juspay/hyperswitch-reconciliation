@@ -15,8 +15,8 @@ use recon_domain_models::entry::DomainEntry;
 
 use crate::{
     db::search_entry_link_key::{SearchEntryLinkKeyInterface, SearchEntryLinkSearchCriteria},
-    domain::linking_engine::{
-        EntryLinkContext, LinkProcessingResult, LinkingEngine, LinkingProcessingError,
+    domain::linking_processor::{
+        EntryLinkContext, LinkProcessingResult, LinkingProcessingError, LinkingProcessor,
     },
     routes::AppState,
     utils::recon_engine::hash_string,
@@ -27,7 +27,7 @@ use self::link_matching_key::LinkSearchIdentifierExt;
 pub mod link_matching_key;
 pub mod link_trigger;
 
-impl LinkingEngine for LinkConfig {
+impl LinkingProcessor for LinkConfig {
     async fn create_context(
         &self,
         state: &AppState,

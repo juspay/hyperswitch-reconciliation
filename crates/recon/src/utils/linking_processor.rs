@@ -1,6 +1,6 @@
 use common_types::entry_linking::{LinkingProcessingErrorType, LinkingProcessingErrorTypeV1};
 
-use crate::domain::linking_engine::LinkingProcessingError;
+use crate::domain::linking_processor::LinkingProcessingError;
 
 impl From<LinkingProcessingError> for LinkingProcessingErrorType {
     fn from(error: LinkingProcessingError) -> Self {
@@ -33,13 +33,15 @@ macro_rules! process_linking_or_fail {
         match $operation.await {
             Ok(value) => value,
             Err(processing_error) => {
-                let reason = $crate::domain::linking_engine::process_linking_error_context(
+                let reason = $crate::domain::linking_processor::process_linking_error_context(
                     $state,
                     processing_error,
                     $entry,
                 )
                 .await?;
-                return Ok(::api_models::linking_engine::LinkingTriggerResponse::Failure(reason));
+                return Ok(
+                    ::api_models::linking_processor::LinkingTriggerResponse::Failure(reason),
+                );
             }
         }
     };

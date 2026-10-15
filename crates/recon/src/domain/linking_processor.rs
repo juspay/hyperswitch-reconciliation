@@ -1,4 +1,4 @@
-use api_models::linking_engine::LinkingTriggerResponse;
+use api_models::linking_processor::LinkingTriggerResponse;
 use common_enums::EntryLinkSide;
 use common_types::entry_linking::{
     EntryLinkingData, EntryLinkingDataV1, LinkingFailureData, LinkingFailureDataV1,
@@ -24,7 +24,7 @@ use crate::{
         metadata_schema::MetadataSchemaInterface, transaction::TransactionInterface,
         transformation::TransformationConfigInterface,
     },
-    errors::linking_engine::{LinkingEngineError, LinkingEngineResult},
+    errors::linking_processor::{LinkingProcessorError, LinkingProcessorResult},
     process_linking_or_fail,
     routes::AppState,
 };
@@ -58,7 +58,7 @@ type LinkProcessingResult<T> = Result<T, Report<LinkingProcessingError>>;
 pub async fn process_entry_linking_core(
     state: &AppState,
     entry: DieselEntry,
-) -> LinkingEngineResult<LinkingTriggerResponse> {
+) -> LinkingProcessorResult<LinkingTriggerResponse> {
     let merchant_encryptor = state
         .encryption_client
         .get_encryptor_for_merchant(entry.merchant_id.clone());
@@ -84,12 +84,12 @@ pub async fn process_entry_linking_core(
             domain_entry.version,
         )
         .await
-        .change_context(LinkingEngineError::InternalServerError)?;
+        .change_context(LinkingProcessorError::InternalServerError)?;
 
     let domain_transaction: DomainTransaction = transaction
         .convert_back(&merchant_encryptor)
         .await
-        .change_context(LinkingEngineError::InternalServerError)?;
+        .change_context(LinkingProcessorError::InternalServerError)?;
 
     let transformation_config = match domain_entry.transformation_id.clone() {
         Some(config_id) => state
@@ -99,7 +99,7 @@ pub async fn process_entry_linking_core(
                 &domain_transaction.profile_id,
             )
             .await
-            .change_context(LinkingEngineError::InternalServerError)?,
+            .change_context(LinkingProcessorError::InternalServerError)?,
         None => {
             let reason = process_linking_error_context(
                 state,
@@ -118,7 +118,7 @@ pub async fn process_entry_linking_core(
             &domain_transaction.profile_id,
         )
         .await
-        .change_context(LinkingEngineError::InternalServerError)?;
+        .change_context(LinkingProcessorError::InternalServerError)?;
 
     let link_processing_context = process_linking_or_fail!(
         async {
@@ -166,7 +166,7 @@ pub async fn process_linking_error_context(
     state: &AppState,
     error: Report<LinkingProcessingError>,
     entry: &DieselEntry,
-) -> LinkingEngineResult<String> {
+) -> LinkingProcessorResult<String> {
     logging::error!("Linking failed for entry {}: {:?}", &entry.id, error);
 
     let linking_data = EntryLinkingData::V1(EntryLinkingDataV1::Failed(LinkingFailureData::V1(
@@ -179,7 +179,7 @@ pub async fn process_linking_error_context(
         .store
         .get_connection()
         .await
-        .change_context(LinkingEngineError::InternalServerError)?;
+        .change_context(LinkingProcessorError::InternalServerError)?;
 
     DieselEntry::update_by_id(
         &conn,
@@ -187,7 +187,7 @@ pub async fn process_linking_error_context(
         EntryUpdate::LinkingUpdate { data: linking_data }.into(),
     )
     .await
-    .change_context(LinkingEngineError::InternalServerError)?;
+    .change_context(LinkingProcessorError::InternalServerError)?;
 
     Ok(error.to_string())
 }
@@ -208,7 +208,7 @@ pub enum EntryLinkContext {
     },
 }
 
-pub trait LinkingEngine {
+pub trait LinkingProcessor {
     async fn create_context(
         &self,
         state: &AppState,

@@ -9,7 +9,7 @@ use common_types::{
 };
 
 use crate::domain::{
-    linking_engine::{LinkProcessingResult, LinkingProcessingError},
+    linking_processor::{LinkProcessingResult, LinkingProcessingError},
     search_identifier::CompositeSearchIdentifierExt,
 };
 
