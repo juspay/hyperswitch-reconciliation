@@ -12,7 +12,7 @@ use common_types::{
 
 use crate::domain::{
     recon_engine::{ProcessingError, ProcessingResult},
-    CompositeSearchIdentifierExt,
+    search_identifier::CompositeSearchIdentifierExt,
 };
 
 pub trait SearchIdentifierExt {
