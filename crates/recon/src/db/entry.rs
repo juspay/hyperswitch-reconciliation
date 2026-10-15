@@ -4,7 +4,7 @@ use common_types::{
     pagination::PaginationQuery,
 };
 use diesel_models::{
-    entry::{Entry, EntryNew, EntryPage},
+    entry::{Entry, EntryNew, EntryPage, EntryUpdate},
     StorageResult,
 };
 
@@ -14,6 +14,8 @@ use super::Store;
 pub trait EntryInterface {
     async fn insert_entry(&self, entry: EntryNew) -> StorageResult<Entry>;
     async fn find_entry_by_id(&self, entry_id: &str) -> StorageResult<Entry>;
+    async fn update_entry_by_id(&self, entry_id: &str, update: EntryUpdate)
+        -> StorageResult<Entry>;
     async fn list_entries_by_account_id(
         &self,
         account_id: &str,
@@ -60,6 +62,15 @@ impl EntryInterface for Store {
     async fn find_entry_by_id(&self, entry_id: &str) -> StorageResult<Entry> {
         let conn = self.get_connection().await?;
         Entry::find_by_entry_id(&conn, entry_id.to_string()).await
+    }
+
+    async fn update_entry_by_id(
+        &self,
+        entry_id: &str,
+        update: EntryUpdate,
+    ) -> StorageResult<Entry> {
+        let conn = self.get_connection().await?;
+        Entry::update_by_id(&conn, entry_id, update.into()).await
     }
 
     async fn list_entries_by_account_id(

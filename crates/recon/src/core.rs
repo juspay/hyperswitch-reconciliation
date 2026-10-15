@@ -6,7 +6,7 @@ pub mod business_profile;
 pub mod entry;
 pub mod exception_management;
 pub mod ingestion;
-pub mod linking_engine;
+pub mod linking_processor;
 pub mod merchant_account;
 pub mod metadata_schema;
 pub mod overview;

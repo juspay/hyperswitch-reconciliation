@@ -1,12 +1,17 @@
-use api_models::linking_engine::LinkingProcessorStatusResponse;
+use api_models::linking_processor::LinkingProcessorStatusResponse;
 use common_enums::LinkingProcessorStatus;
-use common_utils::logging;
+use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
+use common_utils::{auth::AuthContext, logging};
+use diesel_models::entry::EntryUpdate;
 use tokio::sync::watch;
 
 use crate::{
-    db::entry::EntryInterface,
-    domain::linking_engine::process_entry_linking_core,
-    errors::linking_engine::{LinkingEngineError, LinkingEngineResponse},
+    db::{account::AccountInterface, entry::EntryInterface},
+    domain::linking_processor::process_entry_linking_core,
+    errors::{
+        conversions::StorageErrorExt,
+        linking_processor::{LinkingProcessorError, LinkingProcessorResponse},
+    },
     routes::AppState,
     types::ApplicationResponse,
 };
@@ -14,23 +19,54 @@ use crate::{
 pub async fn set_processor_status(
     state: AppState,
     status: LinkingProcessorStatus,
-) -> LinkingEngineResponse<()> {
+) -> LinkingProcessorResponse<()> {
     state
         .linking_processor_status
         .send(status)
-        .map_err(|_| LinkingEngineError::InternalServerError)?;
+        .map_err(|_| LinkingProcessorError::InternalServerError)?;
 
     Ok(ApplicationResponse::StatusOk)
 }
 
 pub async fn get_processor_status(
     state: &AppState,
-) -> LinkingEngineResponse<LinkingProcessorStatusResponse> {
+) -> LinkingProcessorResponse<LinkingProcessorStatusResponse> {
     let current_status = *state.linking_processor_status.borrow();
 
     Ok(ApplicationResponse::json(LinkingProcessorStatusResponse {
         status: current_status,
     }))
+}
+
+pub async fn enqueue_entry(
+    state: AppState,
+    entry_id: String,
+    auth_context: AuthContext,
+) -> LinkingProcessorResponse<()> {
+    let entry = state
+        .store
+        .find_entry_by_id(&entry_id)
+        .await
+        .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
+
+    state
+        .store
+        .find_account_by_profile_id_and_account_id(&auth_context.profile_id, &entry.account_id)
+        .await
+        .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
+
+    state
+        .store
+        .update_entry_by_id(
+            &entry_id,
+            EntryUpdate::LinkingUpdate {
+                data: EntryLinkingData::V1(EntryLinkingDataV1::Pending),
+            },
+        )
+        .await
+        .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
+
+    Ok(ApplicationResponse::StatusOk)
 }
 
 pub async fn linking_processor(

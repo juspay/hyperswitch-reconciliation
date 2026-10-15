@@ -156,7 +156,7 @@ pub async fn initialize_server(
     };
 
     tokio::spawn(core::recon_engine::recon_processor_v2(state.clone(), rx));
-    tokio::spawn(core::linking_engine::linking_processor(
+    tokio::spawn(core::linking_processor::linking_processor(
         state.clone(),
         linking_rx,
     ));

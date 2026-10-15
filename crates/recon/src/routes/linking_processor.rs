@@ -1,20 +1,26 @@
 use actix_web::{web, HttpRequest, Responder};
-use api_models::linking_engine::{LinkingProcessorStatusRequest, LinkingProcessorStatusResponse};
+use api_models::linking_processor::{
+    LinkingProcessorStatusRequest, LinkingProcessorStatusResponse,
+};
+use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
 use crate::{
     core,
-    services::{api, auth::AdminApiAuth},
+    services::{
+        api,
+        auth::{AdminApiAuth, JwtAuth},
+    },
 };
 
 use super::AppState;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(get_processor_status, set_processor_status),
+    paths(get_processor_status, set_processor_status, enqueue_entry),
     components(schemas(LinkingProcessorStatusResponse, LinkingProcessorStatusRequest)),
     tags(
-        (name = "Linking Processor", description = "Entry linking processor status endpoints"),
+        (name = "Linking Processor", description = "Entry linking processor controls and enqueue endpoints"),
     ),
 )]
 pub struct LinkingProcessorApi;
@@ -35,7 +41,7 @@ pub async fn get_processor_status(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(AdminApiAuth, &http_req, state, |state, _auth| async move {
-        core::linking_engine::get_processor_status(&state).await
+        core::linking_processor::get_processor_status(&state).await
     })
     .await
 }
@@ -59,7 +65,39 @@ pub async fn set_processor_status(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(AdminApiAuth, &http_req, state, |state, _auth| async move {
-        core::linking_engine::set_processor_status(state, req.status).await
+        core::linking_processor::set_processor_status(state, req.status).await
     })
+    .await
+}
+
+#[utoipa::path(
+    post,
+    path = "/linking_processor/{entry_id}/enqueue",
+    tag = "Linking Processor",
+    params(
+        ("entry_id" = String, Path, description = "Entry ID to enqueue for linking")
+    ),
+    responses(
+        (status = 200, description = "Entry linking status and data reset to pending for processing"),
+        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
+        (status = 403, description = "Forbidden - Missing transaction write permission"),
+        (status = 404, description = "Entry not found or account does not belong to authenticated user's profile"),
+        (status = 500, description = "Internal server error"),
+    ),
+    security(("Bearer" = [])),
+)]
+pub async fn enqueue_entry(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    api::server_wrap(
+        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
+        &http_req,
+        state,
+        |state, auth| async move {
+            core::linking_processor::enqueue_entry(state, path.into_inner(), auth).await
+        },
+    )
     .await
 }

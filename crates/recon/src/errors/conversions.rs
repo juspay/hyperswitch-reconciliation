@@ -3,10 +3,11 @@ use error_stack::Report;
 
 use super::{
     account::AccountError, business_profile::BusinessProfileError, entry::EntryError,
-    ingestion::IngestionError, merchant_account::MerchantAccountError,
-    metadata_schema::MetadataSchemaError, recon_engine::ReconEngineError,
-    recon_rule::ReconRuleError, reporting::ReportError, staging_entry::StagingEntryError,
-    transaction::TransactionError, transformation::TransformationError, ReconAppError,
+    ingestion::IngestionError, linking_processor::LinkingProcessorError,
+    merchant_account::MerchantAccountError, metadata_schema::MetadataSchemaError,
+    recon_engine::ReconEngineError, recon_rule::ReconRuleError, reporting::ReportError,
+    staging_entry::StagingEntryError, transaction::TransactionError,
+    transformation::TransformationError, ReconAppError,
 };
 use crate::{
     domain::recon_engine::ProcessingError,
@@ -21,6 +22,28 @@ pub trait StorageErrorExt<T, E> {
     /// Converts a database error to entity-specific duplicate/unique violation error if applicable,
     /// otherwise returns InternalServerError
     fn to_duplicate_response(self, context: impl FnOnce() -> E) -> Result<T, Report<E>>;
+}
+
+impl<T> StorageErrorExt<T, LinkingProcessorError> for Result<T, Report<DatabaseError>> {
+    fn to_not_found_response(
+        self,
+        context: impl FnOnce() -> LinkingProcessorError,
+    ) -> Result<T, Report<LinkingProcessorError>> {
+        self.map_err(|error| match error.current_context() {
+            DatabaseError::NotFound => error.change_context(context()),
+            _ => error.change_context(LinkingProcessorError::InternalServerError),
+        })
+    }
+
+    fn to_duplicate_response(
+        self,
+        context: impl FnOnce() -> LinkingProcessorError,
+    ) -> Result<T, Report<LinkingProcessorError>> {
+        self.map_err(|error| match error.current_context() {
+            DatabaseError::UniqueViolation => error.change_context(context()),
+            _ => error.change_context(LinkingProcessorError::InternalServerError),
+        })
+    }
 }
 
 impl<T> StorageErrorExt<T, ReconAppError> for Result<T, Report<DatabaseError>> {

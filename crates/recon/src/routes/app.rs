@@ -307,6 +307,10 @@ impl LinkingProcessor {
                     .route(web::get().to(linking_processor::get_processor_status))
                     .route(web::post().to(linking_processor::set_processor_status)),
             )
+            .service(
+                web::resource("/{entry_id}/enqueue")
+                    .route(web::post().to(linking_processor::enqueue_entry)),
+            )
     }
 }
 

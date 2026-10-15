@@ -10,6 +10,9 @@ use crate::types::ApplicationResponse;
 pub enum LinkingProcessorError {
     #[error("An internal error occurred")]
     InternalServerError,
+
+    #[error("Entry not found")]
+    EntryNotFound,
 }
 
 pub type LinkingProcessorResult<T> = Result<T, Report<LinkingProcessorError>>;
@@ -25,6 +28,9 @@ impl ErrorSwitchFrom<LinkingProcessorError> for ApiErrorPayload {
                 "An internal error occurred",
                 None,
             )),
+            LinkingProcessorError::EntryNotFound => {
+                Self::NotFound(ApiError::new("LE", 801, "Entry not found", None))
+            }
         }
     }
 }
