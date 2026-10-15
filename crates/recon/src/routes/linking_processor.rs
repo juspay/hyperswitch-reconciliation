@@ -14,15 +14,15 @@ use super::AppState;
     paths(get_processor_status, set_processor_status),
     components(schemas(LinkingProcessorStatusResponse, LinkingProcessorStatusRequest)),
     tags(
-        (name = "Linking Engine", description = "Entry linking engine processing endpoints"),
+        (name = "Linking Processor", description = "Entry linking processor status endpoints"),
     ),
 )]
-pub struct LinkingEngineApi;
+pub struct LinkingProcessorApi;
 
 #[utoipa::path(
     get,
-    path = "/linking_engine/processor/status",
-    tag = "Linking Engine",
+    path = "/linking_processor/status",
+    tag = "Linking Processor",
     responses(
         (status = 200, description = "Current processor status", body = LinkingProcessorStatusResponse),
         (status = 401, description = "Unauthorized - Invalid or missing admin API key"),
@@ -42,8 +42,8 @@ pub async fn get_processor_status(
 
 #[utoipa::path(
     post,
-    path = "/linking_engine/processor/status",
-    tag = "Linking Engine",
+    path = "/linking_processor/status",
+    tag = "Linking Processor",
     request_body = LinkingProcessorStatusRequest,
     responses(
         (status = 200, description = "Processor status updated"),

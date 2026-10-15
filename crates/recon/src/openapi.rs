@@ -7,7 +7,7 @@ use crate::routes::{
     account::AccountApi, audit_trail::AuditTrailApi, auth::AuthApi,
     business_profile::BusinessProfileApi, entry::EntryApi,
     exception_management::ExceptionManagementApi, health::HealthApi, ingestion::IngestionApi,
-    linking_engine::LinkingEngineApi, merchant_account::MerchantAccountApi,
+    linking_processor::LinkingProcessorApi, merchant_account::MerchantAccountApi,
     metadata_schema::MetadataSchemaApi, overview::OverviewApi, recon_engine::ReconEngineApi,
     recon_rule::ReconRuleApi, reporting::ReportApi, search_entry_key::SearchEntryKeyApi,
     search_expectation::SearchExpectationApi, search_group::SearchGroupApi,
@@ -111,7 +111,7 @@ pub fn create_openapi() -> OpenApi {
     openapi.merge(OverviewApi::openapi());
     openapi.merge(ReconRuleApi::openapi());
     openapi.merge(ReconEngineApi::openapi());
-    openapi.merge(LinkingEngineApi::openapi());
+    openapi.merge(LinkingProcessorApi::openapi());
     openapi.merge(IngestionApi::openapi());
     openapi.merge(TransformationApi::openapi());
     openapi.merge(ReportApi::openapi());

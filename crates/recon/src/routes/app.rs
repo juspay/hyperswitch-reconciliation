@@ -20,7 +20,7 @@ const INGESTION_UPLOAD_MEMORY_LIMIT_BYTES: usize = 25 * 1024 * 1024;
 
 use super::{
     account, api_docs, audit_trail, auth, business_profile, entry, exception_management, health,
-    ingestion, linking_engine, merchant_account, metadata_schema, overview, recon_engine,
+    ingestion, linking_processor, merchant_account, metadata_schema, overview, recon_engine,
     recon_rule, reporting, staging_entry, transaction, transformation,
 };
 
@@ -296,16 +296,16 @@ impl ReconEngine {
     }
 }
 
-pub struct LinkingEngine;
+pub struct LinkingProcessor;
 
-impl LinkingEngine {
+impl LinkingProcessor {
     pub fn server(state: AppState) -> Scope {
-        web::scope("/linking_engine")
+        web::scope("/linking_processor")
             .app_data(web::Data::new(state))
             .service(
-                web::resource("/processor/status")
-                    .route(web::get().to(linking_engine::get_processor_status))
-                    .route(web::post().to(linking_engine::set_processor_status)),
+                web::resource("/status")
+                    .route(web::get().to(linking_processor::get_processor_status))
+                    .route(web::post().to(linking_processor::set_processor_status)),
             )
     }
 }
