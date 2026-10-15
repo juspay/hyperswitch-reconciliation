@@ -32,13 +32,6 @@ pub trait EntryInterface {
         account_id: &str,
     ) -> StorageResult<Vec<Entry>>;
 
-    async fn find_non_expected_entry_by_transaction_id_version_and_account(
-        &self,
-        transaction_id: &str,
-        version: i32,
-        account_id: &str,
-    ) -> StorageResult<Option<Entry>>;
-
     async fn find_first_pending_source_by_transaction_id_and_version(
         &self,
         transaction_id: &str,
@@ -93,22 +86,6 @@ impl EntryInterface for Store {
     ) -> StorageResult<Vec<Entry>> {
         let conn = self.get_connection().await?;
         Entry::list_expected_by_transaction_id_version_and_account(
-            &conn,
-            transaction_id,
-            version,
-            account_id,
-        )
-        .await
-    }
-
-    async fn find_non_expected_entry_by_transaction_id_version_and_account(
-        &self,
-        transaction_id: &str,
-        version: i32,
-        account_id: &str,
-    ) -> StorageResult<Option<Entry>> {
-        let conn = self.get_connection().await?;
-        Entry::find_non_expected_by_transaction_id_version_and_account(
             &conn,
             transaction_id,
             version,

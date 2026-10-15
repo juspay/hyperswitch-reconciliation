@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::recon_rule::{
-    grouping_field::GroupingField, link_with_rule::LinkWithRule, match_rules, search_identifier,
+    grouping_field::GroupingField, match_rules, search_identifier,
     tolerance_config::ToleranceConfig, trigger,
 };
 
@@ -33,8 +33,6 @@ pub struct OneToOneSingleSingleV1 {
     pub match_rules: match_rules::MatchRules,
     pub source_account: OneToOneSingleSingleSource,
     pub target_account: OneToOneSingleSingleTarget,
-    #[serde(default)] // Need this because of backward compatibility
-    pub link_with_rule: Option<LinkWithRule>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -62,7 +60,6 @@ pub struct OneToOneSingleManyV1 {
     pub match_rules: match_rules::MatchRules,
     pub source_account: OneToOneSingleManySource,
     pub target_account: OneToOneSingleManyTarget,
-    pub link_with_rule: Option<LinkWithRule>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -99,7 +96,6 @@ pub struct OneToOneManySingleV1 {
     pub match_rules: match_rules::MatchRules,
     pub source_account: OneToOneManySingleSource,
     pub target_account: OneToOneManySingleTarget,
-    pub link_with_rule: Option<LinkWithRule>,
     #[serde(default)]
     pub source_accumulation_mode: SourceAccumulationMode,
 }
@@ -128,7 +124,6 @@ pub struct OneToOneManyManyV1 {
     pub match_rules: match_rules::MatchRules,
     pub source_account: OneToOneManyManySource,
     pub target_account: OneToOneManyManyTarget,
-    pub link_with_rule: Option<LinkWithRule>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

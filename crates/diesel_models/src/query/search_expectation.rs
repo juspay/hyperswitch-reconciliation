@@ -96,48 +96,6 @@ impl SearchExpectation {
         }
     }
 
-    pub async fn find_for_linking(
-        conn: &PgPooledConn,
-        search_criteria: &[(String, FieldPathKey, String, String)], // (rule_id, target_key, hashed_source_value, target_account_id)
-    ) -> StorageResult<Vec<Self>> {
-        if search_criteria.is_empty() {
-            return Ok(vec![]);
-        }
-        let query = search_criteria.iter().fold(
-            dsl::search_expectation.into_boxed(),
-            |query, (rule_id, target_key, hashed_source_value, target_account_id)| {
-                query
-                    .or_filter(
-                        dsl::rule_id
-                            .eq(rule_id.to_owned())
-                            .and(dsl::target_key.eq(target_key.clone()))
-                            .and(dsl::hashed_source_value.eq(hashed_source_value.to_owned()))
-                            .and(dsl::target_account_id.eq(target_account_id.to_owned())),
-                    )
-                    .order(dsl::created_at.desc())
-            },
-        );
-
-        logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
-
-        let result = generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn),
-            generics::db_metrics::DatabaseOperation::Filter,
-        )
-        .await;
-
-        match result {
-            Ok(expectations) => Ok(expectations),
-            Err(e) => Err(e)
-                .change_context(DatabaseError::Others)
-                .attach_printable_lazy(|| {
-                    format!(
-                        "Error while finding expectations for multiple targets. Search_criteria={search_criteria:?}"
-                    )
-                })
-        }
-    }
-
     pub async fn batch_update_status_by_primary_transaction_ids(
         conn: &PgPooledConn,
         primary_transaction_ids: Vec<String>,

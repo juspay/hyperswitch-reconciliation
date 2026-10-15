@@ -81,7 +81,7 @@ pub enum ReconRuleUpdate {
         rule_name: Option<String>,
         rule_description: Option<String>,
     },
-    /// Update strategy (including link_with_rule)
+    /// Update strategy
     StrategyUpdate {
         strategy: Box<ReconStrategy>,
     },

@@ -1,5 +1,5 @@
 use api_models::recon_rule::{
-    GetReconRuleResponse, LinkWithRuleUpdate, ReconRuleCreateRequest, ReconRuleUpdateRequest,
+    GetReconRuleResponse, ReconRuleCreateRequest, ReconRuleUpdateRequest,
 };
 use common_utils::auth::AuthContext;
 use diesel_models::recon_rule::{ReconRuleNew, ReconRuleUpdate};
@@ -15,8 +15,7 @@ use crate::{
     },
     types::ApplicationResponse,
     utils::recon_rule::{
-        update_strategy_with_link, AgingConfigApiRequestExt, ReconRuleExt, ReconStrategyApiExt,
-        RuleAccountExt, RuleValidator,
+        AgingConfigApiRequestExt, ReconRuleExt, ReconStrategyApiExt, RuleAccountExt, RuleValidator,
     },
     AppState,
 };
@@ -92,26 +91,6 @@ pub async fn update_recon_rule(
     let updated_rule = if let Some(strategy) = diesel_strategy {
         let recon_rule_update = ReconRuleUpdate::StrategyUpdate {
             strategy: Box::new(strategy),
-        };
-
-        state
-            .store
-            .update_recon_rule_by_id(rule_id, recon_rule_update)
-            .await
-            .change_context(ReconRuleError::InternalServerError)?
-    } else {
-        updated_rule
-    };
-
-    let updated_rule = if let Some(link_with_rule) = request.link_with_rule {
-        let update_data = match link_with_rule {
-            LinkWithRuleUpdate::Unset => None,
-            LinkWithRuleUpdate::Set { data } => Some(data),
-        };
-        let updated_strategy = update_strategy_with_link(updated_rule.strategy, update_data)?;
-
-        let recon_rule_update = ReconRuleUpdate::StrategyUpdate {
-            strategy: Box::new(updated_strategy),
         };
 
         state

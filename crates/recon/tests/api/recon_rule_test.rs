@@ -1425,7 +1425,6 @@ async fn update_recon_rule_success() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: Some("Updated Rule Name".to_string()),
         rule_description: Some("Updated Rule Description".to_string()),
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: None,
@@ -1484,7 +1483,6 @@ async fn update_recon_rule_wrong_profile() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: Some("Updated Rule Name".to_string()),
         rule_description: Some("Updated Rule Description".to_string()),
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: None,
@@ -1534,7 +1532,6 @@ async fn update_recon_rule_priority_success() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: Some(7),
         is_active: None,
@@ -1587,7 +1584,6 @@ async fn update_recon_rule_is_active_toggle() {
     let deactivate = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: Some(false),
@@ -1606,7 +1602,6 @@ async fn update_recon_rule_is_active_toggle() {
     let reactivate = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: Some(true),
@@ -1667,7 +1662,6 @@ async fn update_recon_rule_strategy_success() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: None,
@@ -1758,7 +1752,6 @@ async fn update_recon_rule_strategy_one_to_many_success() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: None,
@@ -1845,7 +1838,6 @@ async fn update_recon_rule_strategy_currency_mismatch() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: None,
         is_active: None,
@@ -1919,7 +1911,6 @@ async fn update_recon_rule_combined_fields() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: Some("Renamed Rule".to_string()),
         rule_description: Some("Renamed description".to_string()),
-        link_with_rule: None,
         aging_config: None,
         priority: Some(9),
         is_active: Some(false),
@@ -1984,7 +1975,6 @@ async fn update_recon_rule_priority_wrong_profile() {
     let update_request = ReconRuleUpdateRequest {
         rule_name: None,
         rule_description: None,
-        link_with_rule: None,
         aging_config: None,
         priority: Some(5),
         is_active: None,

@@ -12,8 +12,8 @@ use crate::{
         ApplicationResponse,
     },
     utils::transaction::{
-        get_linked_transaction_for_view, group_transaction_views, hydrate_transaction_rule_views,
-        ApiTransactionFilterStatusExt, TransactionEntryExt, TransactionEntryVecExt, TransactionExt,
+        group_transaction_views, hydrate_transaction_rule_views, ApiTransactionFilterStatusExt,
+        TransactionEntryExt, TransactionEntryVecExt, TransactionExt,
     },
 };
 use api_models::{
@@ -41,7 +41,6 @@ use diesel_models::{
 use diesel_models::{errors::DatabaseError, transaction::TransactionVersionUpdate};
 use error_stack::ResultExt;
 use external_services::user::interfaces::UserInterface;
-use futures::future;
 use recon_domain_models::{
     behaviour::{Conversion, ReverseConversion},
     transaction::{DomainTransaction, TransactionCreationData},
@@ -243,22 +242,9 @@ pub async fn list_transactions(
         .await
         .change_context(TransactionError::InternalServerError)?;
 
-    let grouped_view_with_linked_transactions =
-        future::try_join_all(grouped_views.into_iter().map(|view| {
-            let encryptor = state
-                .encryption_client
-                .get_encryptor_for_merchant(auth.merchant_id.clone());
-            async move {
-                let linked_transaction =
-                    get_linked_transaction_for_view(state, &view, &encryptor).await?;
-                TransactionResult::Ok((view, linked_transaction))
-            }
-        }))
-        .await?;
-
-    let response = grouped_view_with_linked_transactions
+    let response = grouped_views
         .into_iter()
-        .map(|(grouped_view, linked_transaction)| {
+        .map(|grouped_view| {
             let modified_by = grouped_view
                 .transaction
                 .modified_by
@@ -270,7 +256,7 @@ pub async fn list_transactions(
                         .ok_or(TransactionError::InternalServerError)
                 })
                 .transpose()?;
-            grouped_view.to_response(linked_transaction, modified_by)
+            grouped_view.to_response(modified_by)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -355,22 +341,9 @@ pub async fn list_transactions_v2(
         .await
         .change_context(TransactionError::InternalServerError)?;
 
-    let grouped_view_with_linked_transactions =
-        future::try_join_all(ordered_grouped_views.into_iter().map(|view| {
-            let encryptor = state
-                .encryption_client
-                .get_encryptor_for_merchant(auth.merchant_id.clone());
-            async move {
-                let linked_transaction =
-                    get_linked_transaction_for_view(state, &view, &encryptor).await?;
-                TransactionResult::Ok((view, linked_transaction))
-            }
-        }))
-        .await?;
-
-    let items = grouped_view_with_linked_transactions
+    let items = ordered_grouped_views
         .into_iter()
-        .map(|(grouped_view, linked_transaction)| {
+        .map(|grouped_view| {
             let modified_by = grouped_view
                 .transaction
                 .modified_by
@@ -382,7 +355,7 @@ pub async fn list_transactions_v2(
                         .ok_or(TransactionError::InternalServerError)
                 })
                 .transpose()?;
-            grouped_view.to_response(linked_transaction, modified_by)
+            grouped_view.to_response(modified_by)
         })
         .collect::<Result<Vec<_>, _>>()?;
 

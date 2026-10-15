@@ -686,36 +686,6 @@ impl Entry {
         })
     }
 
-    pub async fn find_non_expected_by_transaction_id_version_and_account(
-        conn: &PgPooledConn,
-        transaction_id: &str,
-        version: i32,
-        account_id: &str,
-    ) -> StorageResult<Option<Self>> {
-        let query = dsl::entry
-            .filter(dsl::logical_transaction_id.eq(transaction_id.to_owned()))
-            .filter(dsl::transaction_version.eq(version))
-            .filter(dsl::account_id.eq(account_id.to_owned()))
-            .filter(dsl::status.ne(EntryStatus::Expected))
-            .limit(1);
-
-        logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
-
-        let entries: Vec<Self> = generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn),
-            generics::db_metrics::DatabaseOperation::Filter,
-        )
-        .await
-        .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
-            format!(
-                "Error while finding non-expected entry for transaction_id: {transaction_id}, version: {version}, account_id: {account_id}"
-            )
-        })?;
-
-        Ok(entries.into_iter().next())
-    }
-
     pub async fn find_first_pending_source_by_transaction_id_and_version(
         conn: &PgPooledConn,
         transaction_id: &str,
