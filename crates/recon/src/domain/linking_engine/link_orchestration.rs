@@ -12,7 +12,6 @@ use crate::{
 };
 
 pub struct LinkProcessingContext {
-    pub domain_transaction: DomainTransaction,
     pub link_config: LinkConfig,
     pub entry_link_side: EntryLinkSide,
 }
@@ -44,7 +43,6 @@ pub async fn link_orchestration(
         .ok_or(report!(LinkingProcessingError::NoLinkConfigFound))?;
 
     Ok(LinkProcessingContext {
-        domain_transaction,
         link_config,
         entry_link_side,
     })

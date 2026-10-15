@@ -6,10 +6,10 @@ use common_types::entry_linking::{
 use common_types::metadata_schema::ProcessingModeProvider;
 use common_types::recon_rule::entry_field::EntryField;
 use common_utils::{encryption::Encryption, logging};
+use diesel_models::search_entry_link_key::{SearchEntryLinkKey, SearchEntryLinkKeyNew};
 use diesel_models::{
     entry::{Entry as DieselEntry, EntryUpdate},
     entry_link::EntryLinkNew,
-    entry_link_key::{EntryLinkKey, EntryLinkKeyNew},
 };
 use error_stack::{Report, ResultExt};
 use masking::Secret;
@@ -18,10 +18,11 @@ use recon_domain_models::{
 };
 use thiserror::Error;
 
+use crate::db::search_entry_link_key::SearchEntryLinkSearchCriteria;
 use crate::{
     db::{
-        entry_link_key::EntryLinkSearchCriteria, metadata_schema::MetadataSchemaInterface,
-        transaction::TransactionInterface, transformation::TransformationConfigInterface,
+        metadata_schema::MetadataSchemaInterface, transaction::TransactionInterface,
+        transformation::TransformationConfigInterface,
     },
     errors::linking_engine::{LinkingEngineError, LinkingEngineResult},
     process_linking_or_fail,
@@ -140,12 +141,7 @@ pub async fn process_entry_linking_core(
         async {
             link_processing_context
                 .link_config
-                .create_context(
-                    state,
-                    domain_entry,
-                    link_processing_context.domain_transaction,
-                    link_processing_context.entry_link_side,
-                )
+                .create_context(state, domain_entry, link_processing_context.entry_link_side)
                 .await
         },
         state,
@@ -198,16 +194,16 @@ pub async fn process_linking_error_context(
 
 pub enum EntryLinkContext {
     UnLinked {
-        entry_link_key_new: EntryLinkKeyNew,
+        entry_link_key_new: SearchEntryLinkKeyNew,
     },
     Linked {
-        entry_link_key: EntryLinkKeyNew,
-        entry_link_news: Vec<EntryLinkNew>,
+        entry_link_key: SearchEntryLinkKeyNew,
+        new_entry_links: Vec<EntryLinkNew>,
         matching_link_key_ids: Vec<String>,
     },
     PostedLinked {
-        entry_link_key: EntryLinkKeyNew,
-        entry_link_new: EntryLinkNew,
+        entry_link_key: SearchEntryLinkKeyNew,
+        new_entry_link: EntryLinkNew,
         matched_link_key_id: String,
     },
 }
@@ -217,7 +213,6 @@ pub trait LinkingEngine {
         &self,
         state: &AppState,
         domain_entry: DomainEntry,
-        domain_transaction: DomainTransaction,
         entry_link_side: EntryLinkSide,
     ) -> LinkProcessingResult<EntryLinkContext>;
 
@@ -225,7 +220,7 @@ pub trait LinkingEngine {
         &self,
         domain_entry: &DomainEntry,
         entry_link_side: EntryLinkSide,
-        matching_entry_link_keys: Vec<EntryLinkKey>,
+        matching_entry_link_keys: Vec<SearchEntryLinkKey>,
         encrypted_value: Encryption,
         hashed_value: Secret<String>,
     ) -> LinkProcessingResult<EntryLinkContext>;
@@ -234,7 +229,7 @@ pub trait LinkingEngine {
         &self,
         domain_entry: &DomainEntry,
         entry_link_side: EntryLinkSide,
-        matching_entry_link_keys: Vec<EntryLinkKey>,
+        matching_entry_link_keys: Vec<SearchEntryLinkKey>,
         encrypted_value: Encryption,
         hashed_value: Secret<String>,
     ) -> LinkProcessingResult<EntryLinkContext>;
@@ -244,11 +239,11 @@ pub trait LinkingEngine {
         domain_entry: &DomainEntry,
         entry_link_side: &EntryLinkSide,
         hashed_value: Secret<String>,
-    ) -> EntryLinkSearchCriteria;
+    ) -> SearchEntryLinkSearchCriteria;
 
     async fn process_context(
         &self,
         state: &AppState,
         context: EntryLinkContext,
-    ) -> LinkProcessingResult<EntryLinkKey>;
+    ) -> LinkProcessingResult<SearchEntryLinkKey>;
 }

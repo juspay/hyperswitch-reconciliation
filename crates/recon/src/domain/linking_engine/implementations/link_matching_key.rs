@@ -10,7 +10,7 @@ use common_types::{
 
 use crate::domain::{
     linking_engine::{LinkProcessingResult, LinkingProcessingError},
-    CompositeSearchIdentifierExt,
+    search_identifier::CompositeSearchIdentifierExt,
 };
 
 pub trait LinkSearchIdentifierExt {
