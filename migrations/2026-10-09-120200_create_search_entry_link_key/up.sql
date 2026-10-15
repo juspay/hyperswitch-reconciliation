@@ -14,5 +14,8 @@ CREATE TABLE search_entry_link_key (
     last_modified_at TIMESTAMP NOT NULL
 );
 
+CREATE UNIQUE INDEX uniq_idx_search_entry_link_key_entry_config
+    ON search_entry_link_key (entry_id, link_config_id);
+
 CREATE INDEX idx_search_entry_link_key_config_target_value
     ON search_entry_link_key (link_config_id, target_key, hashed_value);

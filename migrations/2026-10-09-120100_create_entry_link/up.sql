@@ -10,6 +10,9 @@ CREATE TABLE entry_link (
     last_modified_at TIMESTAMP NOT NULL
 );
 
+CREATE UNIQUE INDEX uniq_idx_entry_link_config_conf_tran
+    ON entry_link (link_config_id, confirmation_entry_id, transaction_entry_id);
+
 CREATE INDEX idx_entry_link_transaction_entry_id
     ON entry_link (transaction_entry_id);
 
