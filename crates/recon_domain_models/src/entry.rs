@@ -8,9 +8,10 @@ use crate::{
     type_encryption::CryptoOperation,
     EncryptionHandler,
 };
-use common_enums::{BalanceDirection, Currency, EntryStatus};
+use common_enums::{BalanceDirection, Currency, EntryLinkingStatus, EntryStatus};
 use common_types::{
     entry::EntryData,
+    entry_linking::{EntryLinkingData, EntryLinkingDataV1},
     recon_rule::entry_field::{EntryField, ExtractAccountId, ExtractFromEntryField},
     units::MinorUnit,
 };
@@ -49,6 +50,8 @@ pub struct DomainEntry {
     pub transformation_id: Option<String>,
     pub order_id: String,
     pub exposed_metadata: serde_json::Value,
+    pub linking_status: EntryLinkingStatus,
+    pub linking_data: EntryLinkingData,
 }
 
 #[async_trait::async_trait]
@@ -104,6 +107,8 @@ impl Conversion for DomainEntry {
             transformation_id: item.transformation_config_id,
             order_id: item.entry_identifier,
             exposed_metadata: item.exposed_metadata,
+            linking_status: item.linking_status,
+            linking_data: item.linking_data,
         })
     }
 
@@ -135,6 +140,8 @@ impl Conversion for DomainEntry {
             transformation_config_id: self.transformation_id,
             entry_identifier: self.order_id,
             exposed_metadata: self.exposed_metadata,
+            linking_status: (&self.linking_data).into(),
+            linking_data: self.linking_data,
         }
     }
 
@@ -162,6 +169,8 @@ impl Conversion for DomainEntry {
             transformation_config_id: self.transformation_id,
             entry_identifier: self.order_id,
             exposed_metadata: self.exposed_metadata,
+            linking_status: self.linking_status,
+            linking_data: self.linking_data,
         }
     }
 }
@@ -251,6 +260,8 @@ impl DomainEntry {
             transformation_id: data.transformation_id,
             order_id: data.order_id,
             exposed_metadata: data.exposed_metadata,
+            linking_status: EntryLinkingStatus::Pending,
+            linking_data: EntryLinkingData::V1(EntryLinkingDataV1::Pending),
         }
     }
 
@@ -283,6 +294,8 @@ impl DomainEntry {
             transformation_id: None,
             order_id: data.order_id.clone(),
             exposed_metadata: serde_json::json!({}),
+            linking_status: EntryLinkingStatus::NotApplicable,
+            linking_data: EntryLinkingData::V1(EntryLinkingDataV1::NotApplicable),
         }
     }
 }
