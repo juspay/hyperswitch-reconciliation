@@ -7,11 +7,11 @@ use diesel::{AsChangeset, Insertable, Queryable};
 use masking::Secret;
 use time::PrimitiveDateTime;
 
-use crate::schema::entry_link_key;
+use crate::schema::search_entry_link_key;
 
 #[derive(Clone, Debug, Queryable)]
-#[diesel(table_name = entry_link_key)]
-pub struct EntryLinkKey {
+#[diesel(table_name = search_entry_link_key)]
+pub struct SearchEntryLinkKey {
     pub id: String,
     pub profile_id: String,
     pub account_id: String,
@@ -28,8 +28,8 @@ pub struct EntryLinkKey {
 }
 
 #[derive(Clone, Debug, Insertable)]
-#[diesel(table_name = entry_link_key)]
-pub struct EntryLinkKeyNew {
+#[diesel(table_name = search_entry_link_key)]
+pub struct SearchEntryLinkKeyNew {
     pub id: String,
     pub profile_id: String,
     pub account_id: String,
@@ -45,7 +45,7 @@ pub struct EntryLinkKeyNew {
     pub last_modified_at: PrimitiveDateTime,
 }
 
-impl EntryLinkKeyNew {
+impl SearchEntryLinkKeyNew {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         profile_id: String,
@@ -81,23 +81,23 @@ impl EntryLinkKeyNew {
 }
 
 #[derive(Debug, AsChangeset)]
-#[diesel(table_name = entry_link_key)]
-pub struct EntryLinkKeyUpdateInternal {
+#[diesel(table_name = search_entry_link_key)]
+pub struct SearchEntryLinkKeyUpdateInternal {
     pub status: EntryLinkKeyStatus,
     pub last_modified_at: PrimitiveDateTime,
 }
 
 #[derive(Debug, Clone)]
-pub enum EntryLinkKeyUpdate {
+pub enum SearchEntryLinkKeyUpdate {
     StatusUpdate { status: EntryLinkKeyStatus },
 }
 
-impl From<EntryLinkKeyUpdate> for EntryLinkKeyUpdateInternal {
-    fn from(entry_link_key_update: EntryLinkKeyUpdate) -> Self {
+impl From<SearchEntryLinkKeyUpdate> for SearchEntryLinkKeyUpdateInternal {
+    fn from(search_entry_link_key_update: SearchEntryLinkKeyUpdate) -> Self {
         let last_modified_at = date_time::now();
 
-        match entry_link_key_update {
-            EntryLinkKeyUpdate::StatusUpdate { status } => Self {
+        match search_entry_link_key_update {
+            SearchEntryLinkKeyUpdate::StatusUpdate { status } => Self {
                 status,
                 last_modified_at,
             },

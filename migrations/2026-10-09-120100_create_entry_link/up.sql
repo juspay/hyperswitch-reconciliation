@@ -5,8 +5,6 @@ CREATE TABLE entry_link (
     link_config_id VARCHAR(64) NOT NULL,
     transaction_entry_id VARCHAR(64) NOT NULL,
     confirmation_entry_id VARCHAR(64) NOT NULL,
-    encrypted_key BYTEA NOT NULL,
-    hashed_key VARCHAR(64) NOT NULL,
     status TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     last_modified_at TIMESTAMP NOT NULL

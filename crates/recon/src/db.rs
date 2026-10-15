@@ -1,7 +1,6 @@
 pub mod account;
 pub mod business_profile;
 pub mod entry;
-pub mod entry_link_key;
 pub mod ingestion_config;
 pub mod ingestion_history;
 pub mod link_config;
@@ -11,6 +10,7 @@ pub mod recon_rule;
 pub mod recon_rule_account;
 pub mod search_duplicate;
 pub mod search_entry_key;
+pub mod search_entry_link_key;
 pub mod search_expectation;
 pub mod search_group;
 pub mod staging_entry;

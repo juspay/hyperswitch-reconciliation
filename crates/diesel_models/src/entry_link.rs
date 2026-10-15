@@ -1,9 +1,6 @@
 use common_enums::EntryLinkStatus;
-use common_utils::{
-    date_time, encryption::Encryption, id_generation::generate_id_with_default_len,
-};
+use common_utils::{date_time, id_generation::generate_id_with_default_len};
 use diesel::{Insertable, Queryable};
-use masking::Secret;
 use time::PrimitiveDateTime;
 
 use crate::schema::entry_link;
@@ -17,8 +14,6 @@ pub struct EntryLink {
     pub link_config_id: String,
     pub transaction_entry_id: String,
     pub confirmation_entry_id: String,
-    pub encrypted_key: Encryption,
-    pub hashed_key: Secret<String>,
     pub status: EntryLinkStatus,
     pub created_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
@@ -33,23 +28,18 @@ pub struct EntryLinkNew {
     pub link_config_id: String,
     pub transaction_entry_id: String,
     pub confirmation_entry_id: String,
-    pub encrypted_key: Encryption,
-    pub hashed_key: Secret<String>,
     pub status: EntryLinkStatus,
     pub created_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
 }
 
 impl EntryLinkNew {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         profile_id: String,
         account_id: String,
         link_config_id: String,
         transaction_entry_id: String,
         confirmation_entry_id: String,
-        encrypted_key: Encryption,
-        hashed_key: Secret<String>,
         status: EntryLinkStatus,
     ) -> Self {
         let now = date_time::now();
@@ -61,8 +51,6 @@ impl EntryLinkNew {
             link_config_id,
             transaction_entry_id,
             confirmation_entry_id,
-            encrypted_key,
-            hashed_key,
             status,
             created_at: now,
             last_modified_at: now,

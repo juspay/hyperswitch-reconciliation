@@ -5,11 +5,11 @@ ALTER TABLE entry
 UPDATE entry
 SET linking_status = CASE
         WHEN status = 'expected' THEN 'not_applicable'
-        ELSE 'pending'
+        ELSE 'failed'
     END,
     linking_data = CASE
         WHEN status = 'expected' THEN '{"data_version":"v1","status":"not_applicable"}'::jsonb
-        ELSE '{"data_version":"v1","status":"pending"}'::jsonb
+        ELSE '{"data_version":"v1","status":"failed","failure_data_version":"v1","error_type_version":"v1","error_type":"no_link_config_found"}'::jsonb
     END;
 
 ALTER TABLE entry
@@ -19,3 +19,4 @@ ALTER TABLE entry
 CREATE INDEX idx_entry_linking_pending_created_at_id
     ON entry (created_at, id)
     WHERE linking_status = 'pending';
+
