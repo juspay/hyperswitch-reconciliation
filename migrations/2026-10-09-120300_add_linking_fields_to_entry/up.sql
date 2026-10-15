@@ -9,7 +9,7 @@ SET linking_status = CASE
     END,
     linking_data = CASE
         WHEN status = 'expected' THEN '{"data_version":"v1","status":"not_applicable"}'::jsonb
-        ELSE '{"data_version":"v1","status":"failed","failure_data_version":"v1","error_type_version":"v1","error_type":"no_link_config_found"}'::jsonb
+        ELSE '{"data_version":"v1","status":"failed","failure_data_version":"v1","error_type":{"error_type_version":"v1","error_type":"no_link_config_found"}}'::jsonb
     END;
 
 ALTER TABLE entry
