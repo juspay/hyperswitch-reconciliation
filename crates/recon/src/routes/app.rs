@@ -4,7 +4,7 @@ use actix_web::Scope;
 use tokio::sync::watch;
 use utoipa_swagger_ui::SwaggerUi;
 
-use common_enums::ReconProcessorStatus;
+use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
 use recon_interfaces::secrets_interface::secret_state::RawSecret;
 
 use crate::config::{Config, IngestionServiceConfig};
@@ -20,8 +20,8 @@ const INGESTION_UPLOAD_MEMORY_LIMIT_BYTES: usize = 25 * 1024 * 1024;
 
 use super::{
     account, api_docs, audit_trail, auth, business_profile, entry, exception_management, health,
-    ingestion, merchant_account, metadata_schema, overview, recon_engine, recon_rule, reporting,
-    staging_entry, transaction, transformation,
+    ingestion, linking_processor, merchant_account, metadata_schema, overview, recon_engine,
+    recon_rule, reporting, staging_entry, transaction, transformation,
 };
 
 #[derive(Clone)]
@@ -38,6 +38,7 @@ pub struct AppState {
     pub faas: FaasHandler,
     pub ingestion: IngestionState,
     pub recon_processor_status: watch::Sender<ReconProcessorStatus>,
+    pub linking_processor_status: watch::Sender<LinkingProcessorStatus>,
     pub encryption_client: ApplicationEncryptionClient,
     pub user_client: external_services::UserClient,
 }
@@ -291,6 +292,24 @@ impl ReconEngine {
                         web::resource("/process_duplicate")
                             .route(web::post().to(recon_engine::process_duplicate_staging_entry)),
                     ),
+            )
+    }
+}
+
+pub struct LinkingProcessor;
+
+impl LinkingProcessor {
+    pub fn server(state: AppState) -> Scope {
+        web::scope("/linking_processor")
+            .app_data(web::Data::new(state))
+            .service(
+                web::resource("/status")
+                    .route(web::get().to(linking_processor::get_processor_status))
+                    .route(web::post().to(linking_processor::set_processor_status)),
+            )
+            .service(
+                web::resource("/{entry_id}/enqueue")
+                    .route(web::post().to(linking_processor::enqueue_entry)),
             )
     }
 }
