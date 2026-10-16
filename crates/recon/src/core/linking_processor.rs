@@ -1,5 +1,5 @@
 use api_models::linking_processor::LinkingProcessorStatusResponse;
-use common_enums::LinkingProcessorStatus;
+use common_enums::{EntryLinkingStatus, LinkingProcessorStatus};
 use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
 use common_utils::{auth::AuthContext, logging};
 use diesel_models::entry::EntryUpdate;
@@ -54,6 +54,15 @@ pub async fn enqueue_entry(
         .find_account_by_profile_id_and_account_id(&auth_context.profile_id, &entry.account_id)
         .await
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
+
+    let expected_statuses = EntryLinkingStatus::enqueuable_statuses();
+    if !expected_statuses.contains(&entry.linking_status) {
+        return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
+            current_status: entry.linking_status,
+            expected_statuses,
+        }
+        .into());
+    }
 
     state
         .store

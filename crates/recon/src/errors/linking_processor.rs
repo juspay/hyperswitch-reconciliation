@@ -1,3 +1,4 @@
+use common_enums::EntryLinkingStatus;
 use error_stack::Report;
 use thiserror::Error;
 
@@ -13,6 +14,14 @@ pub enum LinkingProcessorError {
 
     #[error("Entry not found")]
     EntryNotFound,
+
+    #[error(
+        "Invalid entry linking status: {current_status}. Expected statuses: {expected_statuses:?}"
+    )]
+    InvalidEntryLinkingStatus {
+        current_status: EntryLinkingStatus,
+        expected_statuses: Vec<EntryLinkingStatus>,
+    },
 }
 
 pub type LinkingProcessorResult<T> = Result<T, Report<LinkingProcessorError>>;
@@ -23,13 +32,16 @@ impl ErrorSwitchFrom<LinkingProcessorError> for ApiErrorPayload {
     fn switch_from(error: &LinkingProcessorError) -> Self {
         match error {
             LinkingProcessorError::InternalServerError => Self::InternalServerError(ApiError::new(
-                "LE",
+                "LP",
                 800,
                 "An internal error occurred",
                 None,
             )),
             LinkingProcessorError::EntryNotFound => {
-                Self::NotFound(ApiError::new("LE", 801, "Entry not found", None))
+                Self::NotFound(ApiError::new("LP", 801, "Entry not found", None))
+            }
+            LinkingProcessorError::InvalidEntryLinkingStatus { .. } => {
+                Self::BadRequest(ApiError::new("LP", 802, error.to_string(), None))
             }
         }
     }

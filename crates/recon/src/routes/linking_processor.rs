@@ -79,6 +79,7 @@ pub async fn set_processor_status(
     ),
     responses(
         (status = 200, description = "Entry linking status and data reset to pending for processing"),
+        (status = 400, description = "Invalid entry linking status - only failed entries can be enqueued"),
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
         (status = 403, description = "Forbidden - Missing transaction write permission"),
         (status = 404, description = "Entry not found or account does not belong to authenticated user's profile"),

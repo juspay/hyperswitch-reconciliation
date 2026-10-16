@@ -49,6 +49,12 @@ pub enum EntryLinkingStatus {
     NotApplicable,
 }
 
+impl EntryLinkingStatus {
+    pub fn enqueuable_statuses() -> Vec<Self> {
+        vec![Self::Failed]
+    }
+}
+
 #[derive(
     Clone,
     Copy,
