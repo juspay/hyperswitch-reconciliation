@@ -90,6 +90,12 @@ Validates staging entry belongs to expected group, then processes.
 - `versioned` rebuilds the transaction as a new version and is the default.
 - `incremental_while_expected` appends to the current version only until a target arrives.
 
+### Completion Policy
+<!-- AI-UPDATED: 2026-10-18 - Completion is independent of accumulation versioning -->
+- `completion_policy: keep_open` is the default: late sources continue evolving the same transaction, except after a currency mismatch.
+- `completion_policy: close_on_target` archives the search group and expectation without replacements once the target is incorporated. Amount differences are final mismatches; matched and data/currency mismatch outcomes retain their meaning.
+- Later sources with the same grouping value start a new transaction. Rule changes apply on the next processing event, without backfill or reopening archived groups.
+
 ## OneToOneManyMany
 
 **Entry Pattern**: Many source entries → many target entries  

@@ -5,7 +5,7 @@ use common_types::recon_rule::{
     search_identifier::SearchIdentifier,
     strategies::{
         one_to_many_strategy::{FixedSplitValue, PercentageSplitValue},
-        one_to_one_strategy::SourceAccumulationMode,
+        one_to_one_strategy::{ManySingleCompletionPolicy, SourceAccumulationMode},
     },
     tolerance_config::ToleranceConfig,
     trigger::Trigger,
@@ -109,6 +109,8 @@ pub struct OneToOneManySingle {
     pub target_account: OneToOneManySingleTarget,
     #[serde(default)]
     pub source_accumulation_mode: SourceAccumulationMode,
+    #[serde(default)]
+    pub completion_policy: ManySingleCompletionPolicy,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

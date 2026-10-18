@@ -18,7 +18,9 @@ use common_enums::{
 use common_types::recon_rule::grouping_field::GroupingField;
 use common_types::recon_rule::match_rules::MatchRules;
 use common_types::recon_rule::search_identifier::SearchIdentifier;
-use common_types::recon_rule::strategies::one_to_one_strategy::SourceAccumulationMode;
+use common_types::recon_rule::strategies::one_to_one_strategy::{
+    ManySingleCompletionPolicy, SourceAccumulationMode,
+};
 use common_types::recon_rule::tolerance_config::ToleranceConfig;
 use common_types::recon_rule::trigger::Trigger;
 use common_types::{recon_rule::entry_field::EntryField, units::FloatMajorUnit};
@@ -324,6 +326,7 @@ pub struct ReconRuleCustomConfig {
     pub grouping_field: HashMap<String, GroupingField>,
     pub trigger: HashMap<String, Trigger>,
     pub source_accumulation_mode: SourceAccumulationMode,
+    pub completion_policy: ManySingleCompletionPolicy,
 }
 
 impl ReconRuleCustomConfig {
@@ -374,6 +377,11 @@ impl ReconRuleCustomConfig {
         self
     }
 
+    pub fn set_completion_policy(mut self, policy: ManySingleCompletionPolicy) -> Self {
+        self.completion_policy = policy;
+        self
+    }
+
     pub fn populate_account_ids(self, accounts: HashMap<String, String>) -> Self {
         fn remap_keys<V>(
             map: HashMap<String, V>,
@@ -406,6 +414,7 @@ impl ReconRuleCustomConfig {
             grouping_field: remap_keys(self.grouping_field, &accounts),
             trigger: remap_keys(self.trigger, &accounts),
             source_accumulation_mode: self.source_accumulation_mode,
+            completion_policy: self.completion_policy,
         }
     }
 }

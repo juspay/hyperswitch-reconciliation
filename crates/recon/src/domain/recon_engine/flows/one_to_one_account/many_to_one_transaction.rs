@@ -902,57 +902,70 @@ impl ReconEngine for OneToOneManySingleV1 {
                     AmountMismatchDataV1::Mismatch,
                 )),
             },
-            MatchOutcome::Good(balance_state) => match balance_state {
-                BalanceState::Balanced => {
-                    TransactionDataV3::Matched(MatchedData::V1(MatchedDataV1::Auto))
+            MatchOutcome::Good(balance_state) => {
+                let amount_mismatch = if self.completion_policy.is_close_on_target() {
+                    AmountMismatchDataV1::Mismatch
+                } else {
+                    AmountMismatchDataV1::Expected
+                };
+                match balance_state {
+                    BalanceState::Balanced => {
+                        TransactionDataV3::Matched(MatchedData::V1(MatchedDataV1::Auto))
+                    }
+                    BalanceState::BalancedWithTolerance => {
+                        TransactionDataV3::Matched(MatchedData::V1(MatchedDataV1::WithTolerance))
+                    }
+                    BalanceState::UnderAmount => {
+                        TransactionDataV3::UnderAmount(AmountMismatchData::V1(amount_mismatch))
+                    }
+                    BalanceState::OverAmount => {
+                        TransactionDataV3::OverAmount(AmountMismatchData::V1(amount_mismatch))
+                    }
                 }
-                BalanceState::BalancedWithTolerance => {
-                    TransactionDataV3::Matched(MatchedData::V1(MatchedDataV1::WithTolerance))
-                }
-                BalanceState::UnderAmount => TransactionDataV3::UnderAmount(
-                    AmountMismatchData::V1(AmountMismatchDataV1::Expected),
-                ),
-                BalanceState::OverAmount => TransactionDataV3::OverAmount(AmountMismatchData::V1(
-                    AmountMismatchDataV1::Expected,
-                )),
-            },
+            }
         });
 
-        let search_group_creation = match match_outcome {
-            MatchOutcome::CurrencyMismatch => None,
-            MatchOutcome::NoTarget
-            | MatchOutcome::DataMismatch(
-                BalanceState::Balanced
-                | BalanceState::OverAmount
-                | BalanceState::UnderAmount
-                | BalanceState::BalancedWithTolerance,
-            )
-            | MatchOutcome::Good(
-                BalanceState::Balanced
-                | BalanceState::BalancedWithTolerance
-                | BalanceState::OverAmount
-                | BalanceState::UnderAmount,
-            ) => {
-                let grouping_value = self
-                    .source_account
-                    .grouping_field
-                    .extract_value(&first_source_entry)?;
+        let search_group_creation =
+            match (&match_outcome, self.completion_policy.is_close_on_target()) {
+                (MatchOutcome::CurrencyMismatch, _)
+                | (MatchOutcome::Good(_) | MatchOutcome::DataMismatch(_), true) => None,
+                (MatchOutcome::NoTarget, _)
+                | (
+                    MatchOutcome::DataMismatch(
+                        BalanceState::Balanced
+                        | BalanceState::OverAmount
+                        | BalanceState::UnderAmount
+                        | BalanceState::BalancedWithTolerance,
+                    )
+                    | MatchOutcome::Good(
+                        BalanceState::Balanced
+                        | BalanceState::BalancedWithTolerance
+                        | BalanceState::OverAmount
+                        | BalanceState::UnderAmount,
+                    ),
+                    false,
+                ) => {
+                    let grouping_value = self
+                        .source_account
+                        .grouping_field
+                        .extract_value(&first_source_entry)?;
 
-                let hashed_grouping_value = hash_string(&grouping_value);
-                let encrypted_grouping_value = encryptor
-                    .encrypt_string(grouping_value)
-                    .await
-                    .change_context(ProcessingError::InternalError(
-                        "Failed to encrypt grouping value".to_string(),
-                    ))?;
+                    let hashed_grouping_value = hash_string(&grouping_value);
+                    let encrypted_grouping_value =
+                        encryptor
+                            .encrypt_string(grouping_value)
+                            .await
+                            .change_context(ProcessingError::InternalError(
+                                "Failed to encrypt grouping value".to_string(),
+                            ))?;
 
-                Some(SearchGroupCreation {
-                    encrypted_grouping_value,
-                    hashed_grouping_value,
-                    merchant_id: data.merchant_id.clone(),
-                })
-            }
-        };
+                    Some(SearchGroupCreation {
+                        encrypted_grouping_value,
+                        hashed_grouping_value,
+                        merchant_id: data.merchant_id.clone(),
+                    })
+                }
+            };
 
         // Build the search expectation when an Expected placeholder was
         // produced — for ManyToOne that is only the `NoTarget` outcome.

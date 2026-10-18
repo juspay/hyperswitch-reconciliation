@@ -120,6 +120,17 @@ Located in `source_account.grouping_field` - groups multiple source entries for 
 - `versioned` (default) — rebuild the transaction as a new version.
 - `incremental_while_expected` — append the source to the current version while the transaction is still waiting for its target; all other states use normal versioning.
 
+### Completion Policy (ManySingle only)
+<!-- AI-UPDATED: 2026-10-18 - Optional closure on target arrival -->
+`completion_policy` is independent of `source_accumulation_mode` and defaults to `keep_open` for omitted request fields and existing stored rules:
+
+- `keep_open` preserves source accumulation after target arrival, except for currency mismatches.
+- `close_on_target` stops source accumulation once a target is successfully incorporated, regardless of the match outcome. Amount differences become `UnderAmount(Mismatch)` / `OverAmount(Mismatch)` rather than `Expected`.
+
+Both modes keep the search group and expectation while waiting for a target. Closure archives the old search artifacts without replacements; a later source with the same grouping value starts a new transaction.
+
+Rule updates apply on the next processing event, without backfilling existing groups. A source joining a previously open group that already has a target is included before closure. Switching back to `keep_open` does not reopen archived groups.
+
 ### OneToMany Split Logic
 `target_accounts` contains split configuration:
 - **Percentage split**: Each target gets % of source amount (must sum to 1.0)

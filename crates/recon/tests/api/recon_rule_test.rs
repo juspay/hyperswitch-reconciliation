@@ -205,6 +205,7 @@ fn create_recon_rule_request(
                     )))
                     .clone(),
                 source_accumulation_mode: rule_custom_config.source_accumulation_mode,
+                completion_policy: rule_custom_config.completion_policy,
             }))
         }
         ReconRuleEngine::OneToOneManyManyV1(_) => {

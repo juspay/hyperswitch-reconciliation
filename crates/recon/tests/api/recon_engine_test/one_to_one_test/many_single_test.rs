@@ -21,6 +21,7 @@ use common_types::{
 };
 use rstest::rstest;
 
+pub mod completion_policy_test;
 pub mod incremental_test;
 
 #[rstest]

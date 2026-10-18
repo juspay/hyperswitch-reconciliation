@@ -159,6 +159,7 @@ impl ReconStrategyExt for OneToOneManySingleV1 {
             source_account: self.source_account.to_api_response(),
             target_account: self.target_account.to_api_response(),
             source_accumulation_mode: self.source_accumulation_mode,
+            completion_policy: self.completion_policy,
         }
     }
 }
@@ -321,6 +322,7 @@ impl ReconStrategyApiExt for OneToOneManySingleApi {
             target_account: self.target_account.to_diesel_model(),
             link_with_rule: None,
             source_accumulation_mode: self.source_accumulation_mode,
+            completion_policy: self.completion_policy,
         })
     }
 }

@@ -557,9 +557,16 @@
 - **Per-flow rules** (post no-archive change):
   - `OneToOneSingleSingleV1` — `search_expectation: Some` only on `NoTarget`. Archived after Matched. **Intentional, unchanged by this work**: 1 source + 1 target means nothing more to route.
   - `OneToOneSingleManyV1` — `search_expectation: Some` for every outcome except `CurrencyMismatch` (now includes `Good(Balanced)` and `Good(BalancedWithTolerance)`). Late target stagings after a Matched outcome therefore route into the same transaction via the kept-active row.
-  - `OneToOneManySingleV1` — `search_group: Some` for every outcome except `CurrencyMismatch` (now includes Matched). `search_expectation` behavior unchanged — only created on `NoTarget`, because the target side is single.
+  - `OneToOneManySingleV1` — with the default `completion_policy: keep_open`, `search_group: Some` for every outcome except `CurrencyMismatch` (now includes Matched). `search_expectation` behavior unchanged — only created on `NoTarget`, because the target side is single.
   - `OneToOneManyManyV1` — both `search_group` and `search_expectation: Some` for every outcome except `CurrencyMismatch` (now includes Matched on both).
 - **Consequence**: a fully Matched transaction is now reachable from both source-side (via search_group) and target-side (via search_expectation) routing. Late entries reopen it to `OverAmount(Expected)` / `UnderAmount(Expected)` instead of orphaning a new transaction. This is the entire point of the no-archive change.
+
+<!-- AI-UPDATED: 2026-10-18 - ManySingle opt-in closure on target arrival -->
+### ManySingle Completion Policy
+
+- **`close_on_target`**: A successfully incorporated target ends automatic source accumulation even when amounts or metadata differ. `determine_status` emits no replacement search group and uses `AmountMismatchDataV1::Mismatch` for amount differences; the existing atomic version replacement archives the old search artifacts. Entry classifications are unchanged, matching SingleSingle's final-mismatch semantics.
+- **Compatibility**: Omitted policy defaults to `keep_open`. Both accumulation modes support either policy; source-only incremental appends remain eligible until a target arrives.
+- **Late sources and rule updates**: A closed group cannot route later sources, so they start a new transaction. Updating a rule does not backfill: the next entry reevaluates an existing open group, including that entry before closure if a target already exists. Returning to `keep_open` does not recreate archived groups.
 
 <!-- AI-UPDATED: 2026-07-20 - ManySingle no-target source append fast path -->
 ### ManySingle Expected Source Append

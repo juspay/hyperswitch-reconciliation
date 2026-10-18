@@ -93,6 +93,23 @@ pub enum SourceAccumulationMode {
     IncrementalWhileExpected,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ManySingleCompletionPolicy {
+    #[default]
+    KeepOpen,
+    CloseOnTarget,
+}
+
+impl ManySingleCompletionPolicy {
+    pub fn is_close_on_target(&self) -> bool {
+        match self {
+            Self::CloseOnTarget => true,
+            Self::KeepOpen => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct OneToOneManySingleV1 {
     pub search_identifier: search_identifier::SearchIdentifier,
@@ -102,6 +119,8 @@ pub struct OneToOneManySingleV1 {
     pub link_with_rule: Option<LinkWithRule>,
     #[serde(default)]
     pub source_accumulation_mode: SourceAccumulationMode,
+    #[serde(default)]
+    pub completion_policy: ManySingleCompletionPolicy,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
