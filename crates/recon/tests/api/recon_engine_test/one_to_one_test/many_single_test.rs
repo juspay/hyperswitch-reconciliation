@@ -21,6 +21,7 @@ use common_types::{
 };
 use rstest::rstest;
 
+#[allow(clippy::as_conversions)]
 pub mod completion_policy_test;
 pub mod incremental_test;
 
