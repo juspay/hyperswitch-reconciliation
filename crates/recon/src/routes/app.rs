@@ -20,8 +20,8 @@ const INGESTION_UPLOAD_MEMORY_LIMIT_BYTES: usize = 25 * 1024 * 1024;
 
 use super::{
     account, api_docs, audit_trail, auth, business_profile, entry, exception_management, health,
-    ingestion, linking_processor, merchant_account, metadata_schema, overview, recon_engine,
-    recon_rule, reporting, staging_entry, transaction, transformation,
+    ingestion, link_config, linking_processor, merchant_account, metadata_schema, overview,
+    recon_engine, recon_rule, reporting, staging_entry, transaction, transformation,
 };
 
 #[derive(Clone)]
@@ -267,6 +267,25 @@ impl ReconRule {
             )
             .service(
                 web::resource("/{rule_id}").route(web::put().to(recon_rule::update_recon_rule)),
+            )
+    }
+}
+
+pub struct LinkConfig;
+
+impl LinkConfig {
+    pub fn server(state: AppState) -> Scope {
+        web::scope("/link_configs")
+            .app_data(web::Data::new(state))
+            .service(
+                web::resource("")
+                    .route(web::post().to(link_config::create_link_config))
+                    .route(web::get().to(link_config::list_link_configs_by_profile_id)),
+            )
+            .service(
+                web::resource("/{link_config_id}")
+                    .route(web::get().to(link_config::get_link_config_by_id))
+                    .route(web::put().to(link_config::update_link_config)),
             )
     }
 }
