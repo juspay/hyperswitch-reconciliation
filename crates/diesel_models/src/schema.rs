@@ -110,34 +110,6 @@ diesel::table! {
     use diesel::sql_types::*;
     use common_enums::diesel_exports::*;
 
-    search_entry_link_key (id) {
-        #[max_length = 64]
-        id -> Varchar,
-        #[max_length = 64]
-        profile_id -> Varchar,
-        #[max_length = 64]
-        account_id -> Varchar,
-        #[max_length = 64]
-        link_config_id -> Varchar,
-        #[max_length = 64]
-        entry_id -> Varchar,
-        #[max_length = 64]
-        rule_id -> Varchar,
-        target_side -> Text,
-        status -> Text,
-        target_key -> Text,
-        encrypted_value -> Bytea,
-        #[max_length = 64]
-        hashed_value -> Varchar,
-        created_at -> Timestamp,
-        last_modified_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use common_enums::diesel_exports::*;
-
     ingestion_config (id) {
         #[max_length = 64]
         id -> Varchar,
@@ -333,6 +305,34 @@ diesel::table! {
     use diesel::sql_types::*;
     use common_enums::diesel_exports::*;
 
+    search_entry_link_key (id) {
+        #[max_length = 64]
+        id -> Varchar,
+        #[max_length = 64]
+        profile_id -> Varchar,
+        #[max_length = 64]
+        account_id -> Varchar,
+        #[max_length = 64]
+        link_config_id -> Varchar,
+        #[max_length = 64]
+        entry_id -> Varchar,
+        #[max_length = 64]
+        rule_id -> Varchar,
+        target_side -> Text,
+        status -> Text,
+        target_key -> Text,
+        encrypted_value -> Bytea,
+        #[max_length = 64]
+        hashed_value -> Varchar,
+        created_at -> Timestamp,
+        last_modified_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use common_enums::diesel_exports::*;
+
     search_expectation (id) {
         #[max_length = 64]
         id -> Varchar,
@@ -506,7 +506,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     business_profile,
     entry,
     entry_link,
-    search_entry_link_key,
     ingestion_config,
     ingestion_history,
     link_config,
@@ -516,6 +515,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     recon_rule_account,
     search_duplicate,
     search_entry_key,
+    search_entry_link_key,
     search_expectation,
     search_group,
     staging_entry,
