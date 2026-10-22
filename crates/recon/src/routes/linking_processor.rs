@@ -130,7 +130,12 @@ pub async fn process_entry(
         &http_req,
         state,
         |state, auth| async move {
-            Box::pin(core::linking_processor::process_entry(state, path.into_inner(), auth)).await
+            Box::pin(core::linking_processor::process_entry(
+                state,
+                path.into_inner(),
+                auth,
+            ))
+            .await
         },
     )
     .await

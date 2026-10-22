@@ -1,4 +1,8 @@
-use api_models::entry::{ApiEntryListFilters, EntryListPage, GetEntryResponse, ListEntriesRequest};
+use std::collections::HashMap;
+
+use api_models::entry::{
+    ApiEntryListFilters, EntryListPage, GetEntryResponse, LinkedEntryResponse, ListEntriesRequest,
+};
 use common_types::amount::AmountResponse;
 use common_types::entry::{EntryListFilters, ListEntriesFilters};
 use common_utils::auth::AuthContext;
@@ -10,7 +14,10 @@ use recon_domain_models::entry::DomainEntry;
 
 use crate::utils::entry::EntryDataExt;
 use crate::{
-    db::{account::AccountInterface, entry::EntryInterface, transaction::TransactionInterface},
+    db::{
+        account::AccountInterface, entry::EntryInterface, entry_link::EntryLinkInterface,
+        transaction::TransactionInterface,
+    },
     domain::entry::{ENTRY_LIST_DEFAULT_LIMIT, ENTRY_LIST_MAX_LIMIT},
     errors::{
         conversions::StorageErrorExt,
@@ -241,4 +248,58 @@ async fn entries_to_response(
         })
     }))
     .await
+}
+
+pub async fn list_linked_entries(
+    state: AppState,
+    entry_id: String,
+    auth_context: AuthContext,
+) -> EntryResponse<Vec<LinkedEntryResponse>> {
+    let entry = state
+        .store
+        .find_entry_by_id(&entry_id)
+        .await
+        .to_not_found_response(|| EntryError::EntryNotFound)?;
+
+    state
+        .store
+        .find_account_by_profile_id_and_account_id(&auth_context.profile_id, &entry.account_id)
+        .await
+        .to_not_found_response(|| EntryError::EntryNotFound)?;
+
+    let linked_entries = state
+        .store
+        .list_linked_entries_by_entry_id_and_profile_id(&entry_id, &auth_context.profile_id)
+        .await
+        .change_context(EntryError::InternalServerError)?;
+
+    let (links, entries): (Vec<_>, Vec<_>) = linked_entries.into_iter().unzip();
+    let entries_by_id: HashMap<_, _> = entries_to_response(&state, &auth_context, entries)
+        .await?
+        .into_iter()
+        .map(|entry| (entry.entry_id.clone(), entry))
+        .collect();
+    let response = links
+        .into_iter()
+        .map(|link| {
+            let counterpart_id = if link.transaction_entry_id == entry_id {
+                &link.confirmation_entry_id
+            } else {
+                &link.transaction_entry_id
+            };
+            let entry = entries_by_id
+                .get(counterpart_id)
+                .cloned()
+                .ok_or(EntryError::InternalServerError)?;
+
+            Ok(LinkedEntryResponse {
+                entry_link_id: link.id,
+                link_config_id: link.link_config_id,
+                status: link.status,
+                entry,
+            })
+        })
+        .collect::<EntryResult<Vec<_>>>()?;
+
+    Ok(ApplicationResponse::json(response))
 }

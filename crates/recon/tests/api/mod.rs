@@ -18,6 +18,7 @@ pub mod exception_management_test;
 pub mod health_test;
 pub mod ingestion_test;
 pub mod link_config_test;
+pub mod linking_processor;
 pub mod manual_reconciliation_v2_test;
 pub mod merchant_account_test;
 pub mod metadata_schema_test;

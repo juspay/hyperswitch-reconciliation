@@ -184,6 +184,10 @@ impl Entry {
             .app_data(web::Data::new(state.clone()))
             .service(web::resource("/list").route(web::post().to(entry::list_entries)))
             .service(web::resource("/{entry_id}").route(web::get().to(entry::get_entry_by_id)))
+            .service(
+                web::resource("/{entry_id}/linked_entries")
+                    .route(web::get().to(entry::list_linked_entries)),
+            )
     }
 }
 
