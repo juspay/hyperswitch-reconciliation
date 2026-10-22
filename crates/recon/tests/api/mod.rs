@@ -9,6 +9,7 @@
     clippy::large_futures
 )]
 pub mod account_test;
+pub mod api_key_store_test;
 pub mod audit_trail_test;
 pub mod auth_test;
 pub mod bulk_operations;

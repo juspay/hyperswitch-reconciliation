@@ -27,6 +27,7 @@ Look in `domains/[feature]/` and read ALL files present:
   - `AGENT-NOTES.md` - Implementation details and critical gotchas
 - `external-services/` - Secret management, AWS S3/OCI file storage, FaaS invocation, and external integrations
 - `file-storage/` - File upload/download API validation, organization, and storage integration gotchas
+- `api-keys/` - Merchant-level API keys (table and store implemented)
 - `encryption/` - Application encryption system with LocalEncryption and KeymanagerService strategies
 - `audit-trail/` - Chronological activity tracking with event grouping and profile-scoped views
 - `transactions/` - Transaction lifecycle, versioning, entries, and profile overview aggregation

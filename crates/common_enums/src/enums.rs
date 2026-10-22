@@ -1150,6 +1150,30 @@ pub enum ReconProcessorStatus {
     Stopped,
 }
 
+/// Status of a merchant API key. Expiry is derived from `expires_at`, not stored here.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    PartialEq,
+    serde::Deserialize,
+    serde::Serialize,
+    strum::Display,
+    strum::EnumString,
+    strum::EnumIter,
+    strum::VariantNames,
+    ToSchema,
+)]
+#[recon_derive::diesel_enum(storage_type = "db_enum")]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum ApiKeyStatus {
+    Active,
+    Revoked,
+}
+
 /// Status of ingestion operations
 #[derive(
     Clone,

@@ -1,6 +1,7 @@
 pub mod enums;
 pub use enums::*;
 pub mod diesel_exports {
+    pub use super::DbApiKeyStatus as ApiKeyStatus;
     pub use super::DbBalanceDirection as AccountType;
     pub use super::DbBalanceDirection as BalanceDirection;
     pub use super::DbCurrency as Currency;

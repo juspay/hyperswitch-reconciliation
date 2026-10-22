@@ -88,6 +88,7 @@
   - **Purpose**: Stores real-world order/transaction identifiers separate from internal transaction entity ID
   - **Validation**: MaxLength(64) enforced at metadata schema validation level to prevent database errors
   - **Migration**: `2025-10-28-083242_add_order_id_to_staging_entries_and_entries`
+- **`api_key` table**: stores only a keyed hash, soft deleted via `status` (`revoked`) and `last_modified_at`; see `domains/api-keys/AGENT-NOTES.md`
 - **Query Method Naming**: Use `list_by_*` for Vec returns, `find_by_*` for single/Option returns
   - Pattern: `list_by_staging_entry_id() -> Vec<T>` not `find_by_staging_entry_id() -> Vec<T>`
   - Follows existing convention in account.rs, transformation_config.rs, staging_entry.rs

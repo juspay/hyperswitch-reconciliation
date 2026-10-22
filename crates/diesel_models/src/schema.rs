@@ -32,6 +32,32 @@ diesel::table! {
     use diesel::sql_types::*;
     use common_enums::diesel_exports::*;
 
+    api_key (id) {
+        #[max_length = 64]
+        id -> Varchar,
+        #[max_length = 64]
+        merchant_id -> Varchar,
+        #[max_length = 64]
+        name -> Varchar,
+        #[max_length = 256]
+        description -> Nullable<Varchar>,
+        #[max_length = 128]
+        hashed_api_key -> Varchar,
+        #[max_length = 24]
+        prefix -> Varchar,
+        #[max_length = 64]
+        created_by -> Varchar,
+        created_at -> Timestamp,
+        expires_at -> Nullable<Timestamp>,
+        last_modified_at -> Timestamp,
+        status -> ApiKeyStatus,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use common_enums::diesel_exports::*;
+
     business_profile (profile_id) {
         #[max_length = 64]
         profile_id -> Varchar,
@@ -424,6 +450,7 @@ diesel::table! {
 
 diesel::allow_tables_to_appear_in_same_query!(
     account,
+    api_key,
     business_profile,
     entry,
     ingestion_config,

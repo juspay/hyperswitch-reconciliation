@@ -1,4 +1,5 @@
 pub mod account;
+pub mod api_key;
 pub mod business_profile;
 pub mod entry;
 pub mod ingestion_config;
