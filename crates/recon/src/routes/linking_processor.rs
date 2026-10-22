@@ -1,6 +1,6 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::linking_processor::{
-    LinkingProcessorStatusRequest, LinkingProcessorStatusResponse,
+    LinkingProcessorStatusRequest, LinkingProcessorStatusResponse, LinkingTriggerResponse,
 };
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
@@ -17,8 +17,8 @@ use super::AppState;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(get_processor_status, set_processor_status, enqueue_entry),
-    components(schemas(LinkingProcessorStatusResponse, LinkingProcessorStatusRequest)),
+    paths(get_processor_status, set_processor_status, enqueue_entry, process_entry),
+    components(schemas(LinkingProcessorStatusResponse, LinkingProcessorStatusRequest, LinkingTriggerResponse)),
     tags(
         (name = "Linking Processor", description = "Entry linking processor controls and enqueue endpoints"),
     ),
@@ -98,6 +98,39 @@ pub async fn enqueue_entry(
         state,
         |state, auth| async move {
             core::linking_processor::enqueue_entry(state, path.into_inner(), auth).await
+        },
+    )
+    .await
+}
+
+#[utoipa::path(
+    post,
+    path = "/linking_processor/{entry_id}/process",
+    tag = "Linking Processor",
+    params(
+        ("entry_id" = String, Path, description = "Physical entry ID to process inline")
+    ),
+    responses(
+        (status = 200, description = "Linking completed or a processing failure was recorded", body = LinkingTriggerResponse),
+        (status = 400, description = "Only entries pending linking can be processed"),
+        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
+        (status = 403, description = "Forbidden - Missing transaction write permission"),
+        (status = 404, description = "Entry not found or account does not belong to authenticated user's profile"),
+        (status = 500, description = "Internal server error"),
+    ),
+    security(("Bearer" = [])),
+)]
+pub async fn process_entry(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    api::server_wrap(
+        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
+        &http_req,
+        state,
+        |state, auth| async move {
+            Box::pin(core::linking_processor::process_entry(state, path.into_inner(), auth)).await
         },
     )
     .await

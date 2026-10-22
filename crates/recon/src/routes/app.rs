@@ -330,6 +330,10 @@ impl LinkingProcessor {
                 web::resource("/{entry_id}/enqueue")
                     .route(web::post().to(linking_processor::enqueue_entry)),
             )
+            .service(
+                web::resource("/{entry_id}/process")
+                    .route(web::post().to(linking_processor::process_entry)),
+            )
     }
 }
 
