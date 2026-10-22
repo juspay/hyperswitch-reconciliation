@@ -787,8 +787,7 @@ async fn ineligible_config_records_failure(#[case] exclusion: &str) {
             &mut request.confirmation_rule_id,
         ),
         "empty_any" => request.transaction_trigger.any.clear(),
-        "inactive" => {}
-        _ => unreachable!(),
+        _ => {}
     }
     let config = create_config(&client, &token, &request).await;
     if exclusion == "inactive" {

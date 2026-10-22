@@ -28,7 +28,7 @@ pub struct CompactEntryData {
     pub mismatch: Option<MismatchedEntryData>,
 }
 
-#[derive(Clone ,Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct GetEntryResponse {
     #[schema(example = "entry_123")]
     pub entry_id: String,
