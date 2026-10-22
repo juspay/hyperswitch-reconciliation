@@ -7,12 +7,15 @@
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use async_bb8_diesel::ConnectionManager;
+use bb8::Pool;
 use common_types::timezone::Timezone;
 use common_utils::{id_generation::generate_id_with_default_len, id_type::MerchantId};
+use diesel::PgConnection;
 use external_services::{user::client::mock_user_client::MockUserClient, UserResponse};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use masking::PeekInterface;
-use recon::{config::Config, initialize_server, services::auth::Claims};
+use recon::{config::Config, db::Store, initialize_server, services::auth::Claims};
 use recon_interfaces::secrets_interface::secret_state::SecuredSecret;
 
 pub struct TestApp {
@@ -20,20 +23,38 @@ pub struct TestApp {
     pub config: Config<SecuredSecret>,
 }
 
+fn load_test_config() -> Config<SecuredSecret> {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let workspace_root = std::path::Path::new(manifest_dir)
+        .parent()
+        .expect("Failed to get parent")
+        .parent()
+        .expect("Failed to get workspace root");
+
+    let config_path = workspace_root.join("config").join("test.toml");
+
+    // Load config with environment variable support
+    Config::with_config_path(Some(config_path)).expect("Failed to load test configuration")
+}
+
+/// A store connected to the test database, for tests that exercise the data layer directly
+/// without going through the HTTP API. The test config uses `no_encryption`, so the
+/// database password is usable as is.
+pub async fn test_store() -> Store {
+    let config = load_test_config();
+    let manager =
+        ConnectionManager::<PgConnection>::new(config.database.get_inner().get_database_url());
+    let master_pool = Pool::builder()
+        .build(manager)
+        .await
+        .expect("Failed to create test database pool");
+
+    Store { master_pool }
+}
+
 impl TestApp {
     pub async fn new() -> Self {
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        let workspace_root = std::path::Path::new(manifest_dir)
-            .parent()
-            .expect("Failed to get parent")
-            .parent()
-            .expect("Failed to get workspace root");
-
-        let config_path = workspace_root.join("config").join("test.toml");
-
-        // Load config with environment variable support
-        let secured_config =
-            Config::with_config_path(Some(config_path)).expect("Failed to load test configuration");
+        let secured_config = load_test_config();
 
         let (server, port, config) = initialize_server(secured_config.clone())
             .await
