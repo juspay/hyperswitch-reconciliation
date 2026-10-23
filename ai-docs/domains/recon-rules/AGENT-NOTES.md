@@ -50,6 +50,8 @@
 - **Source-Field Set Invariant**: For `ManySingle` / `ManyMany`, `validate_source_field_sets` requires:
   - `search_identifier` source-field set must be a **subset** of the `grouping_field` set (equal sets are the common case; a strict subset is allowed).
   - Every `match_rule.source_field` must be in `grouping_field`.
+<!-- AI-UPDATED: 2026-10-15 - Shared composite search identifier extension -->
+- **Shared Composite Extraction**: `CompositeSearchIdentifierExt` now lives in `crates/recon/src/domain/search_identifier.rs` and serves reconciliation and linking. Each implementation supplies canonical pair ordering and its missing-field error; reconciliation still sorts both sides by `source_field.to_string()`, while linking sorts both sides by `transaction_field.to_string()`.
 <!-- AI-UPDATED: 2026-07-30 - Match rule label for mismatch reasons -->
 - **`MatchRuleV1.label: Option<String>`**: human label for what a match rule compares, surfaced as `FieldMismatchDetail.label` in mismatch data instead of the raw field name. Required struct field, optional value — every `MatchRuleV1 { .. }` literal must set it (even to `None`).
 - **`target_key` Column is TEXT, Not VARCHAR**: Migration `2026-05-07-120000` widens `search_expectation.target_key` from `VARCHAR(128)` to `TEXT` to fit composite keys. Down migration may fail if any composite key value exceeds 128 chars — treat the change as one-way once composite rules exist.
@@ -134,7 +136,7 @@
 <!-- AI-UPDATED: 2024-12-08 - Added update endpoint -->
 <!-- AI-UPDATED: 2026-05-14 - priority/is_active updatable; strategy replaced wholesale -->
 - **Update Recon Rule** (`PUT /recon_rules/{rule_id}`):
-  - Updatable: `rule_name`, `rule_description`, `link_with_rule`, `aging_config`, `priority`, `is_active`, `strategy`. Omitted fields are left untouched.
+  - Updatable: `rule_name`, `rule_description`, `aging_config`, `priority`, `is_active`, `strategy`. Omitted fields are left untouched.
   - `strategy` is replaced **wholesale** — whatever `ReconStrategy` the caller sends is written as-is, with no validation (account existence, currency consistency, trigger checks are all skipped). This is intentional: the endpoint is currently driven only by trusted internal callers. Validation parity with the create path is deferred.
   - `recon_rule_account` rows are NOT re-synced on a strategy update — a strategy update that changes source/target account_ids leaves that index stale. Callers must not do that until the validation/sync work lands.
   - **Not transactional** — each provided field fires its own DB write and bumps `last_modified_at`, so a multi-field PUT is N writes and a partial failure leaves a partial update.

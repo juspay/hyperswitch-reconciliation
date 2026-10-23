@@ -1,4 +1,4 @@
-use api_models::linking_processor::LinkingProcessorStatusResponse;
+use api_models::linking_processor::{LinkingProcessorStatusResponse, LinkingTriggerResponse};
 use common_enums::{EntryLinkingStatus, LinkingProcessorStatus};
 use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
 use common_utils::{auth::AuthContext, logging};
@@ -76,6 +76,28 @@ pub async fn enqueue_entry(
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 
     Ok(ApplicationResponse::StatusOk)
+}
+
+pub async fn process_entry(
+    state: AppState,
+    entry_id: String,
+) -> LinkingProcessorResponse<LinkingTriggerResponse> {
+    let entry = state
+        .store
+        .find_entry_by_id(&entry_id)
+        .await
+        .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
+
+    if entry.linking_status != EntryLinkingStatus::Pending {
+        return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
+            current_status: entry.linking_status,
+            expected_statuses: vec![EntryLinkingStatus::Pending],
+        }
+        .into());
+    }
+
+    let response = process_entry_linking_core(&state, entry).await?;
+    Ok(ApplicationResponse::json(response))
 }
 
 pub async fn linking_processor(

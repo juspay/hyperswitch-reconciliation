@@ -1,17 +1,51 @@
 use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
 use common_utils::{chunking::chunked, logging};
-use diesel::{debug_query, pg::Pg};
+use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    entry::Entry,
     entry_link::{EntryLink, EntryLinkNew},
     errors::DatabaseError,
     query::generics,
-    schema::entry_link,
+    schema::{entry, entry_link},
     PgPooledConn, StorageResult,
 };
 
 const ENTRY_LINK_BATCH_CHUNK_SIZE: usize = 1000;
+
+impl EntryLink {
+    pub async fn list_linked_entries_by_entry_id_and_profile_id(
+        conn: &PgPooledConn,
+        entry_id: &str,
+        profile_id: &str,
+    ) -> StorageResult<Vec<(Self, Entry)>> {
+        let query = entry_link::table
+            .inner_join(
+                entry::table.on(entry_link::transaction_entry_id
+                    .eq(entry_id.to_owned())
+                    .and(entry_link::confirmation_entry_id.eq(entry::id))
+                    .or(entry_link::confirmation_entry_id
+                        .eq(entry_id.to_owned())
+                        .and(entry_link::transaction_entry_id.eq(entry::id)))),
+            )
+            .filter(entry_link::profile_id.eq(profile_id.to_owned()))
+            .order((entry_link::created_at.asc(), entry_link::id.asc()))
+            .select((entry_link::all_columns, entry::all_columns));
+
+        logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
+
+        generics::db_metrics::track_database_call::<entry_link::table, _, _>(
+            query.get_results_async(conn),
+            generics::db_metrics::DatabaseOperation::Filter,
+        )
+        .await
+        .change_context(DatabaseError::Others)
+        .attach_printable_lazy(|| {
+            format!("Error while listing linked entries for entry_id: {entry_id}, profile_id: {profile_id}")
+        })
+    }
+}
 
 impl EntryLinkNew {
     pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<EntryLink> {
