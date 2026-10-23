@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    recon_rule::{link_with_rule::LinkWithRule, match_rules, search_identifier, trigger},
+    recon_rule::{match_rules, search_identifier, trigger},
     units::MinorUnit,
 };
 
@@ -28,7 +28,6 @@ pub enum OneToManySingleSingle {
 pub struct OneToManySingleSingleV1 {
     pub source_account: OneToManySingleSingleSource,
     pub target_accounts: OneToManySingleSingleTargetType,
-    pub link_with_rule: Option<LinkWithRule>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

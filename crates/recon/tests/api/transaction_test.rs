@@ -20,9 +20,8 @@ use api_models::{
     },
     recon_engine::ReconTriggerResponse,
     recon_rule::{
-        LinkWithRuleUpdate, OneToOneSingleSingle, OneToOneSingleSingleSource,
-        OneToOneSingleSingleTarget, OneToOneStrategy, ReconRuleCreateRequest,
-        ReconRuleUpdateRequest, ReconStrategy,
+        OneToOneSingleSingle, OneToOneSingleSingleSource, OneToOneSingleSingleTarget,
+        OneToOneStrategy, ReconRuleCreateRequest, ReconStrategy,
     },
     search_entry_key::{SearchEntryKeyListRequest, SearchEntryKeyResponse},
     staging_entry::{
@@ -44,8 +43,6 @@ use common_types::{
     date_time::TimeRange,
     pagination::{CursorDirection, CursorPagination, SortOrder},
     recon_rule::{
-        entry_field::EntryField,
-        link_with_rule::{LinkWithRule, LinkWithRuleTargetData, LinkWithRuleV1},
         match_rules::{MatchOperator, MatchRuleV1, MatchRules, MatchRulesV1},
         search_identifier::{SearchIdentifier, SearchIdentifierV1},
         trigger::{
@@ -4486,184 +4483,4 @@ async fn test_list_transactions_v2_caps_every_transaction_on_a_full_page() {
         assert_eq!(item.entries.len(), 5);
         assert!(item.has_more_entries);
     }
-}
-
-/// Leg 1 (rule A) has an Expected placeholder on the link account created *before* the real
-/// entry. Linking must skip the placeholder — its metadata is a projection of the source, not a
-/// real value — and resolve the link through the real entry to the leg 2 transaction.
-#[actix_web::test]
-async fn test_linked_transaction_skips_expected_placeholder_entry() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let (_merchant_id, _profile_id, token) =
-        client.bootstrap("Test Merchant", "Test Profile").await;
-
-    let leg1_debit =
-        create_test_account(&client, &token, "Leg1 Debit", BalanceDirection::Debit).await;
-    let leg1_credit =
-        create_test_account(&client, &token, "Leg1 Credit", BalanceDirection::Credit).await;
-    let leg2_debit =
-        create_test_account(&client, &token, "Leg2 Debit", BalanceDirection::Debit).await;
-    let leg2_credit =
-        create_test_account(&client, &token, "Leg2 Credit", BalanceDirection::Credit).await;
-
-    let rule_a = create_test_recon_rule(
-        &client,
-        &token,
-        "link_leg_1",
-        leg1_debit.clone(),
-        leg1_credit.clone(),
-        AgingConfigApiRequest::NoAging,
-    )
-    .await;
-    let rule_b = create_test_recon_rule(
-        &client,
-        &token,
-        "link_leg_2",
-        leg2_debit.clone(),
-        leg2_credit.clone(),
-        AgingConfigApiRequest::NoAging,
-    )
-    .await;
-
-    let link_value = "settlement_ref_42";
-    let link_key = "metadata.settlement_ref";
-
-    let update_response = client
-        .put(&format!("/recon_rules/{rule_a}"))
-        .with_auth(&token)
-        .json(&ReconRuleUpdateRequest {
-            rule_name: None,
-            rule_description: None,
-            link_with_rule: Some(LinkWithRuleUpdate::Set {
-                data: LinkWithRule::V1(LinkWithRuleV1 {
-                    target_data: vec![LinkWithRuleTargetData {
-                        rule_id: rule_b.clone(),
-                        account_id: leg2_debit.clone(),
-                        key: EntryField::Metadata("settlement_ref".to_string()),
-                    }],
-                    current_rule_account_id: leg1_credit.clone(),
-                    current_rule_field: EntryField::Metadata("settlement_ref".to_string()),
-                }),
-            }),
-            aging_config: None,
-            priority: None,
-            is_active: None,
-            strategy: None,
-        })
-        .send()
-        .await;
-    assert_eq!(update_response.status(), 200);
-
-    let leg2_response = client
-        .post("/transactions")
-        .with_auth(&token)
-        .json(&TransactionRequest {
-            entries: vec![
-                TransactionEntry::Expected(ExpectedTransactionEntry {
-                    account_id: leg2_debit.clone(),
-                    entry_type: BalanceDirection::Debit,
-                    amount: FloatMajorUnit::new(100.0),
-                    currency: Currency::USD,
-                    effective_at: common_utils::date_time::now(),
-                    metadata: Secret::new(json!({})),
-                    search_expectation: SearchExpectation {
-                        rule_id: rule_b.clone(),
-                        source_value: link_value.to_string(),
-                        target_key: link_key.parse().unwrap(),
-                    },
-                    order_id: "leg2_order".to_string(),
-                }),
-                TransactionEntry::Direct(DirectTransactionEntry {
-                    account_id: leg2_credit.clone(),
-                    entry_type: BalanceDirection::Credit,
-                    amount: FloatMajorUnit::new(100.0),
-                    currency: Currency::USD,
-                    effective_at: common_utils::date_time::now(),
-                    metadata: Secret::new(json!({})),
-                    staging_entry_id: None,
-                    transformation_id: None,
-                    order_id: "leg2_order".to_string(),
-                }),
-            ],
-            rule_id: rule_b.clone(),
-        })
-        .send()
-        .await;
-    assert_eq!(leg2_response.status(), 201);
-    let leg2: GetTransactionResponse = leg2_response.json().await.unwrap();
-
-    let leg1_response = client
-        .post("/transactions")
-        .with_auth(&token)
-        .json(&TransactionRequest {
-            entries: vec![
-                TransactionEntry::Direct(DirectTransactionEntry {
-                    account_id: leg1_debit.clone(),
-                    entry_type: BalanceDirection::Debit,
-                    amount: FloatMajorUnit::new(100.0),
-                    currency: Currency::USD,
-                    effective_at: common_utils::date_time::now(),
-                    metadata: Secret::new(json!({})),
-                    staging_entry_id: None,
-                    transformation_id: None,
-                    order_id: "leg1_order".to_string(),
-                }),
-                TransactionEntry::Expected(ExpectedTransactionEntry {
-                    account_id: leg1_credit.clone(),
-                    entry_type: BalanceDirection::Credit,
-                    amount: FloatMajorUnit::new(40.0),
-                    currency: Currency::USD,
-                    effective_at: common_utils::date_time::now(),
-                    metadata: Secret::new(json!({"settlement_ref": "placeholder_not_real"})),
-                    search_expectation: SearchExpectation {
-                        rule_id: rule_a.clone(),
-                        source_value: "unrelated".to_string(),
-                        target_key: "metadata.other".parse().unwrap(),
-                    },
-                    order_id: "leg1_order".to_string(),
-                }),
-                TransactionEntry::Direct(DirectTransactionEntry {
-                    account_id: leg1_credit.clone(),
-                    entry_type: BalanceDirection::Credit,
-                    amount: FloatMajorUnit::new(60.0),
-                    currency: Currency::USD,
-                    effective_at: common_utils::date_time::now(),
-                    metadata: Secret::new(json!({"settlement_ref": link_value})),
-                    staging_entry_id: None,
-                    transformation_id: None,
-                    order_id: "leg1_order".to_string(),
-                }),
-            ],
-            rule_id: rule_a.clone(),
-        })
-        .send()
-        .await;
-    assert_eq!(leg1_response.status(), 201);
-    let leg1: GetTransactionResponse = leg1_response.json().await.unwrap();
-
-    let page = list_transactions_v2(
-        &client,
-        &token,
-        list_transactions_v2_request(
-            ApiTransactionListFiltersV2 {
-                rule_id: Some(rule_a.clone()),
-                ..Default::default()
-            },
-            TransactionListSortField::Id { id: None },
-            Some(10),
-            CursorDirection::Next,
-            SortOrder::Desc,
-        ),
-    )
-    .await;
-
-    assert_eq!(page.items.len(), 1);
-    assert_eq!(page.items[0].id, leg1.id);
-
-    let linked = page.items[0]
-        .linked_transaction
-        .as_ref()
-        .expect("leg 1 must link to leg 2 through the real (non-expected) entry");
-    assert_eq!(linked.id, leg2.id);
 }

@@ -36,11 +36,6 @@ pub trait SearchExpectationInterface {
         search_criteria: Vec<SearchCriteria>,
     ) -> StorageResult<Vec<SearchExpectation>>;
 
-    async fn find_expectations_for_linking(
-        &self,
-        search_criteria: Vec<(SearchCriteria, String)>,
-    ) -> StorageResult<Vec<SearchExpectation>>;
-
     async fn batch_update_status_by_primary_transaction_ids(
         &self,
         primary_transaction_ids: Vec<String>,
@@ -115,26 +110,6 @@ impl SearchExpectationInterface for Store {
             &query_search_criteria,
         )
         .await
-    }
-
-    async fn find_expectations_for_linking(
-        &self,
-        search_criteria: Vec<(SearchCriteria, String)>, // Search Criteria, target_account_id
-    ) -> StorageResult<Vec<SearchExpectation>> {
-        let conn = self.get_connection().await?;
-        let query_search_criteria = search_criteria
-            .into_iter()
-            .map(|(criteria, target_account_id)| {
-                (
-                    criteria.rule_id,
-                    criteria.target_key,
-                    criteria.hashed_source_value,
-                    target_account_id,
-                )
-            })
-            .collect::<Vec<_>>();
-
-        SearchExpectation::find_for_linking(&conn, &query_search_criteria).await
     }
 
     async fn batch_update_status_by_primary_transaction_ids(

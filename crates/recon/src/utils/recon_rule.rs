@@ -16,18 +16,10 @@ use common_types::recon_rule::{
         AgingConfig, AgingConfigV1, AgingConfigWithThreshold, AgingConfigWithThresholdV1,
     },
     grouping_field::{CompositeGroupingField, GroupingField, GroupingFieldV1, SingleGroupingField},
-    link_with_rule::LinkWithRule,
     match_rules::{MatchRules, MatchRulesV1},
     search_identifier::{
         CompositeSearchIdentifier, SearchIdentifier, SearchIdentifierV1, SearchIdentifierV2,
         SingleSearchIdentifier,
-    },
-    strategies::{
-        one_to_many_strategy::{OneToManySingleSingle, OneToManyStrategy, OneToManyStrategyV1},
-        one_to_one_strategy::{
-            OneToOneManyMany, OneToOneManySingle, OneToOneSingleMany, OneToOneSingleSingle,
-            OneToOneStrategy, OneToOneStrategyV1,
-        },
     },
     tolerance_config::{ToleranceConfig, ToleranceConfigV1},
     trigger::Trigger,
@@ -192,22 +184,6 @@ impl RuleAccountExt for ReconEngineType {
     }
 }
 
-pub trait RuleLinkExt {
-    fn get_link_with_rule(&self) -> Option<LinkWithRule>;
-}
-
-impl RuleLinkExt for ReconEngineType {
-    fn get_link_with_rule(&self) -> Option<LinkWithRule> {
-        match self {
-            Self::OneToOneSingleSingleV1(engine) => engine.link_with_rule.clone(),
-            Self::OneToOneSingleManyV1(engine) => engine.link_with_rule.clone(),
-            Self::OneToOneManySingleV1(engine) => engine.link_with_rule.clone(),
-            Self::OneToOneManyManyV1(engine) => engine.link_with_rule.clone(),
-            Self::OneToManySingleSingleV1(engine) => engine.link_with_rule.clone(),
-        }
-    }
-}
-
 pub trait TriggerRuleValidator {
     fn validate_for_rule(&self) -> ReconRuleResult<()>;
 }
@@ -300,52 +276,6 @@ impl RuleValidator for ReconEngineType {
             Self::OneToOneManySingleV1(engine) => engine.validate(state, profile_id).await,
             Self::OneToOneManyManyV1(engine) => engine.validate(state, profile_id).await,
             Self::OneToManySingleSingleV1(engine) => engine.validate(state, profile_id).await,
-        }
-    }
-}
-
-pub fn update_strategy_with_link(
-    strategy: ReconStrategy,
-    link_with_rule: Option<LinkWithRule>,
-) -> Result<ReconStrategy, error_stack::Report<ReconRuleError>> {
-    match strategy {
-        ReconStrategy::V1(ReconStrategyV1::OneToOne(OneToOneStrategy::V1(
-            one_to_one_strategy_v1,
-        ))) => {
-            let updated_one_to_one = match one_to_one_strategy_v1 {
-                OneToOneStrategyV1::SingleSingle(OneToOneSingleSingle::V1(mut v1)) => {
-                    v1.link_with_rule = link_with_rule;
-                    OneToOneStrategyV1::SingleSingle(OneToOneSingleSingle::V1(v1))
-                }
-                OneToOneStrategyV1::SingleMany(OneToOneSingleMany::V1(mut v1)) => {
-                    v1.link_with_rule = link_with_rule;
-                    OneToOneStrategyV1::SingleMany(OneToOneSingleMany::V1(v1))
-                }
-                OneToOneStrategyV1::ManySingle(OneToOneManySingle::V1(mut v1)) => {
-                    v1.link_with_rule = link_with_rule;
-                    OneToOneStrategyV1::ManySingle(OneToOneManySingle::V1(v1))
-                }
-                OneToOneStrategyV1::ManyMany(OneToOneManyMany::V1(mut v1)) => {
-                    v1.link_with_rule = link_with_rule;
-                    OneToOneStrategyV1::ManyMany(OneToOneManyMany::V1(v1))
-                }
-            };
-
-            Ok(ReconStrategy::V1(ReconStrategyV1::OneToOne(
-                OneToOneStrategy::V1(updated_one_to_one),
-            )))
-        }
-        ReconStrategy::V1(ReconStrategyV1::OneToMany(OneToManyStrategy::V1(one_to_many_v1))) => {
-            let updated_one_to_many = match one_to_many_v1 {
-                OneToManyStrategyV1::SingleSingle(OneToManySingleSingle::V1(mut v1)) => {
-                    v1.link_with_rule = link_with_rule;
-                    OneToManyStrategyV1::SingleSingle(OneToManySingleSingle::V1(v1))
-                }
-            };
-
-            Ok(ReconStrategy::V1(ReconStrategyV1::OneToMany(
-                OneToManyStrategy::V1(updated_one_to_many),
-            )))
         }
     }
 }

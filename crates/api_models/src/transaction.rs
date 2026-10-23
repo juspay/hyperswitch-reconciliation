@@ -170,34 +170,8 @@ pub struct TransactionWithEntriesResponse {
     pub data: TransactionData,
     pub discarded_data: Option<TransactionData>,
     pub discarded_at: Option<PrimitiveDateTime>,
-    pub linked_transaction: Option<LinkedTransaction>,
     /// User who modified the transaction
     pub modified_by: Option<User>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-pub struct LinkedTransaction {
-    #[schema(example = "txn_9876543210")]
-    pub id: String,
-    #[schema(example = "ext_txn_xyz789")]
-    pub transaction_id: String,
-    #[schema(example = 1)]
-    pub version: i32,
-    #[schema(example = "profile_0987654321")]
-    pub profile_id: String,
-    #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
-    #[serde(with = "common_utils::custom_serde::iso8601")]
-    pub created_at: PrimitiveDateTime,
-    #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
-    #[serde(with = "common_utils::custom_serde::iso8601")]
-    pub effective_at: PrimitiveDateTime,
-    #[serde(flatten)]
-    pub status: ApiTransactionStatus,
-    pub data: TransactionData,
-    pub discarded_data: Option<TransactionData>,
-    pub credit_amount: AmountResponse,
-    pub debit_amount: AmountResponse,
-    pub discarded_at: Option<PrimitiveDateTime>,
 }
 
 pub type TransactionListResponse = Vec<TransactionWithEntriesResponse>;

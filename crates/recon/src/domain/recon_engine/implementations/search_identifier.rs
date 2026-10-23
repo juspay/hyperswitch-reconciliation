@@ -1,5 +1,5 @@
 use common_types::{
-    composite_field::{build_composite_key, build_composite_value},
+    composite_field::CompositeDelimiter,
     field_path_key::FieldPathKey,
     recon_rule::{
         entry_field::{EntryField, ExtractFromEntryField},
@@ -9,9 +9,11 @@ use common_types::{
         },
     },
 };
-use error_stack::report;
 
-use crate::domain::recon_engine::{ProcessingError, ProcessingResult};
+use crate::domain::{
+    recon_engine::{ProcessingError, ProcessingResult},
+    search_identifier::CompositeSearchIdentifierExt,
+};
 
 pub trait SearchIdentifierExt {
     fn extract_source_value(&self, data: &impl ExtractFromEntryField) -> ProcessingResult<String>;
@@ -37,8 +39,11 @@ impl SearchIdentifierExt for SearchIdentifier {
                 extract_single(data, &key.source_field)
             }
             Self::V2(SearchIdentifierV2::Composite(composite_search_identifier)) => {
-                composite_search_identifier
-                    .get_composite_value(data, |search_key| &search_key.source_field)
+                composite_search_identifier.get_composite_value(
+                    data,
+                    |search_key| &search_key.source_field,
+                    ProcessingError::MissingSearchIdentifierValue,
+                )
             }
         }
     }
@@ -50,8 +55,11 @@ impl SearchIdentifierExt for SearchIdentifier {
                 extract_single(data, &key.target_field)
             }
             Self::V2(SearchIdentifierV2::Composite(composite_search_identifier)) => {
-                composite_search_identifier
-                    .get_composite_value(data, |search_key| &search_key.target_field)
+                composite_search_identifier.get_composite_value(
+                    data,
+                    |search_key| &search_key.target_field,
+                    ProcessingError::MissingSearchIdentifierValue,
+                )
             }
         }
     }
@@ -70,47 +78,16 @@ impl SearchIdentifierExt for SearchIdentifier {
     }
 }
 
-trait CompositeSearchIdentifierExt {
-    fn get_sorted_keys(&self) -> Vec<SearchIdentifierKey>;
-
-    fn get_composite_key<F>(&self, name_of: F) -> String
-    where
-        F: Fn(&SearchIdentifierKey) -> &EntryField;
-
-    fn get_composite_value<F>(
-        &self,
-        data: &impl ExtractFromEntryField,
-        name_of: F,
-    ) -> ProcessingResult<String>
-    where
-        F: Fn(&SearchIdentifierKey) -> &EntryField;
-}
-
 impl CompositeSearchIdentifierExt for CompositeSearchIdentifier {
-    fn get_sorted_keys(&self) -> Vec<SearchIdentifierKey> {
+    type Key = SearchIdentifierKey;
+
+    fn get_sorted_keys(&self) -> Vec<Self::Key> {
         let mut keys = self.keys.clone();
         keys.sort_by_key(|key| key.source_field.to_string());
         keys
     }
 
-    fn get_composite_key<F>(&self, name_of: F) -> String
-    where
-        F: Fn(&SearchIdentifierKey) -> &EntryField,
-    {
-        let sorted_keys = self.get_sorted_keys();
-        build_composite_key(&sorted_keys, &self.delimiter.to_string(), name_of)
-    }
-
-    fn get_composite_value<F>(
-        &self,
-        data: &impl ExtractFromEntryField,
-        name_of: F,
-    ) -> ProcessingResult<String>
-    where
-        F: Fn(&SearchIdentifierKey) -> &EntryField,
-    {
-        let sorted_keys = self.get_sorted_keys();
-        build_composite_value(&sorted_keys, &self.delimiter.to_string(), data, name_of)
-            .map_err(|f| report!(ProcessingError::MissingSearchIdentifierValue(f)))
+    fn get_delimiter(&self) -> CompositeDelimiter {
+        self.delimiter
     }
 }

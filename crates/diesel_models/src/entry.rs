@@ -1,7 +1,8 @@
 use crate::schema::entry;
-use common_enums::{BalanceDirection, Currency, EntryStatus};
+use common_enums::{BalanceDirection, Currency, EntryLinkingStatus, EntryStatus};
 use common_types::{
     entry::{EntryData, EntryDataV2, EntryEffectiveAtSortField, EntryListSortField},
+    entry_linking::{EntryLinkingData, EntryLinkingDataV1},
     pagination::CursorSort,
     units::MinorUnit,
 };
@@ -38,6 +39,8 @@ pub struct Entry {
     pub transformation_config_id: Option<String>,
     pub entry_identifier: String,
     pub exposed_metadata: serde_json::Value,
+    pub linking_status: EntryLinkingStatus,
+    pub linking_data: EntryLinkingData,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +97,8 @@ pub struct EntryNew {
     pub transformation_config_id: Option<String>,
     pub entry_identifier: String,
     pub exposed_metadata: serde_json::Value,
+    pub linking_status: EntryLinkingStatus,
+    pub linking_data: EntryLinkingData,
 }
 
 impl EntryNew {
@@ -117,6 +122,11 @@ impl EntryNew {
     ) -> Self {
         let now = date_time::now();
         let id = generate_id_with_default_len("entry");
+        let linking_data = EntryLinkingData::V1(if status == EntryStatus::Expected {
+            EntryLinkingDataV1::NotApplicable
+        } else {
+            EntryLinkingDataV1::Pending
+        });
         Self {
             id,
             account_id,
@@ -139,6 +149,8 @@ impl EntryNew {
             transformation_config_id,
             entry_identifier,
             exposed_metadata,
+            linking_status: (&linking_data).into(),
+            linking_data,
         }
     }
 }
@@ -151,6 +163,8 @@ pub struct EntryUpdateInternal {
     pub discarded_at: Option<Option<PrimitiveDateTime>>,
     pub discarded_status: Option<Option<EntryStatus>>,
     pub discarded_data: Option<Option<EntryData>>,
+    pub linking_status: Option<EntryLinkingStatus>,
+    pub linking_data: Option<EntryLinkingData>,
     pub last_modified_at: PrimitiveDateTime,
 }
 
@@ -167,6 +181,7 @@ pub struct ExpectedEntryUpdateInternal {
 #[derive(Debug, Clone)]
 pub enum EntryUpdate {
     DiscardUpdate { original_data: EntryData },
+    LinkingUpdate { data: EntryLinkingData },
 }
 
 impl From<EntryUpdate> for EntryUpdateInternal {
@@ -179,6 +194,18 @@ impl From<EntryUpdate> for EntryUpdateInternal {
                 discarded_at: Some(Some(now)),
                 discarded_status: Some(Some((&original_data).into())),
                 discarded_data: Some(Some(original_data)),
+                linking_status: None,
+                linking_data: None,
+                last_modified_at: now,
+            },
+            EntryUpdate::LinkingUpdate { data } => Self {
+                status: None,
+                data: None,
+                discarded_at: None,
+                discarded_status: None,
+                discarded_data: None,
+                linking_status: Some((&data).into()),
+                linking_data: Some(data),
                 last_modified_at: now,
             },
         }

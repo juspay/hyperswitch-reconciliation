@@ -254,7 +254,6 @@ impl ReconStrategyApiExt for OneToOneSingleSingleApi {
             match_rules: self.match_rules,
             source_account: self.source_account.to_diesel_model(),
             target_account: self.target_account.to_diesel_model(),
-            link_with_rule: None,
         })
     }
 }
@@ -287,7 +286,6 @@ impl ReconStrategyApiExt for OneToOneSingleManyApi {
             match_rules: self.match_rules,
             source_account: self.source_account.to_diesel_model(),
             target_account: self.target_account.to_diesel_model(),
-            link_with_rule: None,
         })
     }
 }
@@ -319,7 +317,6 @@ impl ReconStrategyApiExt for OneToOneManySingleApi {
             match_rules: self.match_rules,
             source_account: self.source_account.to_diesel_model(),
             target_account: self.target_account.to_diesel_model(),
-            link_with_rule: None,
             source_accumulation_mode: self.source_accumulation_mode,
         })
     }
@@ -353,7 +350,6 @@ impl ReconStrategyApiExt for OneToOneManyManyApi {
             match_rules: self.match_rules,
             source_account: self.source_account.to_diesel_model(),
             target_account: self.target_account.to_diesel_model(),
-            link_with_rule: None,
         })
     }
 }

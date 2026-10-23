@@ -121,7 +121,6 @@ impl ReconStrategyApiExt for OneToManySingleSingleApi {
         OneToManySingleSingle::V1(OneToManySingleSingleV1 {
             source_account: self.source_account.to_diesel_model(),
             target_accounts: self.target_accounts.to_diesel_model(),
-            link_with_rule: None,
         })
     }
 }

@@ -10,7 +10,7 @@ use api_models::{
     transaction::{
         ApiTransactionAccountFilters, ApiTransactionFilterStatus, ApiTransactionListFiltersV2,
         ApiTransactionStatus, ForceMatchedData as ForceMatchedDataApi, GetTransactionResponse,
-        LinkedTransaction, ManuallyMatchedData as ManuallyMatchedDataApi, ManuallyPostedData,
+        ManuallyMatchedData as ManuallyMatchedDataApi, ManuallyPostedData,
         MatchedData as MatchedDataApi, PostedData as PostedDataApi,
         TransactionData as TransactionDataApi, TransactionEntry, TransactionEntryWithData,
         TransactionWithEntriesResponse,
@@ -21,10 +21,9 @@ use common_enums::{BalanceDirection, Currency, DieselTransactionStatus, EntrySta
 use common_types::{
     amount::{AmountResponse, AmountType},
     entry::{EntryData as DieselEntryData, EntryDataV2, FieldMismatchDetail},
-    field_path_key::FieldPathKey,
     metadata_schema::{ExposedKeys, ExposedKeysProvider},
     pagination::CursorSort,
-    recon_rule::{aging_config::AgingConfig, entry_field::ExtractFromEntryField},
+    recon_rule::aging_config::AgingConfig,
     transaction::{
         status::{
             DomainTransactionStatus, TransactionAmountMismatchData, TransactionMatchedData,
@@ -45,7 +44,7 @@ use diesel_models::{
     account::Account,
     entry::Entry as DieselEntry,
     recon_rule::ReconRule,
-    transaction::{Transaction, TransactionAccountView, TransactionRuleView},
+    transaction::{TransactionAccountView, TransactionRuleView},
 };
 use error_stack::{report, ResultExt};
 use futures::{future, future::Either};
@@ -54,7 +53,7 @@ use recon_domain_models::{
     behaviour::ReverseConversion,
     encryption::ApplicationEncryptionInterface,
     encryption_handler::EncryptionHandler,
-    entry::{DomainEntry, EntryWithSearchableMetadata},
+    entry::EntryWithSearchableMetadata,
     transaction::{
         DirectTransactionCreationEntry, DomainTransaction, ExpectedTransactionCreationEntry,
         SearchExpectationCreation, TransactionCreationEntry,
@@ -65,15 +64,8 @@ use time::PrimitiveDateTime;
 
 use crate::{
     db::{
-        account::AccountInterface,
-        entry::EntryInterface,
-        metadata_schema::MetadataSchemaInterface,
-        search_expectation::{SearchCriteria, SearchExpectationInterface},
-        transaction::TransactionInterface,
+        account::AccountInterface, entry::EntryInterface, metadata_schema::MetadataSchemaInterface,
         transformation::TransformationConfigInterface,
-    },
-    domain::recon_engine::{
-        flows::ReconStrategyExt, implementations::link_with_rule::LinkWithRuleExt,
     },
     errors::transaction::{TransactionError, TransactionResult},
     routes::AppState,
@@ -82,7 +74,6 @@ use crate::{
         entry::{EntryDataExt, FieldMismatchDetailExt},
         metadata_schema::project_metadata,
         recon_engine,
-        recon_rule::RuleLinkExt,
     },
 };
 use external_services::user::interfaces::UserInterface;
@@ -593,7 +584,6 @@ pub struct GroupedTransactionViews {
 impl GroupedTransactionViews {
     pub fn to_response(
         self,
-        linked_transaction: Option<Transaction>,
         modified_by: Option<User>,
     ) -> TransactionResult<TransactionWithEntriesResponse> {
         // Convert amounts from minor units to AmountResponse
@@ -644,40 +634,6 @@ impl GroupedTransactionViews {
             })
             .collect::<Result<Vec<_>, error_stack::Report<TransactionError>>>()?;
 
-        let linked_transaction = if let Some(transaction) = linked_transaction {
-            Some(LinkedTransaction {
-                id: transaction.id,
-                transaction_id: transaction.transaction_id,
-                version: transaction.version,
-                profile_id: transaction.profile_id,
-                created_at: transaction.created_at,
-                effective_at: transaction.effective_at,
-                status: ApiTransactionStatus::from_domain_transaction_status(
-                    &DomainTransactionStatus::from(&transaction.data),
-                    &self.rule.aging_config,
-                    transaction.effective_at,
-                    transaction.discarded_at.unwrap_or(date_time::now()),
-                ),
-                credit_amount: AmountResponse::from_minor_unit(
-                    transaction.credit_amount,
-                    transaction.currency,
-                )
-                .change_context(TransactionError::InternalServerError)?,
-                debit_amount: AmountResponse::from_minor_unit(
-                    transaction.debit_amount,
-                    transaction.currency,
-                )
-                .change_context(TransactionError::InternalServerError)?,
-                data: transaction.data.to_api_response(),
-                discarded_data: transaction
-                    .discarded_data
-                    .map(|d: DieselTransactionData| d.to_api_response()),
-                discarded_at: transaction.discarded_at,
-            })
-        } else {
-            None
-        };
-
         Ok(TransactionWithEntriesResponse {
             id: self.transaction.id,
             transaction_id: self.transaction.transaction_id,
@@ -714,7 +670,6 @@ impl GroupedTransactionViews {
             data: self.transaction.data.to_api_response(),
             discarded_data: self.transaction.discarded_data.map(|d| d.to_api_response()),
             discarded_at: self.transaction.discarded_at,
-            linked_transaction,
             modified_by,
         })
     }
@@ -906,99 +861,6 @@ pub async fn group_transaction_views(
     }
 
     Ok(grouped.into_values().collect())
-}
-
-pub async fn get_linked_transaction_for_view(
-    state: &AppState,
-    view: &GroupedTransactionViews,
-    encryptor: &EncryptionHandler<impl ApplicationEncryptionInterface>,
-) -> TransactionResult<Option<Transaction>> {
-    let Some(link_with_rule) = view
-        .rule
-        .strategy
-        .get_recon_engine_type()
-        .get_link_with_rule()
-    else {
-        return Ok(None);
-    };
-
-    let link_account_id = link_with_rule.extract_current_rule_account_id();
-
-    let current_rule_entry = match view.entries_with_accounts.iter().find(|(entry, _)| {
-        entry.account_id == link_account_id && entry.status != EntryStatus::Expected
-    }) {
-        Some((entry, _)) => Some(entry.clone()),
-        None if view.has_more_entries => state
-            .store
-            .find_non_expected_entry_by_transaction_id_version_and_account(
-                &view.transaction.transaction_id,
-                view.transaction.version,
-                &link_account_id,
-            )
-            .await
-            .change_context(TransactionError::InternalServerError)?,
-        None => None,
-    };
-
-    let Some(current_rule_entry) = current_rule_entry else {
-        return Ok(None);
-    };
-
-    let domain_entry: DomainEntry = current_rule_entry
-        .convert_back(encryptor)
-        .await
-        .change_context(TransactionError::InternalServerError)?;
-
-    let Some(value) = domain_entry.extract_field(&link_with_rule.extract_current_rule_field())
-    else {
-        return Ok(None);
-    };
-
-    let search_expectations = state
-        .store
-        .find_expectations_for_linking(
-            link_with_rule
-                .extract_target_data()
-                .into_iter()
-                .map(|link_rule| {
-                    (
-                        SearchCriteria {
-                            rule_id: link_rule.rule_id,
-                            target_key: FieldPathKey::new(link_rule.key.to_string()),
-                            hashed_source_value: recon_engine::hash_string(&value).expose(),
-                        },
-                        link_rule.account_id,
-                    )
-                })
-                .collect(),
-        )
-        .await
-        .change_context(TransactionError::InternalServerError)?;
-
-    let Some(search_expectation) = search_expectations.first() else {
-        // TODO: This might need to change once composite key changes are done.
-        return Ok(None);
-    };
-
-    let referenced_transaction = state
-        .store
-        .find_by_id_and_profile(
-            &search_expectation.primary_transaction_id,
-            &view.transaction.profile_id,
-        )
-        .await
-        .change_context(TransactionError::InternalServerError)?;
-
-    let linked_transaction = state
-        .store
-        .find_latest_transaction_by_logical_id_and_profile_id(
-            &referenced_transaction.transaction_id,
-            &view.transaction.profile_id,
-        )
-        .await
-        .change_context(TransactionError::InternalServerError)?;
-
-    Ok(linked_transaction)
 }
 
 /// Trait for converting Diesel transaction data to API transaction data

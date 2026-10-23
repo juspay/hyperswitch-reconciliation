@@ -1,6 +1,5 @@
 use common_types::recon_rule::{
     grouping_field::GroupingField,
-    link_with_rule::LinkWithRule,
     match_rules::MatchRules,
     search_identifier::SearchIdentifier,
     strategies::{
@@ -187,19 +186,11 @@ pub struct ReconRuleUpdateRequest {
     pub rule_name: Option<String>,
     #[schema(example = "Updated rule description")]
     pub rule_description: Option<String>,
-    pub link_with_rule: Option<LinkWithRuleUpdate>,
     pub aging_config: Option<AgingConfigApiRequest>,
     #[schema(example = 100)]
     pub priority: Option<u8>,
     pub is_active: Option<bool>,
     pub strategy: Option<ReconStrategy>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(tag = "update_type", rename_all = "snake_case")]
-pub enum LinkWithRuleUpdate {
-    Unset,
-    Set { data: LinkWithRule },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
