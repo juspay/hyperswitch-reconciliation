@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use api_models::entry::{
     ApiEntryListFilters, EntryListPage, GetEntryResponse, LinkedEntryResponse, ListEntriesRequest,
 };
@@ -274,32 +272,17 @@ pub async fn list_linked_entries(
         .change_context(EntryError::InternalServerError)?;
 
     let (links, entries): (Vec<_>, Vec<_>) = linked_entries.into_iter().unzip();
-    let entries_by_id: HashMap<_, _> = entries_to_response(&state, &auth_context, entries)
-        .await?
-        .into_iter()
-        .map(|entry| (entry.entry_id.clone(), entry))
-        .collect();
+    let entries = entries_to_response(&state, &auth_context, entries).await?;
     let response = links
         .into_iter()
-        .map(|link| {
-            let counterpart_id = if link.transaction_entry_id == entry_id {
-                &link.confirmation_entry_id
-            } else {
-                &link.transaction_entry_id
-            };
-            let entry = entries_by_id
-                .get(counterpart_id)
-                .cloned()
-                .ok_or(EntryError::InternalServerError)?;
-
-            Ok(LinkedEntryResponse {
-                entry_link_id: link.id,
-                link_config_id: link.link_config_id,
-                status: link.status,
-                entry,
-            })
+        .zip(entries)
+        .map(|(link, entry)| LinkedEntryResponse {
+            entry_link_id: link.id,
+            link_config_id: link.link_config_id,
+            status: link.status,
+            entry,
         })
-        .collect::<EntryResult<Vec<_>>>()?;
+        .collect::<Vec<_>>();
 
     Ok(ApplicationResponse::json(response))
 }

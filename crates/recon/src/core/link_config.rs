@@ -1,21 +1,20 @@
 use api_models::link_config::{
     GetLinkConfigResponse, LinkConfigCreateRequest, LinkConfigUpdateRequest,
 };
-use common_types::link_config::link_matching_key::{LinkSearchIdentifier, LinkSearchIdentifierV1};
 use common_utils::auth::AuthContext;
 use diesel_models::link_config::{LinkConfigNew, LinkConfigUpdate};
 use error_stack::ResultExt;
 
 use crate::{
-    db::{
-        account::AccountInterface, link_config::LinkConfigInterface, recon_rule::ReconRuleInterface,
-    },
+    db::link_config::LinkConfigInterface,
     errors::{
         conversions::StorageErrorExt,
-        link_config::{LinkConfigError, LinkConfigResponse, LinkConfigResult},
+        link_config::{LinkConfigError, LinkConfigResponse},
     },
     types::ApplicationResponse,
-    utils::link_config::{LinkConfigExt, LinkSearchIdentifierApiExt, LinkTriggerApiExt},
+    utils::link_config::{
+        LinkConfigExt, LinkConfigValidator, LinkSearchIdentifierApiExt, LinkTriggerApiExt,
+    },
     AppState,
 };
 
@@ -58,16 +57,9 @@ pub async fn create_link_config(
     request: LinkConfigCreateRequest,
     auth_context: AuthContext,
 ) -> LinkConfigResponse<GetLinkConfigResponse> {
-    let link_search_identifier = request.link_search_identifier.to_diesel_model();
-    validate_link_config(
-        state,
-        &auth_context.profile_id,
-        &request.account_id,
-        &request.transaction_rule_id,
-        &request.confirmation_rule_id,
-        &link_search_identifier,
-    )
-    .await?;
+    request
+        .validate_with_db(state, &auth_context.profile_id)
+        .await?;
 
     let new_config = LinkConfigNew::new(
         auth_context.profile_id,
@@ -76,7 +68,7 @@ pub async fn create_link_config(
         request.confirmation_rule_id,
         request.transaction_trigger.to_diesel_model(),
         request.confirmation_trigger.to_diesel_model(),
-        link_search_identifier,
+        request.link_search_identifier.to_diesel_model(),
         request.priority,
     );
     let config = state
@@ -113,26 +105,9 @@ pub async fn update_link_config(
         return Ok(ApplicationResponse::json(existing.to_api_response()));
     }
 
-    let link_search_identifier = request
-        .link_search_identifier
-        .map(|value| value.to_diesel_model());
-    validate_link_config(
-        state,
-        &auth_context.profile_id,
-        &existing.account_id,
-        request
-            .transaction_rule_id
-            .as_deref()
-            .unwrap_or(&existing.transaction_rule_id),
-        request
-            .confirmation_rule_id
-            .as_deref()
-            .unwrap_or(&existing.confirmation_rule_id),
-        link_search_identifier
-            .as_ref()
-            .unwrap_or(&existing.link_search_identifier),
-    )
-    .await?;
+    request
+        .validate_with_db(state, &auth_context.profile_id)
+        .await?;
 
     let update = LinkConfigUpdate::ConfigUpdate {
         transaction_rule_id: request.transaction_rule_id,
@@ -143,7 +118,9 @@ pub async fn update_link_config(
         confirmation_trigger: request
             .confirmation_trigger
             .map(|value| value.to_diesel_model()),
-        link_search_identifier,
+        link_search_identifier: request
+            .link_search_identifier
+            .map(|value| value.to_diesel_model()),
         priority: request.priority.map(i16::from),
         is_active: request.is_active,
     };
@@ -160,54 +137,4 @@ pub async fn update_link_config(
         })?;
 
     Ok(ApplicationResponse::json(config.to_api_response()))
-}
-
-async fn validate_link_config(
-    state: &AppState,
-    profile_id: &str,
-    account_id: &str,
-    transaction_rule_id: &str,
-    confirmation_rule_id: &str,
-    link_search_identifier: &LinkSearchIdentifier,
-) -> LinkConfigResult<()> {
-    for (field, value) in [
-        ("account_id", account_id),
-        ("transaction_rule_id", transaction_rule_id),
-        ("confirmation_rule_id", confirmation_rule_id),
-    ] {
-        if value.trim().is_empty() {
-            return Err(LinkConfigError::InvalidLinkConfig {
-                message: format!("{field} cannot be empty"),
-            }
-            .into());
-        }
-    }
-    if let LinkSearchIdentifier::V1(LinkSearchIdentifierV1::Composite(composite)) =
-        link_search_identifier
-    {
-        if composite.keys.is_empty() {
-            return Err(LinkConfigError::InvalidLinkConfig {
-                message: "Composite matching identifier must contain at least one key".to_owned(),
-            }
-            .into());
-        }
-    }
-
-    state
-        .store
-        .find_account_by_profile_id_and_account_id(profile_id, account_id)
-        .await
-        .to_not_found_response(|| LinkConfigError::AccountNotFound {
-            account_id: account_id.to_owned(),
-        })?;
-    for rule_id in [transaction_rule_id, confirmation_rule_id] {
-        state
-            .store
-            .find_recon_rule_by_profile_id_and_rule_id(profile_id, rule_id)
-            .await
-            .to_not_found_response(|| LinkConfigError::RuleNotFound {
-                rule_id: rule_id.to_owned(),
-            })?;
-    }
-    Ok(())
 }

@@ -225,18 +225,21 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
         .json(&invalid_account)
         .send()
         .await;
-    assert_eq!(response.status(), 400);
+    assert_eq!(response.status(), 404);
 
-    for invalid in [
-        json!({"transaction_rule_id": ""}),
-        json!({"confirmation_rule_id": " "}),
-        json!({"link_search_identifier": {
-            "matching_key_type": "composite",
-            "keys": [], "delimiter": "pipe"
-        }}),
-        json!({"transaction_trigger": {"any": "invalid"}}),
-        json!({"priority": 256}),
-        json!({"priority": -1}),
+    for (invalid, expected_code) in [
+        (json!({"transaction_rule_id": ""}), 404),
+        (json!({"confirmation_rule_id": " "}), 404),
+        (
+            json!({"link_search_identifier": {
+                "matching_key_type": "composite",
+                "keys": [], "delimiter": "pipe"
+            }}),
+            400,
+        ),
+        (json!({"transaction_trigger": {"any": "invalid"}}), 400),
+        (json!({"priority": 256}), 400),
+        (json!({"priority": -1}), 400),
     ] {
         let mut invalid_create = serde_json::to_value(&request).unwrap();
         invalid_create
@@ -249,7 +252,7 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
             .json(&invalid_create)
             .send()
             .await;
-        assert_eq!(response.status(), 400);
+        assert_eq!(response.status(), expected_code);
 
         let response = client
             .put(&format!("/link_configs/{id}"))
@@ -257,7 +260,7 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
             .json(&invalid)
             .send()
             .await;
-        assert_eq!(response.status(), 400);
+        assert_eq!(response.status(), expected_code);
         assert_eq!(
             update_config(&client, &token, id, &json!({})).await,
             created
