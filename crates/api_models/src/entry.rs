@@ -1,4 +1,4 @@
-use common_enums::{BalanceDirection, Currency, EntryStatus};
+use common_enums::{BalanceDirection, Currency, EntryLinkStatus, EntryStatus};
 use common_types::{
     amount::AmountResponse,
     date_time::{TimeRange, TimeRangeValidation},
@@ -28,7 +28,7 @@ pub struct CompactEntryData {
     pub mismatch: Option<MismatchedEntryData>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct GetEntryResponse {
     #[schema(example = "entry_123")]
     pub entry_id: String,
@@ -60,6 +60,14 @@ pub struct GetEntryResponse {
     pub transformation_id: Option<String>,
     #[schema(example = "order_123456")]
     pub order_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct LinkedEntryResponse {
+    pub entry_link_id: String,
+    pub link_config_id: String,
+    pub status: EntryLinkStatus,
+    pub entry: GetEntryResponse,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]

@@ -60,6 +60,7 @@ pub fn make_app(
     app = app.service(routes::app::Entry::server(state.clone()));
     app = app.service(routes::app::Overview::server(state.clone()));
     app = app.service(routes::app::ReconRule::server(state.clone()));
+    app = app.service(routes::app::LinkConfig::server(state.clone()));
     app = app.service(routes::app::ReconEngine::server(state.clone()));
     app = app.service(routes::app::LinkingProcessor::server(state.clone()));
     app = app.service(routes::app::Ingestion::server(state.clone()));

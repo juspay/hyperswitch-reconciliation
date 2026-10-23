@@ -40,7 +40,7 @@ The linking processor associates persisted entries from transaction and confirma
 - Missing fields make a condition false, including `not_equals`. Comparisons use extracted string values.
 - Empty `any` matches nothing; an empty `all` group matches everything. There is currently no config API validation layer rejecting these shapes.
 
-Example trigger value for either config side:
+Example stored trigger value for either config side (the API omits `trigger_version`):
 
 ```json
 {
@@ -55,6 +55,17 @@ Example trigger value for either config side:
   ]
 }
 ```
+
+## Config API and Update Constraints
+<!-- AI-UPDATED: 2026-10-23 - Account immutability, request validation, and separate config updates -->
+
+- Config APIs use JWT profile scope: `GET /link_configs` and `GET /link_configs/{link_config_id}` require `ProfileReconRuleRead`; `POST /link_configs` and `PUT /link_configs/{link_config_id}` require `ProfileReconRuleWrite`. Listing includes inactive configs; processing selects only active configs.
+- **The account cannot be changed after creation.** `account_id` is absent from both the update request and Diesel changeset. Serde ignores unknown request fields, so sending it in a PUT does not move the config or produce a validation error. Create another config for a different account.
+- `LinkConfigValidator::validate_with_db` validates the create account and both rules against the JWT profile. Updates validate only supplied rules/identifiers, not unchanged references. Blank IDs now follow lookup and return 404, rather than the former explicit 400 validation error.
+- Profile ownership does not prove rule/account compatibility: validation does not check that either rule uses the config's account or has the intended processing side. Config authors must align these with the entries that will be processed.
+- API triggers and identifiers omit the storage tags `trigger_version` and `link_search_version`; conversion adds the V1 wrappers. Empty composite keys return 400; duplicate fields and empty trigger groups are not rejected. API priority is `u8` (0-255), although responses/storage use `i16`.
+- **A multi-field PUT is not atomic.** Validation runs first, then separate writes apply rule IDs, triggers, identifier, priority, and active status, in that order. A later storage failure can leave earlier changes applied; processing can observe intermediate configurations.
+- Omitted fields are preserved; `{}` returns the existing config without changing `last_modified_at`. Updates do not rebuild keys/links or requeue entries, so changing identifiers or rules can leave historical keys based on the previous config semantics.
 
 ## Matching Keys and Direction
 
@@ -81,7 +92,8 @@ Example composite identifier stored in `link_search_identifier`:
 - Composite pairs are sorted by `transaction_field.to_string()` for **both** sides. Independently sorting confirmation fields would misalign values when names differ.
 - Shared `CompositeSearchIdentifierExt` lives in `crates/recon/src/domain/search_identifier.rs`; reconciliation retains its own ordering by `source_field.to_string()`.
 - Delimiters are `pipe` (`|`) or `none` (concatenation). Values are not escaped or length-prefixed: embedded pipes or ambiguous concatenation can collide. Config authors must choose unambiguous inputs.
-- Unlike recon-rule creation, link-config insertion currently has no validation for empty/duplicate composite fields. Do not assume the recon-rule validators run here.
+<!-- AI-UPDATED: 2026-10-23 - Distinguish API validation from direct storage insertion -->
+- Link-config create/update APIs reject empty composite keys, but not duplicates. Direct `LinkConfigInterface` insertion bypasses this API validation; recon-rule validators do not run here.
 
 ## Matching Outcomes and Persistence
 
@@ -110,13 +122,31 @@ Example composite identifier stored in `link_search_identifier`:
 - Account ownership must remain exclusive across application instances and worker handoffs. This partitioning is planned, not implemented by the current global pending query. `BATCH_SIZE = 1` is only local serialization.
 - There are no row claims or locks around candidate selection. Unique indexes prevent duplicate entry/config keys and duplicate config/entry pairs, but do not enforce one final counterpart per entry. Concurrent workers can still consume the same posted candidate for different incoming entries; preserve the account ownership contract.
 
+## Inline Processing
+<!-- AI-UPDATED: 2026-10-23 - Admin-only process endpoint and its concurrency/response contracts -->
+
+- `POST /linking_processor/{entry_id}/process` accepts a physical entry ID with no body and uses `AdminApiAuth` (`api-key`), not a profile JWT. It has no JWT profile ownership check; a JWT alone cannot authorize it.
+- Only `entry.linking_status = Pending` is eligible. Failed, Processed, and NotApplicable return 400 `LP_802`; an unknown entry returns 404 `LP_801`. To retry a Failed entry, fix the cause and use JWT enqueue before processing.
+- The request runs the same core pipeline inline, even when the background processor is Stopped, and does not change processor status. HTTP 200 can contain JSON `"success"` or `{"failure":"<reason>"}`: recorded processing failures are successful HTTP responses. Success can mean a searchable key was created without a counterpart.
+- Direct infrastructure/data-integrity errors still propagate as HTTP 500 and can leave the entry Pending; see [failure policy](#failure-policy). The entry response does not expose linking state, and an empty linked-entry list alone cannot distinguish pending, failed, or processed-without-match entries.
+- **Inline calls must share the account serialization contract.** The Pending check is not a claim or lock, and inline calls can race each other or the background worker. A stopped status does not acknowledge completion of already-running work; ensure no same-account work remains in flight before processing manually.
+
+## Reading Linked Entries
+<!-- AI-UPDATED: 2026-10-23 - Bidirectional linked-entry lookup, history, and profile scope -->
+
+- `GET /entries/{entry_id}/linked_entries` uses JWT `ProfileReconTransactionRead`. It checks the requested entry's account against the JWT profile before querying; missing or foreign-profile entries return 404, while an owned entry with no links returns `[]`.
+- Lookup works from either side using the physical entry ID. Each result contains `entry_link_id`, `link_config_id`, link `status` (`final` / `provisional`), and the **counterpart** as a full `GetEntryResponse`; its nested `entry.status` is the separate reconciliation status.
+- Results include all matching link rows, ordered by `(entry_link.created_at ASC, entry_link.id ASC)`, without pagination, latest-version filtering, or final-only filtering. Preserve historical provisional counterparts rather than collapsing by logical transaction ID.
+- The query filters `entry_link.profile_id` and joins the counterpart entry directly; it does not revalidate every counterpart account or require an active config. Correct link-row ownership remains a write-time invariant. Counterparts use the normal merchant-scoped entry decryption path; a conversion failure fails the whole response.
+
 ## Explicit Enqueue and Retry
 
 - `POST /linking_processor/{entry_id}/enqueue` takes a physical `entry.id`, with no request body. It uses `JwtAuth::basic(Permission::ProfileReconTransactionWrite)` and returns HTTP 200 after resetting `linking_status` and `linking_data` to Pending. It does not run linking inline or start the processor.
 - Ownership is checked through `find_account_by_profile_id_and_account_id` against the JWT profile before checking status. A missing entry or an account outside that profile returns 404 `LP_801`; storage failures map to 500 `LP_800`.
 - **Only Failed linking status can be enqueued.** `EntryLinkingStatus::enqueuable_statuses()` defines the allowed set. Pending, Processed, and NotApplicable return HTTP 400 `LP_802` (`InvalidEntryLinkingStatus`), with the current and expected statuses in the error message. Eligibility uses `entry.linking_status`, independently of reconciliation `entry.status`.
 - A successful reset replaces prior failure data, leaves reconciliation state and existing keys/links unchanged, and preserves `created_at`, so queue order is still the entry's original creation order. A repeat request while the entry is Pending is rejected; enqueue is a failed-entry retry, not a way to re-link Processed entries.
-- Retry Failed entries after resolving the cause. There are no link-config CRUD endpoints; config insertion is available through `LinkConfigInterface`.
+<!-- AI-UPDATED: 2026-10-23 - Config APIs and inline processing are available for failed-entry recovery -->
+- Retry Failed entries after resolving the cause through the [config APIs](#config-api-and-update-constraints), then enqueue. The pending entry can be handled by the background worker or the admin-only [inline endpoint](#inline-processing).
 
 ## Failure Policy
 
@@ -165,9 +195,13 @@ Paths are relative to the repository root.
 - `crates/recon/src/domain/linking_processor.rs`: processing pipeline, error handling, context types, `LinkingProcessor` trait.
 - `crates/recon/src/domain/linking_processor/link_orchestration.rs`: active config discovery and priority selection.
 - `crates/recon/src/domain/linking_processor/implementations.rs`: matching outcomes and atomic persistence; the adjacent `implementations/` directory contains `link_trigger.rs` and `link_matching_key.rs` for evaluation/extraction.
-- `crates/recon/src/core/linking_processor.rs` and `crates/recon/src/routes/linking_processor.rs`: background loop, admin status controls, and JWT-scoped enqueue.
+<!-- AI-UPDATED: 2026-10-23 - Add endpoint, config validation, and API coverage source locations -->
+- `crates/recon/src/core/linking_processor.rs` and `crates/recon/src/routes/linking_processor.rs`: background loop, admin status/inline processing controls, and JWT-scoped enqueue.
+- `crates/recon/src/core/entry.rs`, `crates/recon/src/routes/entry.rs`, and `crates/recon/src/db/entry_link.rs`: profile-scoped linked-entry lookup and counterpart responses.
+- `crates/recon/src/core/link_config.rs` and `crates/recon/src/utils/link_config.rs`: config API persistence, request validation, and API/storage conversion.
 - `crates/recon/src/utils/linking_processor.rs` and `crates/recon/src/errors/linking_processor.rs`: persisted failure conversion, failure macro, and API errors.
 - `crates/common_enums/src/linking.rs`, `crates/common_types/src/entry_linking.rs`, and `crates/common_types/src/link_config/`: statuses and versioned payloads.
 - `crates/diesel_models/src/query/`: `entry.rs` selects pending entries; `link_config.rs`, `search_entry_link_key.rs`, and `entry_link.rs` provide config lookup and link persistence.
+- `crates/recon/tests/api/linking_processor.rs` and `link_config_test.rs`: API coverage for arrival order, provisional fan-out, posted candidate consumption, config isolation/priority, failure/retry, Expected-entry rejection, and config update constraints.
 
 Related domains: [transactions](../transactions/AGENT-NOTES.md), [recon rules](../recon-rules/AGENT-NOTES.md), [reconciliation](../reconciliation/INDEX.md).

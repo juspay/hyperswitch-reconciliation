@@ -1,5 +1,7 @@
 use actix_web::{web, HttpRequest, Responder};
-use api_models::entry::{ApiEntryListFilters, EntryListPage, GetEntryResponse, ListEntriesRequest};
+use api_models::entry::{
+    ApiEntryListFilters, EntryListPage, GetEntryResponse, LinkedEntryResponse, ListEntriesRequest,
+};
 use common_types::{
     date_time::TimeRange,
     entry::{EntryEffectiveAtSortField, EntryListSortField, ListEntriesFilters},
@@ -19,6 +21,7 @@ use crate::{
 #[openapi(
     paths(
         get_entry_by_id,
+        list_linked_entries,
         list_entries,
         list_entries_by_account_id,
         list_entries_by_transaction_id,
@@ -26,6 +29,7 @@ use crate::{
     components(
         schemas(
             GetEntryResponse,
+            LinkedEntryResponse,
             common_types::amount::AmountResponse,
             common_enums::BalanceDirection,
             common_enums::EntryStatus,
@@ -74,6 +78,38 @@ pub async fn get_entry_by_id(
         |state, auth| async move {
             let entry_id = path.into_inner();
             core::entry::get_entry_by_id(state, entry_id, auth).await
+        },
+    )
+    .await
+}
+
+#[utoipa::path(
+    get,
+    path = "/entries/{entry_id}/linked_entries",
+    tag = "Entries",
+    params(
+        ("entry_id" = String, Path, description = "Physical entry ID on either side of a link")
+    ),
+    responses(
+        (status = 200, description = "All linked counterpart entries, ordered by link creation time and ID; an unlinked entry returns an empty list", body = Vec<LinkedEntryResponse>),
+        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
+        (status = 403, description = "Forbidden - Missing transaction read permission"),
+        (status = 404, description = "Entry not found or account does not belong to authenticated user's profile"),
+        (status = 500, description = "Internal server error"),
+    ),
+    security(("Bearer" = []))
+)]
+pub async fn list_linked_entries(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    api::server_wrap(
+        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        &http_req,
+        state,
+        |state, auth| async move {
+            core::entry::list_linked_entries(state, path.into_inner(), auth).await
         },
     )
     .await
