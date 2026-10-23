@@ -81,17 +81,10 @@ pub async fn enqueue_entry(
 pub async fn process_entry(
     state: AppState,
     entry_id: String,
-    auth_context: AuthContext,
 ) -> LinkingProcessorResponse<LinkingTriggerResponse> {
     let entry = state
         .store
         .find_entry_by_id(&entry_id)
-        .await
-        .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
-
-    state
-        .store
-        .find_account_by_profile_id_and_account_id(&auth_context.profile_id, &entry.account_id)
         .await
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 

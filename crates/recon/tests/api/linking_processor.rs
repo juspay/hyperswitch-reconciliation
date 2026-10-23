@@ -289,7 +289,7 @@ async fn process_entry(
 ) -> LinkingTriggerResponse {
     let response = client
         .post(&format!("/linking_processor/{}/process", entry.entry_id))
-        .with_auth(token)
+        .with_admin_key()
         .send()
         .await;
     assert_eq!(response.status(), 200);
@@ -403,12 +403,15 @@ async fn linking_matches_both_arrival_orders(
     let forward = assert_links(&client, &token, &first, &[&second], &config, status).await;
     let reverse = assert_links(&client, &token, &second, &[&first], &config, status).await;
     assert_eq!(forward[0].entry_link_id, reverse[0].entry_link_id);
-    for action in ["process", "enqueue"] {
-        let response = client
-            .post(&format!("/linking_processor/{}/{action}", first.entry_id))
-            .with_auth(&token)
-            .send()
-            .await;
+    for request in [
+        client
+            .post(&format!("/linking_processor/{}/process", first.entry_id))
+            .with_admin_key(),
+        client
+            .post(&format!("/linking_processor/{}/enqueue", first.entry_id))
+            .with_auth(&token),
+    ] {
+        let response = request.send().await;
         assert_api_error(response, 400, "LP_802").await;
     }
     assert_eq!(
@@ -604,7 +607,7 @@ async fn failed_linking_can_be_fixed_and_enqueued_once() {
     .await;
     let process_path = format!("/linking_processor/{}/process", entry.entry_id);
     assert_api_error(
-        client.post(&process_path).with_auth(&token).send().await,
+        client.post(&process_path).with_admin_key().send().await,
         400,
         "LP_802",
     )
@@ -900,12 +903,15 @@ async fn expected_entries_cannot_be_processed_or_enqueued() {
         }));
     for entry in create_entries(&client, &token, &request, false).await {
         if entry.status == EntryStatus::Expected {
-            for action in ["process", "enqueue"] {
-                let response = client
-                    .post(&format!("/linking_processor/{}/{action}", entry.entry_id))
-                    .with_auth(&token)
-                    .send()
-                    .await;
+            for request in [
+                client
+                    .post(&format!("/linking_processor/{}/process", entry.entry_id))
+                    .with_admin_key(),
+                client
+                    .post(&format!("/linking_processor/{}/enqueue", entry.entry_id))
+                    .with_auth(&token),
+            ] {
+                let response = request.send().await;
                 assert_api_error(response, 400, "LP_802").await;
             }
             assert!(linked_entries(&client, &token, &entry.entry_id)

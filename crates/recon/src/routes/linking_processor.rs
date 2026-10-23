@@ -113,30 +113,23 @@ pub async fn enqueue_entry(
     responses(
         (status = 200, description = "Linking completed or a processing failure was recorded", body = LinkingTriggerResponse),
         (status = 400, description = "Only entries pending linking can be processed"),
-        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
-        (status = 403, description = "Forbidden - Missing transaction write permission"),
-        (status = 404, description = "Entry not found or account does not belong to authenticated user's profile"),
+        (status = 401, description = "Unauthorized - Invalid or missing admin API key"),
+        (status = 404, description = "Entry not found"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("Bearer" = [])),
+    security(("ApiKey" = [])),
 )]
 pub async fn process_entry(
     state: web::Data<AppState>,
     path: web::Path<String>,
     http_req: HttpRequest,
 ) -> impl Responder {
-    api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
-        &http_req,
-        state,
-        |state, auth| async move {
-            Box::pin(core::linking_processor::process_entry(
-                state,
-                path.into_inner(),
-                auth,
-            ))
-            .await
-        },
-    )
+    api::server_wrap(AdminApiAuth, &http_req, state, |state, _auth| async move {
+        Box::pin(core::linking_processor::process_entry(
+            state,
+            path.into_inner(),
+        ))
+        .await
+    })
     .await
 }
