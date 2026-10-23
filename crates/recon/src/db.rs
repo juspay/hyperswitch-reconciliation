@@ -1,6 +1,7 @@
 pub mod account;
 pub mod business_profile;
 pub mod entry;
+pub mod entry_link;
 pub mod ingestion_config;
 pub mod ingestion_history;
 pub mod link_config;

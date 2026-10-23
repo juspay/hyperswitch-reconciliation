@@ -6,7 +6,7 @@ use actix_web::{
 };
 use async_bb8_diesel::ConnectionManager;
 use bb8::Pool;
-use common_enums::ReconProcessorStatus;
+use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
 use diesel::PgConnection;
 use external_services::{faas::FaasHandler, file_storage::FileStorageHandler};
 use http::StatusCode;
@@ -60,7 +60,9 @@ pub fn make_app(
     app = app.service(routes::app::Entry::server(state.clone()));
     app = app.service(routes::app::Overview::server(state.clone()));
     app = app.service(routes::app::ReconRule::server(state.clone()));
+    app = app.service(routes::app::LinkConfig::server(state.clone()));
     app = app.service(routes::app::ReconEngine::server(state.clone()));
+    app = app.service(routes::app::LinkingProcessor::server(state.clone()));
     app = app.service(routes::app::Ingestion::server(state.clone()));
     app = app.service(routes::app::Transformation::server(state.clone()));
     app = app.service(routes::app::Report::server(state.clone()));
@@ -125,6 +127,7 @@ pub async fn initialize_server(
     };
 
     let (sx, rx) = watch::channel(ReconProcessorStatus::Stopped);
+    let (linking_sx, linking_rx) = watch::channel(LinkingProcessorStatus::Stopped);
 
     // Create encryption client
     let encryption_client = config
@@ -148,11 +151,16 @@ pub async fn initialize_server(
         faas,
         ingestion,
         recon_processor_status: sx,
+        linking_processor_status: linking_sx,
         encryption_client,
         user_client,
     };
 
     tokio::spawn(core::recon_engine::recon_processor_v2(state.clone(), rx));
+    tokio::spawn(core::linking_processor::linking_processor(
+        state.clone(),
+        linking_rx,
+    ));
 
     // Bind to the configured address and port
     let listener = std::net::TcpListener::bind((config.server.host.as_str(), config.server.port))
