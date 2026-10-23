@@ -25,6 +25,9 @@ Look in `domains/[feature]/` and read ALL files present:
 - `recon-rules/` - Rule configuration and execution engine
   - `SCHEMA.md` - Complete recon_rule schema reference
   - `AGENT-NOTES.md` - Implementation details and critical gotchas
+<!-- AI-UPDATED: 2026-10-23 - Link config updates, inline processing, and linked-entry lookup navigation -->
+- `linking/` - Entry linking across transaction/confirmation flows on one account
+  - [AGENT-NOTES.md](domains/linking/AGENT-NOTES.md) - Final/provisional links, config API/update constraints, matching keys, admin inline processing, linked-entry lookup, enqueue/retry limits, and migration/worker contracts
 - `external-services/` - Secret management, AWS S3/OCI file storage, FaaS invocation, and external integrations
 - `file-storage/` - File upload/download API validation, organization, and storage integration gotchas
 - `encryption/` - Application encryption system with LocalEncryption and KeymanagerService strategies

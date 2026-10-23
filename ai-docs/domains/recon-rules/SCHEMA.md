@@ -21,7 +21,9 @@ crates/common_types/src/recon_rule/
 - **MatchRules**: `crates/common_types/src/recon_rule/match_rules.rs` - Field comparison rules
 - **SearchIdentifier**: `crates/common_types/src/recon_rule/search_identifier.rs` - Source/target field mapping
 - **Trigger**: `crates/common_types/src/recon_rule/trigger.rs` - Rule activation conditions
-- **LinkWithRule**: `crates/common_types/src/recon_rule/link_with_rule.rs` - Rule chaining (OneToMany)
+
+<!-- AI-UPDATED: 2026-10-15 - Link config schemas are separate from ReconStrategy -->
+Entry linking has its own `link_config` table and schemas under `crates/common_types/src/link_config/` (`LinkTrigger::V1` and `LinkSearchIdentifier::V1`). These are not recon-strategy fields and do not share the recon-rule trigger JSON shape. See [linking notes](../linking/AGENT-NOTES.md) for examples and selection rules.
 
 ## Schema Structure Overview
 
