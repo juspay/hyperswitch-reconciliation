@@ -94,47 +94,110 @@ pub async fn update_link_config(
             link_config_id: link_config_id.to_owned(),
         })?;
 
-    if request.transaction_rule_id.is_none()
-        && request.confirmation_rule_id.is_none()
-        && request.transaction_trigger.is_none()
-        && request.confirmation_trigger.is_none()
-        && request.link_search_identifier.is_none()
-        && request.priority.is_none()
-        && request.is_active.is_none()
-    {
-        return Ok(ApplicationResponse::json(existing.to_api_response()));
-    }
-
     request
         .validate_with_db(state, &auth_context.profile_id)
         .await?;
 
-    let update = LinkConfigUpdate::ConfigUpdate {
-        transaction_rule_id: request.transaction_rule_id,
-        confirmation_rule_id: request.confirmation_rule_id,
-        transaction_trigger: request
-            .transaction_trigger
-            .map(|value| value.to_diesel_model()),
-        confirmation_trigger: request
-            .confirmation_trigger
-            .map(|value| value.to_diesel_model()),
-        link_search_identifier: request
-            .link_search_identifier
-            .map(|value| value.to_diesel_model()),
-        priority: request.priority.map(i16::from),
-        is_active: request.is_active,
+    let config = if request.transaction_rule_id.is_some() || request.confirmation_rule_id.is_some()
+    {
+        let update = LinkConfigUpdate::RuleIdsUpdate {
+            transaction_rule_id: request.transaction_rule_id,
+            confirmation_rule_id: request.confirmation_rule_id,
+        };
+        state
+            .store
+            .update_link_config_by_profile_id_and_link_config_id(
+                &auth_context.profile_id,
+                link_config_id,
+                update,
+            )
+            .await
+            .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
+                link_config_id: link_config_id.to_owned(),
+            })?
+    } else {
+        existing
     };
-    let config = state
-        .store
-        .update_link_config_by_profile_id_and_link_config_id(
-            &auth_context.profile_id,
-            link_config_id,
-            update,
-        )
-        .await
-        .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
-            link_config_id: link_config_id.to_owned(),
-        })?;
+
+    let config = if request.transaction_trigger.is_some() || request.confirmation_trigger.is_some()
+    {
+        let update = LinkConfigUpdate::TriggerUpdate {
+            transaction_trigger: request
+                .transaction_trigger
+                .map(|value| value.to_diesel_model()),
+            confirmation_trigger: request
+                .confirmation_trigger
+                .map(|value| value.to_diesel_model()),
+        };
+        state
+            .store
+            .update_link_config_by_profile_id_and_link_config_id(
+                &auth_context.profile_id,
+                link_config_id,
+                update,
+            )
+            .await
+            .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
+                link_config_id: link_config_id.to_owned(),
+            })?
+    } else {
+        config
+    };
+
+    let config = if let Some(link_search_identifier) = request.link_search_identifier {
+        let update = LinkConfigUpdate::SearchIdentifierUpdate {
+            link_search_identifier: link_search_identifier.to_diesel_model(),
+        };
+        state
+            .store
+            .update_link_config_by_profile_id_and_link_config_id(
+                &auth_context.profile_id,
+                link_config_id,
+                update,
+            )
+            .await
+            .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
+                link_config_id: link_config_id.to_owned(),
+            })?
+    } else {
+        config
+    };
+
+    let config = if let Some(priority) = request.priority {
+        let update = LinkConfigUpdate::PriorityUpdate {
+            priority: i16::from(priority),
+        };
+        state
+            .store
+            .update_link_config_by_profile_id_and_link_config_id(
+                &auth_context.profile_id,
+                link_config_id,
+                update,
+            )
+            .await
+            .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
+                link_config_id: link_config_id.to_owned(),
+            })?
+    } else {
+        config
+    };
+
+    let config = if let Some(is_active) = request.is_active {
+        let update = LinkConfigUpdate::ActiveUpdate { is_active };
+        state
+            .store
+            .update_link_config_by_profile_id_and_link_config_id(
+                &auth_context.profile_id,
+                link_config_id,
+                update,
+            )
+            .await
+            .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
+                link_config_id: link_config_id.to_owned(),
+            })?
+    } else {
+        config
+    };
 
     Ok(ApplicationResponse::json(config.to_api_response()))
 }

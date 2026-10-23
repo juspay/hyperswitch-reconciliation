@@ -85,37 +85,87 @@ pub struct LinkConfigUpdateInternal {
 
 #[derive(Debug, Clone)]
 pub enum LinkConfigUpdate {
-    ConfigUpdate {
+    RuleIdsUpdate {
         transaction_rule_id: Option<String>,
         confirmation_rule_id: Option<String>,
+    },
+    TriggerUpdate {
         transaction_trigger: Option<LinkTrigger>,
         confirmation_trigger: Option<LinkTrigger>,
-        link_search_identifier: Option<LinkSearchIdentifier>,
-        priority: Option<i16>,
-        is_active: Option<bool>,
+    },
+    SearchIdentifierUpdate {
+        link_search_identifier: LinkSearchIdentifier,
+    },
+    PriorityUpdate {
+        priority: i16,
+    },
+    ActiveUpdate {
+        is_active: bool,
     },
 }
 
 impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
     fn from(update: LinkConfigUpdate) -> Self {
+        let last_modified_at = date_time::now();
+
         match update {
-            LinkConfigUpdate::ConfigUpdate {
+            LinkConfigUpdate::RuleIdsUpdate {
                 transaction_rule_id,
                 confirmation_rule_id,
-                transaction_trigger,
-                confirmation_trigger,
-                link_search_identifier,
-                priority,
-                is_active,
             } => Self {
                 transaction_rule_id,
                 confirmation_rule_id,
+                transaction_trigger: None,
+                confirmation_trigger: None,
+                link_search_identifier: None,
+                priority: None,
+                is_active: None,
+                last_modified_at,
+            },
+            LinkConfigUpdate::TriggerUpdate {
                 transaction_trigger,
                 confirmation_trigger,
+            } => Self {
+                transaction_rule_id: None,
+                confirmation_rule_id: None,
+                transaction_trigger,
+                confirmation_trigger,
+                link_search_identifier: None,
+                priority: None,
+                is_active: None,
+                last_modified_at,
+            },
+            LinkConfigUpdate::SearchIdentifierUpdate {
                 link_search_identifier,
-                priority,
-                is_active,
-                last_modified_at: date_time::now(),
+            } => Self {
+                transaction_rule_id: None,
+                confirmation_rule_id: None,
+                transaction_trigger: None,
+                confirmation_trigger: None,
+                link_search_identifier: Some(link_search_identifier),
+                priority: None,
+                is_active: None,
+                last_modified_at,
+            },
+            LinkConfigUpdate::PriorityUpdate { priority } => Self {
+                transaction_rule_id: None,
+                confirmation_rule_id: None,
+                transaction_trigger: None,
+                confirmation_trigger: None,
+                link_search_identifier: None,
+                priority: Some(priority),
+                is_active: None,
+                last_modified_at,
+            },
+            LinkConfigUpdate::ActiveUpdate { is_active } => Self {
+                transaction_rule_id: None,
+                confirmation_rule_id: None,
+                transaction_trigger: None,
+                confirmation_trigger: None,
+                link_search_identifier: None,
+                priority: None,
+                is_active: Some(is_active),
+                last_modified_at,
             },
         }
     }
