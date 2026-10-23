@@ -21,7 +21,6 @@ pub struct LinkConfigCreateRequest {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct LinkConfigUpdateRequest {
-    pub account_id: Option<String>,
     pub transaction_rule_id: Option<String>,
     pub confirmation_rule_id: Option<String>,
     pub transaction_trigger: Option<LinkTrigger>,

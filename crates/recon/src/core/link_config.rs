@@ -102,8 +102,7 @@ pub async fn update_link_config(
             link_config_id: link_config_id.to_owned(),
         })?;
 
-    if request.account_id.is_none()
-        && request.transaction_rule_id.is_none()
+    if request.transaction_rule_id.is_none()
         && request.confirmation_rule_id.is_none()
         && request.transaction_trigger.is_none()
         && request.confirmation_trigger.is_none()
@@ -120,10 +119,7 @@ pub async fn update_link_config(
     validate_link_config(
         state,
         &auth_context.profile_id,
-        request
-            .account_id
-            .as_deref()
-            .unwrap_or(&existing.account_id),
+        &existing.account_id,
         request
             .transaction_rule_id
             .as_deref()
@@ -139,7 +135,6 @@ pub async fn update_link_config(
     .await?;
 
     let update = LinkConfigUpdate::ConfigUpdate {
-        account_id: request.account_id,
         transaction_rule_id: request.transaction_rule_id,
         confirmation_rule_id: request.confirmation_rule_id,
         transaction_trigger: request

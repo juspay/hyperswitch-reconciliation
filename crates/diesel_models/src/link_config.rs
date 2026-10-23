@@ -73,7 +73,6 @@ impl LinkConfigNew {
 #[derive(Debug, AsChangeset)]
 #[diesel(table_name = link_config)]
 pub struct LinkConfigUpdateInternal {
-    pub account_id: Option<String>,
     pub transaction_rule_id: Option<String>,
     pub confirmation_rule_id: Option<String>,
     pub transaction_trigger: Option<LinkTrigger>,
@@ -87,7 +86,6 @@ pub struct LinkConfigUpdateInternal {
 #[derive(Debug, Clone)]
 pub enum LinkConfigUpdate {
     ConfigUpdate {
-        account_id: Option<String>,
         transaction_rule_id: Option<String>,
         confirmation_rule_id: Option<String>,
         transaction_trigger: Option<LinkTrigger>,
@@ -102,7 +100,6 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
     fn from(update: LinkConfigUpdate) -> Self {
         match update {
             LinkConfigUpdate::ConfigUpdate {
-                account_id,
                 transaction_rule_id,
                 confirmation_rule_id,
                 transaction_trigger,
@@ -111,7 +108,6 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
                 priority,
                 is_active,
             } => Self {
-                account_id,
                 transaction_rule_id,
                 confirmation_rule_id,
                 transaction_trigger,

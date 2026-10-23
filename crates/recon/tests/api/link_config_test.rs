@@ -123,6 +123,7 @@ async fn link_config_create_and_update_preserve_omitted_fields() {
 
     let replacement = config_request(&client, &token).await;
     let mut full_update = serde_json::to_value(replacement).unwrap();
+    full_update.as_object_mut().unwrap().remove("account_id");
     full_update["priority"] = json!(255);
     full_update["is_active"] = json!(true);
     full_update["transaction_trigger"] = json!({
@@ -144,7 +145,7 @@ async fn link_config_create_and_update_preserve_omitted_fields() {
     for (field, value) in full_update.as_object().unwrap() {
         assert_eq!(&updated[field], value);
     }
-    for field in ["link_config_id", "profile_id", "created_at"] {
+    for field in ["link_config_id", "profile_id", "account_id", "created_at"] {
         assert_eq!(updated[field], created[field]);
     }
     assert_eq!(
@@ -177,7 +178,7 @@ async fn link_config_rejects_missing_and_foreign_profile_resources() {
     for field in ["account_id", "transaction_rule_id", "confirmation_rule_id"] {
         for invalid_value in [json!("missing_resource"), foreign[field].clone()] {
             let mut invalid_create = serde_json::to_value(&request).unwrap();
-            invalid_create[field] = invalid_value.clone();
+            invalid_create[field] = invalid_value;
             let response = client
                 .post("/link_configs")
                 .with_auth(&token)
@@ -185,7 +186,11 @@ async fn link_config_rejects_missing_and_foreign_profile_resources() {
                 .send()
                 .await;
             client.expect_error(response, 404).await;
+        }
+    }
 
+    for field in ["transaction_rule_id", "confirmation_rule_id"] {
+        for invalid_value in [json!("missing_resource"), foreign[field].clone()] {
             let mut invalid_update = json!({"priority": 99, "is_active": false});
             invalid_update[field] = invalid_value;
             let response = client
@@ -211,8 +216,18 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
     let request = config_request(&client, &token).await;
     let created = create_config(&client, &token, &request).await;
     let id = created["link_config_id"].as_str().unwrap();
+
+    let mut invalid_account = request.clone();
+    invalid_account.account_id = " ".to_owned();
+    let response = client
+        .post("/link_configs")
+        .with_auth(&token)
+        .json(&invalid_account)
+        .send()
+        .await;
+    assert_eq!(response.status(), 400);
+
     for invalid in [
-        json!({"account_id": " "}),
         json!({"transaction_rule_id": ""}),
         json!({"confirmation_rule_id": " "}),
         json!({"link_search_identifier": {
@@ -235,6 +250,7 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
             .send()
             .await;
         assert_eq!(response.status(), 400);
+
         let response = client
             .put(&format!("/link_configs/{id}"))
             .with_auth(&token)
