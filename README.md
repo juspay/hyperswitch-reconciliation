@@ -119,6 +119,12 @@ Current CI is split by concern:
   - PostgreSQL service setup
   - Test dependencies install
   - `just test`
+  - Reusable by the release workflow; tests run on the workflow's selected commit
+- `/.github/workflows/pr-title-check.yml`
+  - Conventional PR title and merge-queue commit message validation (`type(scope): Message`)
+  - PR title spell check
+- `/.github/workflows/release-new-nightly-version.yml`
+  - Runs tests, then calls Hyperswitch's shared nightly release workflow
 
 ## Repository layout
 
@@ -148,7 +154,9 @@ Current CI is split by concern:
 └── .github/
     └── workflows/
         ├── ci-quality.yml
-        └── ci-tests.yml
+        ├── ci-tests.yml
+        ├── pr-title-check.yml
+        └── release-new-nightly-version.yml
 ```
 
 ## Contributor notes

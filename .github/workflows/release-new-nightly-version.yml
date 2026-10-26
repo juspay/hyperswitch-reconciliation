@@ -1,0 +1,28 @@
+name: Release a new nightly reconciliation version
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Do not interrupt a run between pushing its changelog commit and its tag.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Test release source
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci-tests.yml
+
+  create-nightly-tag:
+    name: Create a nightly tag
+    needs: tests
+    # Same shared workflow as Control Center. Use its current App-token
+    # interface rather than Control Center's legacy AUTO_RELEASE_PAT argument.
+    uses: juspay/hyperswitch/.github/workflows/release-nightly-version-reusable.yml@main
+    secrets:
+      client_id: ${{ secrets.HYPERSWITCH_BOT_APP_ID }}
+      app_private_key: ${{ secrets.HYPERSWITCH_BOT_APP_PRIVATE_KEY }}
