@@ -184,6 +184,8 @@ impl LinkConfigValidator for LinkConfigCreateRequest {
         _account_id: &str,
         _link_config_id: Option<&str>,
     ) -> LinkConfigResult<()> {
+        validate_link_trigger(&self.transaction_trigger, "transaction_trigger")?;
+        validate_link_trigger(&self.confirmation_trigger, "confirmation_trigger")?;
         validate_link_search_identifier(&self.link_search_identifier)?;
 
         state
@@ -214,6 +216,12 @@ impl LinkConfigValidator for LinkConfigUpdateRequest {
         account_id: &str,
         link_config_id: Option<&str>,
     ) -> LinkConfigResult<()> {
+        if let Some(trigger) = &self.transaction_trigger {
+            validate_link_trigger(trigger, "transaction_trigger")?;
+        }
+        if let Some(trigger) = &self.confirmation_trigger {
+            validate_link_trigger(trigger, "confirmation_trigger")?;
+        }
         if let Some(identifier) = &self.link_search_identifier {
             validate_link_search_identifier(identifier)?;
         }
@@ -261,6 +269,24 @@ async fn validate_priority(
             ),
         }
         .into());
+    }
+    Ok(())
+}
+
+fn validate_link_trigger(trigger: &api_trigger::LinkTrigger, field: &str) -> LinkConfigResult<()> {
+    if trigger.any.is_empty() {
+        return Err(LinkConfigError::InvalidLinkConfig {
+            message: format!("{field}.any must contain at least one group"),
+        }
+        .into());
+    }
+    for (index, group) in trigger.any.iter().enumerate() {
+        if group.all.is_empty() {
+            return Err(LinkConfigError::InvalidLinkConfig {
+                message: format!("{field}.any[{index}].all must contain at least one condition"),
+            }
+            .into());
+        }
     }
     Ok(())
 }

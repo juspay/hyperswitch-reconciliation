@@ -1,6 +1,6 @@
 use api_models::link_config::{
     link_matching_key::{LinkIdentifierKey, SingleLinkIdentifier},
-    link_trigger::LinkTriggerGroup,
+    link_trigger::{LinkTriggerCondition, LinkTriggerGroup, LinkTriggerOperator},
     GetLinkConfigResponse, LinkConfigCreateRequest, LinkSearchIdentifier, LinkTrigger,
 };
 use common_enums::BalanceDirection;
@@ -36,7 +36,13 @@ async fn config_request(client: &TestClient, token: &str) -> LinkConfigCreateReq
         rule_ids.push(rule.rule_id);
     }
     let trigger = LinkTrigger {
-        any: vec![LinkTriggerGroup { all: vec![] }],
+        any: vec![LinkTriggerGroup {
+            all: vec![LinkTriggerCondition {
+                field: EntryField::Currency,
+                operator: LinkTriggerOperator::Equals,
+                value: "USD".to_owned(),
+            }],
+        }],
     };
     LinkConfigCreateRequest {
         account_id,
@@ -109,7 +115,7 @@ async fn link_config_priority_is_unique_within_account() {
     let response = client
         .put(&format!("/link_configs/{second_id}"))
         .with_auth(&token)
-        .json(&json!({"priority": 10, "transaction_trigger": {"any": []}, "is_active": false}))
+        .json(&json!({"priority": 10, "is_active": false}))
         .send()
         .await;
     client.expect_error(response, 400).await;
@@ -188,7 +194,6 @@ async fn link_config_create_and_update_preserve_omitted_fields() {
             {"field": "metadata.type", "operator": "not_equals", "value": "refund"}
         ]}]
     });
-    full_update["confirmation_trigger"] = json!({"any": []});
     full_update["link_search_identifier"] = json!({
         "matching_key_type": "composite",
         "keys": [
@@ -295,6 +300,18 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
             400,
         ),
         (json!({"transaction_trigger": {"any": "invalid"}}), 400),
+        (json!({"transaction_trigger": {"any": []}}), 400),
+        (json!({"transaction_trigger": {"any": [{"all": []}]}}), 400),
+        (
+            json!({"transaction_trigger": {"any": [{"all": [{"field": "currency", "operator": "equals", "value": "USD"}]}, {"all": []}]}}),
+            400,
+        ),
+        (json!({"confirmation_trigger": {"any": []}}), 400),
+        (json!({"confirmation_trigger": {"any": [{"all": []}]}}), 400),
+        (
+            json!({"confirmation_trigger": {"any": [{"all": [{"field": "currency", "operator": "equals", "value": "USD"}]}, {"all": []}]}}),
+            400,
+        ),
         (json!({"priority": 256}), 400),
         (json!({"priority": -1}), 400),
     ] {

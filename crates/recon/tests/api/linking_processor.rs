@@ -6,7 +6,7 @@ use api_models::{
     entry::{GetEntryResponse, LinkedEntryResponse},
     link_config::{
         link_matching_key::{LinkIdentifierKey, SingleLinkIdentifier},
-        link_trigger::LinkTriggerGroup,
+        link_trigger::{LinkTriggerCondition, LinkTriggerGroup, LinkTriggerOperator},
         GetLinkConfigResponse, LinkConfigCreateRequest, LinkSearchIdentifier, LinkTrigger,
     },
     linking_processor::LinkingTriggerResponse,
@@ -87,7 +87,13 @@ async fn setup_linking(
         transformations.push(transformation.transformation_id);
     }
     let trigger = LinkTrigger {
-        any: vec![LinkTriggerGroup { all: vec![] }],
+        any: vec![LinkTriggerGroup {
+            all: vec![LinkTriggerCondition {
+                field: EntryField::Currency,
+                operator: LinkTriggerOperator::Equals,
+                value: "USD".to_owned(),
+            }],
+        }],
     };
     LinkingSetup {
         config: LinkConfigCreateRequest {
@@ -726,11 +732,11 @@ async fn highest_priority_matching_config_uses_side_specific_triggers(#[case] si
     match side {
         EntryLinkSide::Transaction => {
             preferred.transaction_trigger = matching.clone();
-            preferred.confirmation_trigger.any.clear();
+            preferred.confirmation_trigger.any[0].all[0].value = "EUR".to_owned();
         }
         EntryLinkSide::Confirmation => {
             preferred.confirmation_trigger = matching.clone();
-            preferred.transaction_trigger.any.clear();
+            preferred.transaction_trigger.any[0].all[0].value = "EUR".to_owned();
         }
     }
     let config = create_config(&client, &token, &preferred).await;
@@ -776,7 +782,7 @@ async fn highest_priority_matching_config_uses_side_specific_triggers(#[case] si
 #[case("inactive")]
 #[case("wrong_account")]
 #[case("wrong_rule")]
-#[case("empty_any")]
+#[case("non_matching_trigger")]
 #[actix_web::test]
 async fn ineligible_config_records_failure(#[case] exclusion: &str) {
     let app = TestApp::new().await;
@@ -790,7 +796,9 @@ async fn ineligible_config_records_failure(#[case] exclusion: &str) {
             &mut request.transaction_rule_id,
             &mut request.confirmation_rule_id,
         ),
-        "empty_any" => request.transaction_trigger.any.clear(),
+        "non_matching_trigger" => {
+            request.transaction_trigger.any[0].all[0].value = "EUR".to_owned();
+        }
         _ => {}
     }
     let config = create_config(&client, &token, &request).await;
