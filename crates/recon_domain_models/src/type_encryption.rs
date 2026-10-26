@@ -25,8 +25,8 @@ pub mod encrypt {
     };
     use error_stack::ResultExt;
     use futures::{StreamExt, TryStreamExt};
-    use http::Method;
     use masking::{PeekInterface, Secret};
+    use reqwest::Method;
     use rustc_hash::FxHashMap;
     use tracing::instrument;
 

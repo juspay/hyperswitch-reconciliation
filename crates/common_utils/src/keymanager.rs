@@ -5,12 +5,11 @@ use std::str::FromStr;
 
 use base64::Engine;
 use error_stack::ResultExt;
-use http::Method;
 use masking::{PeekInterface, StrongSecret};
 use once_cell::sync::OnceCell;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    StatusCode,
+    Method, StatusCode,
 };
 use tracing::{self, instrument};
 
@@ -78,8 +77,6 @@ where
     let client = get_api_encryption_client(state)?;
     let url = reqwest::Url::parse(&url)
         .change_context(errors::KeyManagerClientError::UrlEncodingFailed)?;
-    let method = reqwest::Method::from_bytes(method.as_str().as_bytes())
-        .change_context(errors::KeyManagerClientError::ClientConstructionFailed)?;
     client
         .request(method, url)
         .json(&ConvertRaw::convert_raw(request_body)?)
