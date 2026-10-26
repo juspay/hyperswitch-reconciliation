@@ -81,6 +81,62 @@ async fn update_config(client: &TestClient, token: &str, id: &str, update: &Valu
 }
 
 #[actix_web::test]
+async fn link_config_priority_is_unique_within_account() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, _, token) = client.bootstrap("Priority owner", "Priority profile").await;
+    let mut request = config_request(&client, &token).await;
+    let first = create_config(&client, &token, &request).await;
+    let first_id = first["link_config_id"].as_str().unwrap();
+    update_config(&client, &token, first_id, &json!({"is_active": false})).await;
+
+    let response = client
+        .post("/link_configs")
+        .with_auth(&token)
+        .json(&request)
+        .send()
+        .await;
+    client.expect_error(response, 400).await;
+
+    request.priority = 20;
+    let second = create_config(&client, &token, &request).await;
+    let second_id = second["link_config_id"].as_str().unwrap();
+    for update in [json!({}), json!({"priority": 20})] {
+        let updated = update_config(&client, &token, second_id, &update).await;
+        assert_eq!(updated["priority"], 20);
+    }
+    let before = update_config(&client, &token, second_id, &json!({})).await;
+    let response = client
+        .put(&format!("/link_configs/{second_id}"))
+        .with_auth(&token)
+        .json(&json!({"priority": 10, "transaction_trigger": {"any": []}, "is_active": false}))
+        .send()
+        .await;
+    client.expect_error(response, 400).await;
+    assert_eq!(
+        update_config(&client, &token, second_id, &json!({})).await,
+        before
+    );
+    let updated = update_config(&client, &token, second_id, &json!({"priority": 30})).await;
+    assert_eq!(updated["priority"], 30);
+
+    let other_account_request = config_request(&client, &token).await;
+    let other_account = create_config(&client, &token, &other_account_request).await;
+    assert_ne!(other_account["account_id"], first["account_id"]);
+    assert_eq!(other_account["priority"], first["priority"]);
+    let other_account_id = other_account["link_config_id"].as_str().unwrap();
+    let updated = update_config(&client, &token, other_account_id, &json!({"priority": 30})).await;
+    assert_eq!(updated["priority"], 30);
+
+    let (_, _, other_token) = client
+        .bootstrap("Priority other", "Other priority profile")
+        .await;
+    let other_request = config_request(&client, &other_token).await;
+    let other = create_config(&client, &other_token, &other_request).await;
+    assert_eq!(other["priority"], first["priority"]);
+}
+
+#[actix_web::test]
 async fn link_config_create_and_update_preserve_omitted_fields() {
     let app = TestApp::new().await;
     let client = app.api_client();
@@ -178,6 +234,7 @@ async fn link_config_rejects_missing_and_foreign_profile_resources() {
     for field in ["account_id", "transaction_rule_id", "confirmation_rule_id"] {
         for invalid_value in [json!("missing_resource"), foreign[field].clone()] {
             let mut invalid_create = serde_json::to_value(&request).unwrap();
+            invalid_create["priority"] = json!(20);
             invalid_create[field] = invalid_value;
             let response = client
                 .post("/link_configs")
@@ -242,6 +299,7 @@ async fn link_config_rejects_invalid_configuration_and_missing_auth() {
         (json!({"priority": -1}), 400),
     ] {
         let mut invalid_create = serde_json::to_value(&request).unwrap();
+        invalid_create["priority"] = json!(20);
         invalid_create
             .as_object_mut()
             .unwrap()

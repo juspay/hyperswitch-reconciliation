@@ -738,6 +738,7 @@ async fn highest_priority_matching_config_uses_side_specific_triggers(#[case] si
     excluded.priority = 100;
     let inactive = create_config(&client, &token, &excluded).await;
     update_config(&client, &token, &inactive, json!({"is_active": false})).await;
+    excluded.priority = 90;
     excluded.transaction_trigger = serde_json::from_value(json!({"any": [
         {"all": [
             {"field": "currency", "operator": "equals", "value": "USD"},

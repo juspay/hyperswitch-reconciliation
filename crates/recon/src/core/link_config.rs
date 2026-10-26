@@ -40,7 +40,7 @@ pub async fn list_link_configs_by_profile_id(
 ) -> LinkConfigResponse<Vec<GetLinkConfigResponse>> {
     let configs = state
         .store
-        .list_link_configs_by_profile_id(profile_id)
+        .list_link_configs_by_profile_id(profile_id, None)
         .await
         .change_context(LinkConfigError::InternalServerError)?;
 
@@ -58,7 +58,7 @@ pub async fn create_link_config(
     auth_context: AuthContext,
 ) -> LinkConfigResponse<GetLinkConfigResponse> {
     request
-        .validate_with_db(state, &auth_context.profile_id)
+        .validate_with_db(state, &auth_context.profile_id, &request.account_id, None)
         .await?;
 
     let new_config = LinkConfigNew::new(
@@ -75,7 +75,12 @@ pub async fn create_link_config(
         .store
         .insert_link_config(new_config)
         .await
-        .change_context(LinkConfigError::InternalServerError)?;
+        .to_duplicate_response(|| LinkConfigError::InvalidLinkConfig {
+            message: format!(
+                "Priority {} is already used by another link config for this account",
+                request.priority
+            ),
+        })?;
 
     Ok(ApplicationResponse::json_created(config.to_api_response()))
 }
@@ -95,7 +100,12 @@ pub async fn update_link_config(
         })?;
 
     request
-        .validate_with_db(state, &auth_context.profile_id)
+        .validate_with_db(
+            state,
+            &auth_context.profile_id,
+            &existing.account_id,
+            Some(link_config_id),
+        )
         .await?;
 
     let config = if request.transaction_rule_id.is_some() || request.confirmation_rule_id.is_some()

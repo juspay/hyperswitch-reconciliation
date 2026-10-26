@@ -6,9 +6,12 @@ use common_types::link_config::{
     link_matching_key as storage_key, link_trigger as storage_trigger,
 };
 use diesel_models::link_config::LinkConfig;
+use error_stack::ResultExt;
 
 use crate::{
-    db::{account::AccountInterface, recon_rule::ReconRuleInterface},
+    db::{
+        account::AccountInterface, link_config::LinkConfigInterface, recon_rule::ReconRuleInterface,
+    },
     errors::{
         conversions::StorageErrorExt,
         link_config::{LinkConfigError, LinkConfigResult},
@@ -163,12 +166,24 @@ impl LinkConfigExt for LinkConfig {
 
 #[async_trait::async_trait]
 pub trait LinkConfigValidator {
-    async fn validate_with_db(&self, state: &AppState, profile_id: &str) -> LinkConfigResult<()>;
+    async fn validate_with_db(
+        &self,
+        state: &AppState,
+        profile_id: &str,
+        account_id: &str,
+        link_config_id: Option<&str>,
+    ) -> LinkConfigResult<()>;
 }
 
 #[async_trait::async_trait]
 impl LinkConfigValidator for LinkConfigCreateRequest {
-    async fn validate_with_db(&self, state: &AppState, profile_id: &str) -> LinkConfigResult<()> {
+    async fn validate_with_db(
+        &self,
+        state: &AppState,
+        profile_id: &str,
+        _account_id: &str,
+        _link_config_id: Option<&str>,
+    ) -> LinkConfigResult<()> {
         validate_link_search_identifier(&self.link_search_identifier)?;
 
         state
@@ -178,6 +193,9 @@ impl LinkConfigValidator for LinkConfigCreateRequest {
             .to_not_found_response(|| LinkConfigError::AccountNotFound {
                 account_id: self.account_id.clone(),
             })?;
+
+        validate_priority(state, profile_id, &self.account_id, self.priority, None).await?;
+
         validate_rule_ids(
             state,
             profile_id,
@@ -189,7 +207,13 @@ impl LinkConfigValidator for LinkConfigCreateRequest {
 
 #[async_trait::async_trait]
 impl LinkConfigValidator for LinkConfigUpdateRequest {
-    async fn validate_with_db(&self, state: &AppState, profile_id: &str) -> LinkConfigResult<()> {
+    async fn validate_with_db(
+        &self,
+        state: &AppState,
+        profile_id: &str,
+        account_id: &str,
+        link_config_id: Option<&str>,
+    ) -> LinkConfigResult<()> {
         if let Some(identifier) = &self.link_search_identifier {
             validate_link_search_identifier(identifier)?;
         }
@@ -202,8 +226,38 @@ impl LinkConfigValidator for LinkConfigUpdateRequest {
         .flatten()
         .collect();
 
+        if let Some(priority) = self.priority {
+            validate_priority(state, profile_id, account_id, priority, link_config_id).await?;
+        }
+
         validate_rule_ids(state, profile_id, &rule_ids).await
     }
+}
+
+async fn validate_priority(
+    state: &AppState,
+    profile_id: &str,
+    account_id: &str,
+    priority: u8,
+    link_config_id: Option<&str>,
+) -> LinkConfigResult<()> {
+    let configs = state
+        .store
+        .list_link_configs_by_profile_id(profile_id, Some(account_id.to_owned()))
+        .await
+        .change_context(LinkConfigError::InternalServerError)?;
+
+    if configs.iter().any(|config| {
+        config.priority == i16::from(priority) && Some(config.id.as_str()) != link_config_id
+    }) {
+        return Err(LinkConfigError::InvalidLinkConfig {
+            message: format!(
+                "Priority {priority} is already used by another link config for this account"
+            ),
+        }
+        .into());
+    }
+    Ok(())
 }
 
 fn validate_link_search_identifier(

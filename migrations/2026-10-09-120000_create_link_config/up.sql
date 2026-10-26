@@ -13,6 +13,5 @@ CREATE TABLE link_config (
     last_modified_at TIMESTAMP NOT NULL
 );
 
-CREATE INDEX idx_link_config_active_profile_account
-    ON link_config (profile_id, account_id)
-    WHERE is_active = true;
+CREATE UNIQUE INDEX uniq_idx_link_config_profile_account_priority
+    ON link_config (profile_id, account_id, priority);

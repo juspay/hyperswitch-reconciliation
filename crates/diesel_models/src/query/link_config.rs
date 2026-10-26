@@ -22,10 +22,16 @@ impl LinkConfig {
     pub async fn list_by_profile_id(
         conn: &PgPooledConn,
         profile_id: &str,
+        account_id_filter: Option<String>,
     ) -> StorageResult<Vec<Self>> {
-        let query = dsl::link_config
+        let mut query = dsl::link_config
             .filter(dsl::profile_id.eq(profile_id.to_owned()))
-            .order((dsl::priority.asc(), dsl::id.asc()));
+            .order((dsl::priority.asc(), dsl::id.asc()))
+            .into_boxed();
+
+        if let Some(account_id) = account_id_filter {
+            query = query.filter(dsl::account_id.eq(account_id));
+        }
 
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 

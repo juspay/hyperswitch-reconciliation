@@ -14,6 +14,7 @@ pub trait LinkConfigInterface {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
+        account_id_filter: Option<String>,
     ) -> StorageResult<Vec<LinkConfig>>;
 
     async fn find_link_config_by_profile_id_and_link_config_id(
@@ -43,9 +44,10 @@ impl LinkConfigInterface for Store {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
+        account_id_filter: Option<String>,
     ) -> StorageResult<Vec<LinkConfig>> {
         let conn = self.get_connection().await?;
-        LinkConfig::list_by_profile_id(&conn, profile_id).await
+        LinkConfig::list_by_profile_id(&conn, profile_id, account_id_filter).await
     }
 
     async fn find_link_config_by_profile_id_and_link_config_id(
