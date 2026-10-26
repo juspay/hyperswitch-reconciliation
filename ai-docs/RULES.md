@@ -17,7 +17,7 @@
 <!-- AI-UPDATED: 2025-07-18 - Clippy format string standard -->
 - Use inline format strings: `format!("value_{variable}")` not `format!("value_{}", variable)`
 <!-- AI-UPDATED: 2026-08-26 - PR title / commit message convention wired into CI -->
-- PR titles and merge-queue commit messages must be `type(scope): Message` — type lowercase (cocogitto default set: feat/fix/chore/refactor/docs/style/test/perf/build/ci/revert), scope mandatory, message starts with a capital letter
+- PR titles and merge-queue commit messages must be `type(scope): Message` — type lowercase (cocogitto default set: feat/fix/chore/refactor/docs/style/test/perf/build/ci/revert), scope mandatory and uses hyphens instead of underscores (e.g. `recon-rules`, not `recon_rules`), message starts with a capital letter
 - Enforced by its own workflow, `.github/workflows/pr-title-check.yml` (kept separate from `ci-quality.yml` so a title-only edit doesn't retrigger fmt/clippy/typos), NOT `cog.toml` — cocogitto's own config has no option for mandatory scope or message casing, so those two rules are a hand-written regex layered on top of `cog verify`
 - **Gotcha**: `cog verify` panics (`user.name was not found`) on a fresh CI runner because it unconditionally reads git identity config even though it never commits anything — `pr-title-check.yml` must run `git config user.name`/`user.email` before calling `cog verify`
 
