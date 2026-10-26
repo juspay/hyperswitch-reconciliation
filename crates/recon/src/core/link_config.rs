@@ -2,7 +2,7 @@ use api_models::link_config::{
     GetLinkConfigResponse, LinkConfigCreateRequest, LinkConfigUpdateRequest,
 };
 use common_utils::auth::AuthContext;
-use diesel_models::link_config::{LinkConfigNew, LinkConfigUpdate};
+use diesel_models::link_config::{LinkConfigListFilter, LinkConfigNew, LinkConfigUpdate};
 use error_stack::ResultExt;
 
 use crate::{
@@ -40,7 +40,7 @@ pub async fn list_link_configs_by_profile_id(
 ) -> LinkConfigResponse<Vec<GetLinkConfigResponse>> {
     let configs = state
         .store
-        .list_link_configs_by_profile_id(profile_id, None)
+        .list_link_configs_by_profile_id(profile_id, LinkConfigListFilter::default())
         .await
         .change_context(LinkConfigError::InternalServerError)?;
 

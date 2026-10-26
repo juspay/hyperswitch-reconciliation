@@ -6,7 +6,7 @@ use error_stack::ResultExt;
 
 use crate::{
     errors::DatabaseError,
-    link_config::{LinkConfig, LinkConfigNew, LinkConfigUpdateInternal},
+    link_config::{LinkConfig, LinkConfigListFilter, LinkConfigNew, LinkConfigUpdateInternal},
     query::generics,
     schema::link_config::{self, dsl},
     PgPooledConn, StorageResult,
@@ -22,14 +22,14 @@ impl LinkConfig {
     pub async fn list_by_profile_id(
         conn: &PgPooledConn,
         profile_id: &str,
-        account_id_filter: Option<String>,
+        filter: LinkConfigListFilter,
     ) -> StorageResult<Vec<Self>> {
         let mut query = dsl::link_config
             .filter(dsl::profile_id.eq(profile_id.to_owned()))
             .order((dsl::priority.asc(), dsl::id.asc()))
             .into_boxed();
 
-        if let Some(account_id) = account_id_filter {
+        if let Some(account_id) = filter.account_id {
             query = query.filter(dsl::account_id.eq(account_id));
         }
 

@@ -170,3 +170,8 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
         }
     }
 }
+
+#[derive(Default)]
+pub struct LinkConfigListFilter {
+    pub account_id: Option<String>,
+}

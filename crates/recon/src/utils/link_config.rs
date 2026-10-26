@@ -5,7 +5,7 @@ use api_models::link_config::{
 use common_types::link_config::{
     link_matching_key as storage_key, link_trigger as storage_trigger,
 };
-use diesel_models::link_config::LinkConfig;
+use diesel_models::link_config::{LinkConfig, LinkConfigListFilter};
 use error_stack::ResultExt;
 
 use crate::{
@@ -243,7 +243,12 @@ async fn validate_priority(
 ) -> LinkConfigResult<()> {
     let configs = state
         .store
-        .list_link_configs_by_profile_id(profile_id, Some(account_id.to_owned()))
+        .list_link_configs_by_profile_id(
+            profile_id,
+            LinkConfigListFilter {
+                account_id: Some(account_id.to_owned()),
+            },
+        )
         .await
         .change_context(LinkConfigError::InternalServerError)?;
 

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use common_enums::EntryLinkSide;
 use diesel_models::{
-    link_config::{LinkConfig, LinkConfigNew, LinkConfigUpdate},
+    link_config::{LinkConfig, LinkConfigListFilter, LinkConfigNew, LinkConfigUpdate},
     StorageResult,
 };
 
@@ -14,7 +14,7 @@ pub trait LinkConfigInterface {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
-        account_id_filter: Option<String>,
+        filter: LinkConfigListFilter,
     ) -> StorageResult<Vec<LinkConfig>>;
 
     async fn find_link_config_by_profile_id_and_link_config_id(
@@ -44,10 +44,10 @@ impl LinkConfigInterface for Store {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
-        account_id_filter: Option<String>,
+        filter: LinkConfigListFilter,
     ) -> StorageResult<Vec<LinkConfig>> {
         let conn = self.get_connection().await?;
-        LinkConfig::list_by_profile_id(&conn, profile_id, account_id_filter).await
+        LinkConfig::list_by_profile_id(&conn, profile_id, filter).await
     }
 
     async fn find_link_config_by_profile_id_and_link_config_id(
