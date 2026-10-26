@@ -75,12 +75,7 @@ pub async fn create_link_config(
         .store
         .insert_link_config(new_config)
         .await
-        .to_duplicate_response(|| LinkConfigError::InvalidLinkConfig {
-            message: format!(
-                "Priority {} is already used by another link config for this account",
-                request.priority
-            ),
-        })?;
+        .change_context(LinkConfigError::InternalServerError)?;
 
     Ok(ApplicationResponse::json_created(config.to_api_response()))
 }
