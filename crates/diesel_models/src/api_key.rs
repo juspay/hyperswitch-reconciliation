@@ -47,7 +47,6 @@ pub struct ApiKeyUpdateInternal {
     pub name: Option<String>,
     // `Some(None)` clears the column, `None` leaves it untouched.
     pub description: Option<Option<String>>,
-    pub expires_at: Option<Option<PrimitiveDateTime>>,
     pub last_modified_at: PrimitiveDateTime,
     pub status: Option<ApiKeyStatus>,
 }
@@ -57,7 +56,6 @@ pub enum ApiKeyUpdate {
     Update {
         name: Option<String>,
         description: Option<Option<String>>,
-        expires_at: Option<Option<PrimitiveDateTime>>,
     },
     /// Revoke the key (soft delete).
     Revoke,
@@ -66,21 +64,15 @@ pub enum ApiKeyUpdate {
 impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
     fn from(api_key_update: ApiKeyUpdate) -> Self {
         match api_key_update {
-            ApiKeyUpdate::Update {
+            ApiKeyUpdate::Update { name, description } => Self {
                 name,
                 description,
-                expires_at,
-            } => Self {
-                name,
-                description,
-                expires_at,
                 last_modified_at: date_time::now(),
                 status: None,
             },
             ApiKeyUpdate::Revoke => Self {
                 name: None,
                 description: None,
-                expires_at: None,
                 last_modified_at: date_time::now(),
                 status: Some(ApiKeyStatus::Revoked),
             },

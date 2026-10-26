@@ -175,7 +175,7 @@ async fn list_returns_only_active_keys_newest_first() {
 }
 
 #[actix_web::test]
-async fn update_changes_only_requested_fields_and_can_clear_nullable_ones() {
+async fn update_changes_only_requested_fields_and_can_clear_description() {
     let store = test_store().await;
     let merchant_id = MerchantId::generate();
     let key = store
@@ -190,7 +190,6 @@ async fn update_changes_only_requested_fields_and_can_clear_nullable_ones() {
             ApiKeyUpdate::Update {
                 name: Some("Renamed".to_string()),
                 description: Some(None),
-                expires_at: None,
             },
         )
         .await
@@ -198,7 +197,7 @@ async fn update_changes_only_requested_fields_and_can_clear_nullable_ones() {
 
     assert_eq!(updated.name, "Renamed");
     assert_eq!(updated.description, None);
-    // Not requested, so untouched.
+    // Expiry is fixed at creation and cannot be changed by an update.
     assert_eq!(updated.expires_at, key.expires_at);
     assert_eq!(hash_of(&updated), hash_of(&key));
 }
@@ -224,7 +223,6 @@ async fn revoked_key_cannot_be_updated_or_revived() {
         ApiKeyUpdate::Update {
             name: Some("Back from the dead".to_string()),
             description: None,
-            expires_at: Some(None),
         },
     ] {
         let error = store
