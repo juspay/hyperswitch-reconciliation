@@ -12,7 +12,7 @@ Merchant-level API keys for machine access to recon. This file records what is i
 - **`hashed_api_key` is `Secret<String>`**: `generic_insert` attaches the `Debug` of the inserted values to its error. Masking keeps the hash out of logs when an insert fails.
 - **`ApiKey` is deliberately not `Serialize`**: it can't be returned from an endpoint by accident. Build a response DTO.
 - **`prefix`** holds the first characters of the plaintext key, for display only.
-- **`created_by`** is the `user_id` of whoever minted the key. It is `NOT NULL`, so a key always has a known creator.
+- **`created_by`** is the `user_id` of whoever minted the key. The column is nullable so a non-user creator (e.g. admin API) can be added later without an `ALTER TABLE`, but for now key creation is JWT-only, so the core layer must always set it.
 - **`expires_at` NULL means never expires.** Whether that is allowed is a core-layer rule, so the column stays nullable. Expiry is not checked in the store.
 - **`expires_at` is fixed at creation**: moving the expiry of an existing key would let a leaked or old key be extended indefinitely. To get a longer life, create a new key and revoke the old one.
 

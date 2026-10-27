@@ -46,7 +46,7 @@ diesel::table! {
         #[max_length = 24]
         prefix -> Varchar,
         #[max_length = 64]
-        created_by -> Varchar,
+        created_by -> Nullable<Varchar>,
         created_at -> Timestamp,
         expires_at -> Nullable<Timestamp>,
         last_modified_at -> Timestamp,
