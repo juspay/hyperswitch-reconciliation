@@ -12,7 +12,7 @@ use common_utils::logging;
 use diesel_models::{
     entry::{Entry, EntryNew, EntryUpdate},
     errors::DatabaseError,
-    search_duplicate::SearchDuplicateUpdate,
+    search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},
     search_entry_key::SearchEntryKeyNew,
     search_expectation::{SearchExpectation, SearchExpectationNew, SearchExpectationUpdate},
     search_group::{SearchGroup, SearchGroupUpdate},
@@ -26,8 +26,6 @@ use diesel_models::{
 use error_stack::ResultExt;
 use futures::future;
 use time::PrimitiveDateTime;
-
-use crate::utils::search_duplicate::update_search_duplicates_for_entries;
 
 use super::Store;
 
@@ -382,14 +380,27 @@ impl TransactionInterface for Store {
             }))
             .await?;
 
-            update_search_duplicates_for_entries(
-                &connection_pool,
-                &old_entries,
-                &SearchDuplicateUpdate::StatusUpdate {
-                    status: SearchDuplicateStatus::Archived,
-                },
-            )
-            .await?;
+            // Archive search duplicates of the old entries
+            future::try_join_all(old_entries.iter().filter_map(|entry| {
+                entry
+                    .primary_staging_entry_id
+                    .as_ref()
+                    .map(|staging_entry_id| {
+                        SearchDuplicate::update_by_primary_staging_entry_id(
+                            &connection_pool,
+                            staging_entry_id,
+                            SearchDuplicateUpdate::StatusUpdate {
+                                status: SearchDuplicateStatus::Archived,
+                            }
+                            .into(),
+                        )
+                    })
+            }))
+            .await
+            .map_err(|e| {
+                logging::error!("Failed to archive search duplicates for transaction: {e:?}");
+                *e.current_context()
+            })?;
 
             let search_group = SearchGroup::find_by_primary_transaction_id_and_profile_id(
                 &connection_pool,

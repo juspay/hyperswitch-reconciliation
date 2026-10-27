@@ -1,8 +1,9 @@
+use storage_impl::{
+    account::AccountInterface, business_profile::BusinessProfileInterface,
+    ingestion_config::IngestionConfigInterface, ingestion_history::IngestionHistoryInterface,
+};
+
 use crate::{
-    db::{
-        account::AccountInterface, business_profile::BusinessProfileInterface,
-        ingestion_config::IngestionConfigInterface, ingestion_history::IngestionHistoryInterface,
-    },
     domain::ingestion::{IngestionConfigDataExt, IngestionContext},
     errors::{
         conversions::StorageErrorExt,

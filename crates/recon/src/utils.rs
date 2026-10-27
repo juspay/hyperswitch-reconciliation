@@ -13,7 +13,6 @@ pub mod linking_processor;
 pub mod bulk_operations;
 pub mod overview;
 pub mod recon_rule;
-pub mod search_duplicate;
 pub mod search_entry_key;
 pub mod staging_entry;
 pub mod transaction;

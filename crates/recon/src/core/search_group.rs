@@ -2,9 +2,9 @@ use api_models::search_group::SearchGroupResponse;
 use common_utils::auth::AuthContext;
 use error_stack::ResultExt;
 use recon_domain_models::{behaviour::ReverseConversion, search_group::DomainSearchGroup};
+use storage_impl::search_group::SearchGroupInterface;
 
 use crate::{
-    db::search_group::SearchGroupInterface,
     errors::{
         conversions::StorageErrorExt,
         search_group::{SearchGroupError, SearchGroupResult},

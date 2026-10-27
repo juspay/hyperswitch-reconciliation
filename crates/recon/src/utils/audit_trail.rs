@@ -14,9 +14,11 @@ use common_types::{
 use common_utils::auth::AuthContext;
 use error_stack::ResultExt;
 use std::ops::Not;
+use storage_impl::{
+    ingestion_history::IngestionHistoryInterface, transaction::TransactionInterface,
+};
 
 use crate::{
-    db::{ingestion_history::IngestionHistoryInterface, transaction::TransactionInterface},
     domain::audit_trail::{
         AuditEventOccurrence, ExpectationCreatedOccurrence, FileUploadedOccurrence,
         GroupedAuditEvent, GroupingStrategy, IngestionFailedOccurrence,

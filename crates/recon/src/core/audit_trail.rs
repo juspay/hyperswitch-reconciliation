@@ -2,9 +2,9 @@ use api_models::{audit_trail::AuditTrailFilters, AccountData};
 use common_utils::auth::AuthContext;
 use error_stack::{report, ResultExt};
 use std::collections::{HashMap, HashSet};
+use storage_impl::account::AccountInterface;
 
 use crate::{
-    db::account::AccountInterface,
     errors::audit_trail::{AuditTrailError, AuditTrailResponse},
     routes::AppState,
     types::ApplicationResponse,

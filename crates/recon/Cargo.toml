@@ -37,6 +37,7 @@ external_services = { path = "../external_services" }
 masking = { git = "https://github.com/juspay/hyperswitch.git",tag = "2025.10.22.0" }
 recon_interfaces = { path = "../recon_interfaces" }
 recon_domain_models = { path = "../recon_domain_models" }
+storage_impl = { path = "../storage_impl" }
 tracing-actix-web = "0.7.18"
 tracing-futures = "0.2"
 toml = "0.8"

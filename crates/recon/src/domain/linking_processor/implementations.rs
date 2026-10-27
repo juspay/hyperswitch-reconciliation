@@ -12,9 +12,11 @@ use diesel_models::{
 use error_stack::ResultExt;
 use masking::Secret;
 use recon_domain_models::entry::DomainEntry;
+use storage_impl::search_entry_link_key::{
+    SearchEntryLinkKeyInterface, SearchEntryLinkSearchCriteria,
+};
 
 use crate::{
-    db::search_entry_link_key::{SearchEntryLinkKeyInterface, SearchEntryLinkSearchCriteria},
     domain::linking_processor::{
         EntryLinkContext, LinkProcessingResult, LinkingProcessingError, LinkingProcessor,
     },

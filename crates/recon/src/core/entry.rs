@@ -9,13 +9,14 @@ use error_stack::{report, ResultExt};
 use futures::future;
 use recon_domain_models::behaviour::ReverseConversion;
 use recon_domain_models::entry::DomainEntry;
+use storage_impl::{
+    account::AccountInterface, entry::EntryInterface, entry_link::EntryLinkInterface,
+    transaction::TransactionInterface,
+};
 
 use crate::utils::entry::EntryDataExt;
+
 use crate::{
-    db::{
-        account::AccountInterface, entry::EntryInterface, entry_link::EntryLinkInterface,
-        transaction::TransactionInterface,
-    },
     domain::entry::{ENTRY_LIST_DEFAULT_LIMIT, ENTRY_LIST_MAX_LIMIT},
     errors::{
         conversions::StorageErrorExt,

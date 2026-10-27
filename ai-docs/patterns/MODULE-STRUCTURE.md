@@ -94,7 +94,7 @@ tests/
 - Don't expose internal implementation details
 
 ### Dependencies
-- Import from crate::db and crate::errors
+- Import store interfaces from the `storage_impl` crate and errors from crate::errors
 - Use interface traits, not concrete implementations
 - Avoid circular dependencies with core layer
 

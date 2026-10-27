@@ -5,8 +5,9 @@ use common_utils::auth::AuthContext;
 use diesel_models::link_config::{LinkConfigListFilter, LinkConfigNew, LinkConfigUpdate};
 use error_stack::ResultExt;
 
+use storage_impl::link_config::LinkConfigInterface;
+
 use crate::{
-    db::link_config::LinkConfigInterface,
     errors::{
         conversions::StorageErrorExt,
         link_config::{LinkConfigError, LinkConfigResponse},

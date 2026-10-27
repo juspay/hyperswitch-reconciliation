@@ -1,9 +1,9 @@
 use api_models::search_entry_key::{SearchEntryKeyListRequest, SearchEntryKeyResponse};
 use common_utils::auth::AuthContext;
 use error_stack::ResultExt;
+use storage_impl::search_entry_key::SearchEntryKeyInterface;
 
 use crate::{
-    db::search_entry_key::SearchEntryKeyInterface,
     errors::search_entry_key::{SearchEntryError, SearchEntryResult},
     routes::AppState,
     types::ApplicationResponse,

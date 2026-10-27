@@ -3,10 +3,10 @@ use common_utils::{auth::AuthContext, date_time};
 use error_stack::ResultExt;
 use external_services::user::interfaces::UserInterface;
 use std::collections::HashSet;
+use storage_impl::recon_rule::ReconRuleInterface;
 
 use crate::{
     config::ReportType,
-    db::recon_rule::ReconRuleInterface,
     domain::reporting::{ExceptionReportLambdaPayload, TransactionReportLambdaPayload},
     errors::{
         conversions::StorageErrorExt,

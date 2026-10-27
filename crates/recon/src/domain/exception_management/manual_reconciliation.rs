@@ -29,12 +29,12 @@ use recon_domain_models::{
     behaviour::ReverseConversion, search_entry_key::SearchEntryKeyCreation,
     staging_entry::DomainStagingEntry, ApplicationEncryptionInterface, EncryptionHandler,
 };
+use storage_impl::{
+    entry::EntryInterface, metadata_schema::MetadataSchemaInterface,
+    search_entry_key::SearchEntryKeyInterface, transformation::TransformationConfigInterface,
+};
 
 use crate::{
-    db::{
-        entry::EntryInterface, metadata_schema::MetadataSchemaInterface,
-        search_entry_key::SearchEntryKeyInterface, transformation::TransformationConfigInterface,
-    },
     domain::recon_engine::process_duplicate::build_search_duplicate,
     errors::transaction::{TransactionError, TransactionResult},
     routes::AppState,

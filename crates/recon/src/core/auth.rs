@@ -1,7 +1,11 @@
+use storage_impl::{
+    business_profile::BusinessProfileInterface, merchant_account::MerchantAccountInterface,
+};
+
 use crate::errors::business_profile::BusinessProfileError;
 use crate::errors::merchant_account::MerchantAccountError;
+
 use crate::{
-    db::{business_profile::BusinessProfileInterface, merchant_account::MerchantAccountInterface},
     errors::ReconAppError,
     routes::AppState,
     types::{ApplicationResponse, ReconResponse},

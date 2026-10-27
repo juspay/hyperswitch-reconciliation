@@ -18,12 +18,11 @@ use common_types::{
 use common_utils::{auth::AuthContext, date_time};
 use diesel_models::staging_entry::StagingEntryOverviewRow;
 use error_stack::{report, ResultExt};
+use storage_impl::{
+    account::AccountInterface, recon_rule::ReconRuleInterface, transaction::TransactionInterface,
+};
 
 use crate::{
-    db::{
-        account::AccountInterface, recon_rule::ReconRuleInterface,
-        transaction::TransactionInterface,
-    },
     domain::recon_engine::flows::ReconStrategyExt as ReconEngineStrategyExt,
     errors::overview::{OverviewError, OverviewResponse, OverviewResult},
     routes::AppState,

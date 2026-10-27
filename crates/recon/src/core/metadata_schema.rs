@@ -6,9 +6,9 @@ use common_types::metadata_schema::ListMetadataSchemasFilters;
 use common_utils::{auth::AuthContext, errors::ReportSwitchExt};
 use diesel_models::metadata_schema::{MetadataSchemaNew, MetadataSchemaVersionUpdate};
 use error_stack::ResultExt;
+use storage_impl::{account::AccountInterface, metadata_schema::MetadataSchemaInterface};
 
 use crate::{
-    db::{account::AccountInterface, metadata_schema::MetadataSchemaInterface},
     domain::metadata_schema::ConfigValidator,
     errors::{
         conversions::StorageErrorExt,

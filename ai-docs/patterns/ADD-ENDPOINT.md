@@ -103,9 +103,9 @@ pub mod thing;
 use api_models::thing::{CreateThingRequest, ThingResponse};
 use diesel_models::thing::ThingNew;
 use error_stack::ResultExt;
+use storage_impl::thing::ThingInterface;
 
 use crate::{
-    db::thing::ThingInterface,
     errors::thing::{ThingError, ThingResult},
     routes::AppState,
     types::ApplicationResponse,

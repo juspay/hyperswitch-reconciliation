@@ -8,10 +8,11 @@ use common_types::link_config::{
 use diesel_models::link_config::{LinkConfig, LinkConfigListFilter};
 use error_stack::ResultExt;
 
+use storage_impl::{
+    account::AccountInterface, link_config::LinkConfigInterface, recon_rule::ReconRuleInterface,
+};
+
 use crate::{
-    db::{
-        account::AccountInterface, link_config::LinkConfigInterface, recon_rule::ReconRuleInterface,
-    },
     errors::{
         conversions::StorageErrorExt,
         link_config::{LinkConfigError, LinkConfigResult},

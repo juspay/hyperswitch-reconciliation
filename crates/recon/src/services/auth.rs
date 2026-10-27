@@ -9,10 +9,13 @@ use http::header;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use masking::{PeekInterface, Secret};
 use serde::{Deserialize, Serialize};
+use storage_impl::{
+    business_profile::BusinessProfileInterface, merchant_account::MerchantAccountInterface,
+};
 
 use super::option_ext::OptionExt;
+
 use crate::{
-    db::{business_profile::BusinessProfileInterface, merchant_account::MerchantAccountInterface},
     errors::{conversions::StorageErrorExt, ReconAppError},
     routes::AppState,
 };

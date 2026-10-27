@@ -3919,6 +3919,7 @@ dependencies = [
  "serde_json",
  "serde_path_to_error",
  "sha2",
+ "storage_impl",
  "strum 0.27.2",
  "thiserror 2.0.17",
  "tikv-jemallocator",
@@ -4918,6 +4919,24 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
+name = "storage_impl"
+version = "0.1.0"
+dependencies = [
+ "async-bb8-diesel",
+ "async-trait",
+ "bb8",
+ "common_enums",
+ "common_types",
+ "common_utils",
+ "diesel",
+ "diesel_models",
+ "error-stack",
+ "futures",
+ "masking",
+ "time",
+]
 
 [[package]]
 name = "strsim"

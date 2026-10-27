@@ -49,12 +49,12 @@ use recon_domain_models::{
     staging_entry::DomainStagingEntry,
     transaction::{DomainTransaction, TransactionUpdateData},
 };
+use storage_impl::{
+    account::AccountInterface, entry::EntryInterface, search_expectation::SearchCriteria,
+    transaction::TransactionInterface,
+};
 
 use crate::{
-    db::{
-        account::AccountInterface, entry::EntryInterface, search_expectation::SearchCriteria,
-        transaction::TransactionInterface,
-    },
     domain::metadata_schema::implementations::unique_constraint::UniqueConstraintExt,
     domain::recon_engine::{
         flows::{

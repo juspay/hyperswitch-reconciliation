@@ -8,12 +8,12 @@ use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
 use recon_interfaces::secrets_interface::secret_state::RawSecret;
 
 use crate::config::{Config, IngestionServiceConfig};
-use crate::db::Store;
 use crate::openapi::create_openapi;
 use crate::routes::{search_entry_key, search_expectation, search_group};
 use external_services::{
     faas::FaasHandler, file_storage::FileStorageHandler, ApplicationEncryptionClient,
 };
+use storage_impl::Store;
 
 const INGESTION_UPLOAD_TOTAL_LIMIT_BYTES: usize = 25 * 1024 * 1024;
 const INGESTION_UPLOAD_MEMORY_LIMIT_BYTES: usize = 25 * 1024 * 1024;

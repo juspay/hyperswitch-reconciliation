@@ -1,5 +1,6 @@
+use storage_impl::account::AccountInterface;
+
 use crate::{
-    db::account::AccountInterface,
     errors::{ReconRuleError, ReconRuleResult},
     utils::recon_rule::{
         validate_source_field_sets, AppState, GroupingFieldValidator, ReconStrategyApiExt,

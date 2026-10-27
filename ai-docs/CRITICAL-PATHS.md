@@ -51,6 +51,9 @@
 - **Pattern**: Core contains all business logic
 - **Pattern**: DB layer only does data access
 - **Pattern**: Store interface abstracts all DB operations
+<!-- AI-UPDATED: 2026-10-22 - Storage layer extracted into storage_impl crate -->
+- **Pattern**: `Store` and all `*Interface` traits live in the `storage_impl` crate (mirrors Hyperswitch), not `recon::db` — import them as `storage_impl::account::AccountInterface`
+- **Critical**: `storage_impl` must never depend on `recon`; DB logic it needs is written inline in the `impl … for Store` method that uses it
 
 ## External Services Integration
 <!-- AI-UPDATED: 2025-03-13 - User client architecture refactor -->

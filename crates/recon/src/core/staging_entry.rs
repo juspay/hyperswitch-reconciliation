@@ -32,12 +32,12 @@ use external_services::user::interfaces::UserInterface;
 use futures::future;
 use masking::ExposeInterface;
 use recon_domain_models::{behaviour::ReverseConversion, staging_entry::DomainStagingEntry};
+use storage_impl::{
+    account::AccountInterface, metadata_schema::MetadataSchemaInterface,
+    transformation::TransformationConfigInterface,
+};
 
 use crate::{
-    db::{
-        account::AccountInterface, metadata_schema::MetadataSchemaInterface,
-        transformation::TransformationConfigInterface,
-    },
     domain::{
         metadata_schema::{
             data_validator::RowValidator, types::RowValidationOutcome, ParsedRow, RowMapper,

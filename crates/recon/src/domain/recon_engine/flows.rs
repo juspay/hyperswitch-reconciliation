@@ -1,5 +1,6 @@
+use storage_impl::search_expectation::SearchCriteria;
+
 use crate::{
-    db::search_expectation::SearchCriteria,
     define_recon_flow,
     domain::{
         recon_engine::rule_orchestration::{ConfirmationContext, TransactionContext},

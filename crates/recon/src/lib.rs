@@ -17,7 +17,6 @@ use tracing_actix_web::TracingLogger;
 
 pub mod config;
 pub mod core;
-pub mod db;
 pub mod domain;
 pub mod env;
 pub mod errors;
@@ -145,7 +144,7 @@ pub async fn initialize_server(
 
     // Create app state
     let state = AppState {
-        store: db::Store { master_pool: pool },
+        store: storage_impl::Store { master_pool: pool },
         config: config.clone(),
         file_storage,
         faas,

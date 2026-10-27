@@ -19,10 +19,12 @@ use error_stack::{Report, ResultExt};
 use recon_domain_models::{
     behaviour::ReverseConversion, staging_entry::DomainStagingEntry, transaction::DomainTransaction,
 };
+use storage_impl::{
+    metadata_schema::MetadataSchemaInterface, transformation::TransformationConfigInterface,
+};
 use thiserror::Error;
 
 use crate::{
-    db::{metadata_schema::MetadataSchemaInterface, transformation::TransformationConfigInterface},
     domain::recon_engine::{
         flows::ReconStrategyExt,
         process_duplicate::check_for_duplicate,

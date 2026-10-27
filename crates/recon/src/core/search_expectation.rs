@@ -5,9 +5,11 @@ use futures::future;
 use recon_domain_models::{
     behaviour::ReverseConversion, search_expectation::DomainSearchExpectation,
 };
+use storage_impl::{
+    search_expectation::SearchExpectationInterface, transaction::TransactionInterface,
+};
 
 use crate::{
-    db::{search_expectation::SearchExpectationInterface, transaction::TransactionInterface},
     errors::search_expectation::{SearchExpectationError, SearchExpectationResult},
     routes::AppState,
     types::ApplicationResponse,

@@ -86,7 +86,7 @@
 ### Core Modules Added
 - **`crates/recon/src/core/metadata_schema.rs`** - Business logic for CRUD operations
 - **`crates/recon/src/routes/metadata_schema.rs`** - HTTP route handlers with OpenAPI docs
-- **`crates/recon/src/db/metadata_schema.rs`** - Database interface trait and implementation
+- **`crates/storage_impl/src/metadata_schema.rs`** - Database interface trait and implementation
 - **`crates/recon/src/errors/metadata_schema.rs`** - Domain-specific error types
 - **`crates/recon/src/utils/metadata_schema.rs`** - API/Diesel model conversion traits
 

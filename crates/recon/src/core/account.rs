@@ -3,9 +3,9 @@ use common_types::units::MinorUnit;
 use common_utils::{date_time, id_generation::generate_id_with_default_len};
 use diesel_models::account::{AccountNew, AccountUpdate};
 use error_stack::ResultExt;
+use storage_impl::account::AccountInterface;
 
 use crate::{
-    db::account::AccountInterface,
     errors::{
         account::{AccountError, AccountResponse},
         conversions::StorageErrorExt,

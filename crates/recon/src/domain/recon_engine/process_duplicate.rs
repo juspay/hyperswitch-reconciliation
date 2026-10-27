@@ -10,9 +10,11 @@ use recon_domain_models::{
 };
 
 use common_types::metadata_schema::UniqueConstraintProvider;
+use storage_impl::{
+    metadata_schema::MetadataSchemaInterface, search_duplicate::SearchDuplicateInterface,
+};
 
 use crate::{
-    db::{metadata_schema::MetadataSchemaInterface, search_duplicate::SearchDuplicateInterface},
     domain::metadata_schema::implementations::unique_constraint::UniqueConstraintExt,
     domain::recon_engine::{utils::extract_unique_field, ProcessingError, ProcessingResult},
     errors::conversions::StorageErrorExt,

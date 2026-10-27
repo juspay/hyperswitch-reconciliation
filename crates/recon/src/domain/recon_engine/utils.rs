@@ -27,13 +27,13 @@ use recon_domain_models::{
 };
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
+use storage_impl::{
+    metadata_schema::MetadataSchemaInterface, search_expectation::SearchExpectationInterface,
+    transformation::TransformationConfigInterface,
+};
 use time::PrimitiveDateTime;
 
 use crate::{
-    db::{
-        metadata_schema::MetadataSchemaInterface, search_expectation::SearchExpectationInterface,
-        transformation::TransformationConfigInterface,
-    },
     domain::{
         recon_engine::{ProcessingError, ProcessingResult},
         transaction::MAX_ENTRIES_PER_TRANSACTION,

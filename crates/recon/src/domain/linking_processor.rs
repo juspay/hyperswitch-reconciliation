@@ -18,12 +18,12 @@ use recon_domain_models::{
 };
 use thiserror::Error;
 
-use crate::db::search_entry_link_key::SearchEntryLinkSearchCriteria;
+use storage_impl::{
+    metadata_schema::MetadataSchemaInterface, search_entry_link_key::SearchEntryLinkSearchCriteria,
+    transaction::TransactionInterface, transformation::TransformationConfigInterface,
+};
+
 use crate::{
-    db::{
-        metadata_schema::MetadataSchemaInterface, transaction::TransactionInterface,
-        transformation::TransformationConfigInterface,
-    },
     errors::linking_processor::{LinkingProcessorError, LinkingProcessorResult},
     process_linking_or_fail,
     routes::AppState,

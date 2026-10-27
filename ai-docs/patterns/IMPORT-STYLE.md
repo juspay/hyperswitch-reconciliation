@@ -43,12 +43,12 @@ use error_stack::{Report, ResultExt};
 use diesel_models::recon_engine::{MatchResult, ProcessingResult};
 use common_enums::{EntryStatus, TransactionStatus};
 use api_models::recon_engine::ProcessingDecision;
+use storage_impl::{account::AccountInterface, transaction::TransactionInterface};
 ```
 
 ### 4. Local Module Imports (from current crate)
 ```rust
 use crate::{
-    db::{account::AccountInterface, transaction::TransactionInterface},
     errors::recon_engine::ReconEngineError,
     routes::AppState,
 };
@@ -70,7 +70,6 @@ use crate::{
 2. **Use Nested Imports for Local Modules**:
    ```rust
    use crate::{
-       db::{account::AccountInterface, search_expectation::SearchExpectationInterface},
        errors::recon_engine::ReconEngineError,
        utils::recon_engine::{prepare_mismatch_result, validate_match_staging},
    };
@@ -85,10 +84,11 @@ use crate::{
    
    use diesel_models::recon_engine::MatchResult;
    use common_enums::EntryStatus;
+   use storage_impl::account::AccountInterface;
    
    use crate::{
-       db::AccountInterface,
        errors::ReconEngineError,
+       routes::AppState,
    };
    ```
 

@@ -5,9 +5,9 @@ use common_utils::auth::AuthContext;
 use diesel_models::recon_rule::{ReconRuleNew, ReconRuleUpdate};
 use error_stack::ResultExt;
 use recon_domain_models::{behaviour::Conversion, recon_rule_account::DomainReconRuleAccount};
+use storage_impl::recon_rule::ReconRuleInterface;
 
 use crate::{
-    db::recon_rule::ReconRuleInterface,
     domain::recon_engine::flows::ReconStrategyExt,
     errors::{
         conversions::StorageErrorExt,

@@ -51,7 +51,7 @@ The reconciliation system provides automated transaction matching and settlement
   - `trigger.rs`, `match_rules.rs`, `search_identifier.rs` - Component schemas
 
 ### 3. Database Layer
-- **Location**: `crates/recon/src/db/`
+- **Location**: `crates/storage_impl/src/`
 - **Purpose**: Data access and persistence
 - **Key Files**:
   - `recon_rule.rs` - Rule CRUD operations
@@ -127,7 +127,7 @@ The reconciliation system provides automated transaction matching and settlement
 ### Code Navigation
 - **Core Logic**: `crates/recon/src/domain/recon_engine/`
 - **Rule Types**: `crates/common_types/src/recon_rule/`
-- **Database**: `crates/recon/src/db/`
+- **Database**: `crates/storage_impl/src/`
 - **API**: `crates/recon/src/routes/`
 
 ### Common Issues

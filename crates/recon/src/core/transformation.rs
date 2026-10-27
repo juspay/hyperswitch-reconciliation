@@ -21,14 +21,14 @@ use diesel_models::{
 };
 use error_stack::{report, ResultExt};
 use futures::future;
+use storage_impl::{
+    account::AccountInterface,
+    ingestion_config::IngestionConfigInterface,
+    metadata_schema::MetadataSchemaInterface,
+    transformation::{TransformationConfigInterface, TransformationHistoryInterface},
+};
 
 use crate::{
-    db::{
-        account::AccountInterface,
-        ingestion_config::IngestionConfigInterface,
-        metadata_schema::MetadataSchemaInterface,
-        transformation::{TransformationConfigInterface, TransformationHistoryInterface},
-    },
     domain::transformation::TransformationApplicationExecutor,
     errors::{
         conversions::StorageErrorExt,
