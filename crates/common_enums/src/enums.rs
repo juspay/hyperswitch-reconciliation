@@ -1191,7 +1191,7 @@ pub enum ReconProcessorStatus {
     strum::VariantNames,
     ToSchema,
 )]
-#[recon_derive::diesel_enum(storage_type = "db_enum")]
+#[recon_derive::diesel_enum(storage_type = "text")]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ApiKeyStatus {

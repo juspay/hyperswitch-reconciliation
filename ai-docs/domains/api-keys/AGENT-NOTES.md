@@ -3,7 +3,7 @@
 Merchant-level API keys for machine access to recon. This file records what is implemented and the non-obvious why.
 
 ## Implemented
-- `api_key` table, diesel model (`ApiKey`, `ApiKeyNew`, `ApiKeyUpdate`) and the store interface `ApiKeyInterface` on `Store`.
+- `api_key` table, diesel model (`ApiKey`, `ApiKeyNew`) and the store interface `ApiKeyInterface` on `Store`.
 
 ## Data Model
 - **Table `api_key`, PK `id`**: singular table name per repo convention (`account`, `business_profile`).
@@ -14,16 +14,11 @@ Merchant-level API keys for machine access to recon. This file records what is i
 - **`prefix`** holds the first characters of the plaintext key, for display only.
 - **`created_by`** is the `user_id` of whoever minted the key. It is `NOT NULL`, so a key always has a known creator.
 - **`expires_at` NULL means never expires.** Whether that is allowed is a core-layer rule, so the column stays nullable. Expiry is not checked in the store.
-- **`expires_at` is fixed at creation**: `ApiKeyUpdate::Update` only changes `name` and `description`. Letting an update move the expiry would let a leaked or old key be extended indefinitely; to get a longer life, create a new key and revoke the old one.
+- **`expires_at` is fixed at creation**: moving the expiry of an existing key would let a leaked or old key be extended indefinitely. To get a longer life, create a new key and revoke the old one.
 
-## Revoking
-- Revoke = `ApiKeyUpdate::Revoke`, which sets `status = revoked` and bumps `last_modified_at`. `status` is the `ApiKeyStatus` DB enum (`active`, `revoked`). Expiry is derived from `expires_at`, never stored as a status.
-- Every find, list and update filters `status = 'active'`. A revoked key is invisible, **cannot be updated or revived**, and revoking twice is `NotFound`.
-- Because every update predicate includes `status = 'active'`, a concurrent revoke and update cannot both succeed, so rows need no version column for optimistic locking.
+## Status
+- `status` is `VARCHAR(64)`, not a DB enum, so adding a state needs no `ALTER TYPE`. Expiry is derived from `expires_at`, never stored as a status.
+- Find and list only return `status = 'active'` rows.
 
-## Updates
-- `ApiKeyUpdate::Update` uses `Option<Option<String>>` for the nullable `description`: `None` = leave alone, `Some(None)` = set to NULL.
-- All update and find-by-id queries are scoped by `merchant_id`, so one merchant's id can never touch another's key (`NotFound`).
-
-## Testing
-- Store-level tests: `crates/recon/tests/api/api_key_store_test.rs`, using `common::test_store()` (a pool on the test database, no HTTP server). Use a fresh `MerchantId::generate()` per test; tests share one database.
+## Store
+- `ApiKeyInterface` has insert, find by `(merchant_id, id)` and list by merchant (newest first). Queries are scoped by `merchant_id`, so one merchant's id can never read another's key (`NotFound`).

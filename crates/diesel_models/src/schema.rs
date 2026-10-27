@@ -50,7 +50,8 @@ diesel::table! {
         created_at -> Timestamp,
         expires_at -> Nullable<Timestamp>,
         last_modified_at -> Timestamp,
-        status -> ApiKeyStatus,
+        #[max_length = 64]
+        status -> Varchar,
     }
 }
 

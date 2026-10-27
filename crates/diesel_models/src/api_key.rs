@@ -1,6 +1,6 @@
 use common_enums::ApiKeyStatus;
-use common_utils::{date_time, id_type::MerchantId};
-use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
+use common_utils::id_type::MerchantId;
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use masking::Secret;
 use time::PrimitiveDateTime;
 
@@ -39,43 +39,4 @@ pub struct ApiKeyNew {
     pub expires_at: Option<PrimitiveDateTime>,
     pub last_modified_at: PrimitiveDateTime,
     pub status: ApiKeyStatus,
-}
-
-#[derive(Debug, AsChangeset)]
-#[diesel(table_name = api_key)]
-pub struct ApiKeyUpdateInternal {
-    pub name: Option<String>,
-    // `Some(None)` clears the column, `None` leaves it untouched.
-    pub description: Option<Option<String>>,
-    pub last_modified_at: PrimitiveDateTime,
-    pub status: Option<ApiKeyStatus>,
-}
-
-#[derive(Debug, Clone)]
-pub enum ApiKeyUpdate {
-    Update {
-        name: Option<String>,
-        description: Option<Option<String>>,
-    },
-    /// Revoke the key (soft delete).
-    Revoke,
-}
-
-impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
-    fn from(api_key_update: ApiKeyUpdate) -> Self {
-        match api_key_update {
-            ApiKeyUpdate::Update { name, description } => Self {
-                name,
-                description,
-                last_modified_at: date_time::now(),
-                status: None,
-            },
-            ApiKeyUpdate::Revoke => Self {
-                name: None,
-                description: None,
-                last_modified_at: date_time::now(),
-                status: Some(ApiKeyStatus::Revoked),
-            },
-        }
-    }
 }
