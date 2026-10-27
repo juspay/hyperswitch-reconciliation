@@ -5,9 +5,11 @@ on:
     branches: [main, master, develop]
   pull_request:
     branches: [main, master, develop]
+  workflow_call:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Keep test concurrency separate from the release workflow.
+  group: ${{ github.workflow }}-tests-${{ github.ref }}
   cancel-in-progress: true
 
 env:

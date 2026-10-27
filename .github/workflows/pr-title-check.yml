@@ -52,8 +52,8 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if ! echo "$TITLE" | grep -qE '^[a-z]+\([^)]+\)!?: [A-Z]'; then
-            echo "PR title must match 'type(scope): Message' — type must be lowercase, scope is required, and the message must start with a capital letter." >&2
+          if ! printf '%s\n' "$TITLE" | grep -qE '^[a-z]+\([^)_]+\)!?: [A-Z]'; then
+            echo "PR title must match 'type(scope): Message' — type must be lowercase, scope is required and must use hyphens instead of underscores, and the message must start with a capital letter." >&2
             exit 1
           fi
 
@@ -70,8 +70,8 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.merge_group.head_commit.message }}
         run: |
-          if ! echo "$COMMIT_MESSAGE" | grep -qE '^[a-z]+\([^)]+\)!?: [A-Z]'; then
-            echo "Commit message must match 'type(scope): Message' — type must be lowercase, scope is required, and the message must start with a capital letter." >&2
+          if ! printf '%s\n' "${COMMIT_MESSAGE%%$'\n'*}" | grep -qE '^[a-z]+\([^)_]+\)!?: [A-Z]'; then
+            echo "Commit message must match 'type(scope): Message' — type must be lowercase, scope is required and must use hyphens instead of underscores, and the message must start with a capital letter." >&2
             exit 1
           fi
 
