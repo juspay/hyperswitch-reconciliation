@@ -96,7 +96,7 @@ pub async fn create_business_profile(
 ) -> impl Responder {
     let request = req.into_inner();
     api::server_wrap(
-        JwtAuth::basic_without_permission(),
+        JwtAuth::basic(Permission::ProfileAccountWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -132,7 +132,7 @@ pub async fn get_business_profile(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::with_profile_without_permission(profile_id.clone()),
+        JwtAuth::with_profile(profile_id.clone(), Permission::ProfileAccountRead),
         &http_req,
         state,
         |state, _auth| async move {
@@ -209,7 +209,7 @@ pub async fn get_recon_status(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::with_profile_without_permission(profile_id),
+        JwtAuth::with_profile(profile_id, Permission::ProfileReconStagingEntryRead),
         &http_req,
         state,
         |state, auth| async move { core::business_profile::get_recon_status(state, auth).await },

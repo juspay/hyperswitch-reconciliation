@@ -31,7 +31,11 @@
 - Create/update trim `profile_name` and reject empty, inline in core. Trim before encrypting - padded encrypted names can't be fixed by SQL later
 - `update_business_profile` validates the name before any DB call, then issues one UPDATE per present field (`NameUpdate`, `TimezoneUpdate`); no fields → returns profile unchanged
 - Both fields = **two `UPDATE` statements, no transaction** - name may commit if timezone fails (same as `update_recon_rule`)
-- `PUT` uses `JwtAuth::with_profile(.., Permission::ProfileAccountWrite)`; `GET` is unpermissioned. New mutating endpoints need a permission
+- Profile creation and update require `ProfileAccountWrite`; reading a specific profile requires `ProfileAccountRead`. Profile reads/updates retain JWT-to-path profile-ID validation.
+- Profile recon status requires `ProfileReconStagingEntryRead` because it exposes the profile's pending staging-entry count; JWT-to-path profile-ID validation still applies.
+- Profile listing intentionally uses JWT without a permission check for now: any authenticated profile-level user can list all recon profiles under the JWT's merchant. The merchant ID comes only from the validated JWT, not caller-supplied input; this enforces merchant isolation, not merchant-level RBAC.
+- Merchant permissions are deferred until self-serve merchant-level management: add `MerchantAccountRead` for merchant-wide listing and `MerchantAccountWrite` for merchant-level mutations, including self-serve bootstrap; revisit creation's current `ProfileAccountWrite` requirement then.
+- `/auth/bootstrap` and `/auth/bootstrap_with_ids` retain `AdminApiAuth` for trusted provisioning today. Future self-serve bootstrap must authorize the target Hyperswitch merchant before creating local records; existing `JwtAuth` cannot be reused unchanged because it requires the merchant and profile to already exist locally.
 - `Permission::ProfileAccount*` is hyperswitch RBAC for profile config - unrelated to recon's ledger `Account`
 - Test gotcha: bootstrap JWT is bound to its profile; read later-created profiles via the list endpoint
 

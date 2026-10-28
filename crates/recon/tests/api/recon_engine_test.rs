@@ -259,6 +259,21 @@ pub async fn run_recon_engine_test(
                     );
                     let search_group: SearchGroupResponse =
                         client.expect_success(search_group_response).await;
+
+                    // Both search-group read routes should return the same profile-scoped group.
+                    let response = client
+                        .get(&format!("/search_groups/{}", search_group.id))
+                        .with_auth(&token)
+                        .send()
+                        .await;
+                    let search_group_by_id: SearchGroupResponse =
+                        client.expect_success(response).await;
+                    assert_eq!(search_group_by_id.id, search_group.id);
+                    assert_eq!(search_group_by_id.profile_id, search_group.profile_id);
+                    assert_eq!(
+                        search_group_by_id.primary_transaction_id,
+                        search_group.primary_transaction_id
+                    );
                     assert_eq!(
                         search_group.status,
                         SearchGroupStatus::Active,
