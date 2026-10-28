@@ -16,6 +16,12 @@
 - **Currency Immutability**: An account's currency CANNOT be changed after creation
 - **Profile Isolation**: Accounts are scoped to business profiles - always validate profile_id in queries
 
+## Authorization
+<!-- AI-UPDATED: 2026-10-28 - Separate ledger management from balance effects and profile configuration -->
+- Ledger-account reads require `ProfileReconAccountRead`; create/update require `ProfileReconAccountWrite`. Existing `ProfileAccountRead/Write` govern Hyperswitch profile configuration, not ledger accounts.
+- Exception/transaction operations retain their own permissions when changing balances through entries; do not add account-write checks to those internal balance updates.
+- The authorization service must support these permissions before enabling the checks. Existing custom roles need explicit new grants; the mock user client does not validate live RBAC.
+
 ## Common Gotchas
 - **Balance Updates**: Balance updates now happen through entry processing - debit/credit components are updated when entries are created or change status
 - **No Direct Balance Manipulation**: The `update_balances_by_account_id` method has been removed - all balance changes MUST come through the entry system
