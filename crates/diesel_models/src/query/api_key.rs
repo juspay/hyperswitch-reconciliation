@@ -1,10 +1,7 @@
 use async_bb8_diesel::AsyncRunQueryDsl;
 use common_enums::ApiKeyStatus;
 use common_utils::{id_type::MerchantId, logging};
-use diesel::{
-    debug_query, pg::Pg, prelude::*, result::Error as DieselError, BoolExpressionMethods,
-    ExpressionMethods,
-};
+use diesel::{debug_query, pg::Pg, prelude::*, BoolExpressionMethods, ExpressionMethods};
 use error_stack::{report, ResultExt};
 
 use crate::{
@@ -48,20 +45,13 @@ impl ApiKey {
 
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-        match generics::db_metrics::track_database_call::<api_key::table, _, _>(
+        generics::db_metrics::track_database_call::<api_key::table, _, _>(
             query.get_results_async(conn),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
-        {
-            Ok(value) => Ok(value),
-            Err(err) => match err {
-                DieselError::NotFound => {
-                    Err(report!(err)).change_context(errors::DatabaseError::NotFound)
-                }
-                _ => Err(report!(err)).change_context(errors::DatabaseError::Others),
-            },
-        }
+        .map_err(|err| report!(err))
+        .change_context(errors::DatabaseError::Others)
         .attach_printable_lazy(|| {
             format!(
                 "Error while listing API keys for merchant_id: {}",
