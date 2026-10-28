@@ -1,6 +1,8 @@
 name: Release a new nightly reconciliation version
 
 on:
+  schedule:
+    - cron: "0 0 * * 1-5" # Weekdays at 00:00 UTC (05:30 IST)
   workflow_dispatch:
 
 permissions:
