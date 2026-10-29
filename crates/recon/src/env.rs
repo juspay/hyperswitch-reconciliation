@@ -27,21 +27,42 @@ pub enum Env {
     Development,
     /// Production environment.
     Production,
+    /// Sandbox environment. Runs with production-like infrastructure.
+    Sandbox,
 }
 
-/// Name of current environment. Either "development" or "production".
+impl Env {
+    /// Short lowercase prefix for this environment, used at the start of API keys.
+    pub const fn prefix(self) -> &'static str {
+        match self {
+            Self::Development => "dev",
+            Self::Sandbox => "sbx",
+            Self::Production => "prd",
+        }
+    }
+}
+
+/// Name of current environment. One of "development", "sandbox" or "production".
 pub fn which() -> Env {
     let default_env = Env::Development;
-    std::env::var(vars::RUN_ENV).map_or_else(|_| default_env, |v| v.parse().unwrap_or(default_env))
+    std::env::var(vars::RUN_ENV).map_or_else(
+        |_| default_env,
+        |v| {
+            v.parse().unwrap_or_else(|_| {
+                #[allow(clippy::print_stderr)] // The logger has not yet been initialized
+                {
+                    eprintln!("Unrecognised RUN_ENV `{v}`, falling back to development");
+                }
+                default_env
+            })
+        },
+    )
 }
 
 /// Three letter (lowercase) prefix corresponding to the current environment.
-/// Either `dev` or `prd`.
+/// One of `dev`, `sbx` or `prd`.
 pub fn prefix_for_env() -> &'static str {
-    match which() {
-        Env::Development => "dev",
-        Env::Production => "prd",
-    }
+    which().prefix()
 }
 
 /// Path to the root directory of the cargo workspace.
@@ -67,4 +88,16 @@ macro_rules! service_name {
     () => {
         env!("CARGO_BIN_NAME")
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_env_has_its_own_prefix() {
+        assert_eq!(Env::Development.prefix(), "dev");
+        assert_eq!(Env::Sandbox.prefix(), "sbx");
+        assert_eq!(Env::Production.prefix(), "prd");
+    }
 }

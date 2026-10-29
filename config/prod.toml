@@ -30,6 +30,9 @@ jwt_secret = "${JWT_SECRET}"
 jwt_expiry_hours = 24
 admin_api_key = "${ADMIN_API_KEY}"
 internal_api_key = "${INTERNAL_API_KEY}"
+# Enables merchant API keys: 32 random bytes as 64 hex chars, KMS-encrypted. Leave unset to keep them off.
+# Changing it invalidates every issued key.
+# api_key_hash_key = "${API_KEY_HASH_KEY}"
 
 [secrets_management]
 secrets_manager = "aws_kms" # Options: aws_kms, oci_kms, no_encryption

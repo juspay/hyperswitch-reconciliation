@@ -75,7 +75,7 @@ Configuration is loaded with this precedence (low to high):
 Defaults:
 
 - `config/config.toml` is used by default.
-- If `RUN_ENV=production`, `config/prod.toml` is used.
+- If `RUN_ENV=production` or `RUN_ENV=sandbox`, `config/prod.toml` is used.
 
 Override config file explicitly:
 
