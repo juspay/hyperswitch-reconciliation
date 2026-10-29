@@ -2,7 +2,11 @@ use std::{fs, path::PathBuf};
 
 use crate::{env, errors::ReconAppError};
 use base64::Engine;
-use common_utils::{consts::BASE64_ENGINE, logging::LoggerConfig};
+use common_utils::{
+    api_key::{ApiKeyHashKey, ApiKeyHashKeyError},
+    consts::BASE64_ENGINE,
+    logging::LoggerConfig,
+};
 use config::{Environment, File};
 use error_stack::ResultExt;
 use external_services::{
@@ -138,7 +142,8 @@ impl Default for AuthConfig {
             jwt_expiry_hours: 24,
             admin_api_key: Secret::new("admin_api_key".to_string()),
             internal_api_key: Secret::new("internal_api_key".to_string()),
-            // No usable default: a dummy hash key would make every environment's keys forgeable.
+            // No usable default: a publicly known hash key removes the protection the keyed hash gives
+            // against a leaked `api_key` table.
             api_key_hash_key: None,
         }
     }
@@ -147,15 +152,10 @@ impl Default for AuthConfig {
 impl AuthConfig {
     /// `Ok(None)` when unset (merchant API keys stay off), an error when set but malformed.
     /// Call this on the decrypted config only.
-    pub fn parse_api_key_hash_key(
-        &self,
-    ) -> Result<
-        Option<common_utils::api_key::ApiKeyHashKey>,
-        common_utils::api_key::ApiKeyHashKeyError,
-    > {
+    pub fn parse_api_key_hash_key(&self) -> Result<Option<ApiKeyHashKey>, ApiKeyHashKeyError> {
         self.api_key_hash_key
             .as_ref()
-            .map(|hash_key| common_utils::api_key::ApiKeyHashKey::from_hex(hash_key.peek()))
+            .map(|hash_key| ApiKeyHashKey::from_hex(hash_key.peek()))
             .transpose()
     }
 

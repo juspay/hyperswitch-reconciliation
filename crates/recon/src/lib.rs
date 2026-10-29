@@ -96,6 +96,14 @@ pub async fn initialize_server(
             .await
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
 
+    // Parsed right after decryption (before any connection is opened), not in `AuthConfig::validate`: `Config::validate` runs before decryption, so
+    // under KMS it would see ciphertext.
+    let api_key_hash_key = config
+        .auth
+        .get_inner()
+        .parse_api_key_hash_key()
+        .map_err(|e| format!("Invalid auth.api_key_hash_key: {e}"))?;
+
     // Create connection pool
     let manager =
         ConnectionManager::<PgConnection>::new(config.database.get_inner().get_database_url());
@@ -141,14 +149,6 @@ pub async fn initialize_server(
 
     // Create HyperSwitch client
     let user_client = config.user_client.get_inner().get_user_client();
-
-    // Parsed here, not in `AuthConfig::validate`: `Config::validate` runs before decryption, so
-    // under KMS it would see ciphertext.
-    let api_key_hash_key = config
-        .auth
-        .get_inner()
-        .parse_api_key_hash_key()
-        .map_err(|e| format!("Invalid auth.api_key_hash_key: {e}"))?;
 
     // Create app state
     let state = AppState {

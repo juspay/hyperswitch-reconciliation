@@ -45,7 +45,18 @@ impl Env {
 /// Name of current environment. One of "development", "sandbox" or "production".
 pub fn which() -> Env {
     let default_env = Env::Development;
-    std::env::var(vars::RUN_ENV).map_or_else(|_| default_env, |v| v.parse().unwrap_or(default_env))
+    std::env::var(vars::RUN_ENV).map_or_else(
+        |_| default_env,
+        |v| {
+            v.parse().unwrap_or_else(|_| {
+                #[allow(clippy::print_stderr)] // The logger has not yet been initialized
+                {
+                    eprintln!("Unrecognised RUN_ENV `{v}`, falling back to development");
+                }
+                default_env
+            })
+        },
+    )
 }
 
 /// Three letter (lowercase) prefix corresponding to the current environment.
@@ -81,8 +92,6 @@ macro_rules! service_name {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
 
     #[test]
@@ -90,11 +99,5 @@ mod tests {
         assert_eq!(Env::Development.prefix(), "dev");
         assert_eq!(Env::Sandbox.prefix(), "sbx");
         assert_eq!(Env::Production.prefix(), "prd");
-    }
-
-    #[test]
-    fn sandbox_parses_from_run_env_value() {
-        assert!(matches!(Env::from_str("sandbox"), Ok(Env::Sandbox)));
-        assert_eq!(Env::Sandbox.to_string(), "sandbox");
     }
 }

@@ -4,6 +4,8 @@
 //! (`dev`, `sbx`, `prd`). Only a keyed BLAKE3 hash of it is ever stored. The plaintext is shown
 //! once, at creation.
 
+use std::fmt;
+
 use masking::{PeekInterface, Secret};
 use rand::{distributions::Alphanumeric, Rng};
 
@@ -40,8 +42,8 @@ impl ApiKeyHashKey {
     }
 }
 
-impl std::fmt::Debug for ApiKeyHashKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ApiKeyHashKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("ApiKeyHashKey(*** masked ***)")
     }
 }
@@ -56,6 +58,10 @@ impl PlaintextApiKey {
     ///
     /// Uses `thread_rng`, a ChaCha-based CSPRNG seeded from the OS.
     pub fn generate(env_prefix: &str) -> Self {
+        debug_assert!(
+            !env_prefix.is_empty() && !env_prefix.contains('_'),
+            "env prefix must be non-empty and must not contain `_`"
+        );
         let random: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(API_KEY_RANDOM_LENGTH)
@@ -117,6 +123,8 @@ impl From<HashedApiKey> for String {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
 
     const KEY_A: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -140,7 +148,7 @@ mod tests {
 
     #[test]
     fn generated_keys_are_unique() {
-        let keys: std::collections::HashSet<_> = (0..1000)
+        let keys: HashSet<_> = (0..1000)
             .map(|_| PlaintextApiKey::generate("dev").expose().to_string())
             .collect();
         assert_eq!(keys.len(), 1000);
