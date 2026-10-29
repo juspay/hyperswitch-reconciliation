@@ -16,6 +16,7 @@ jwt_secret = "docker_secret_key_12345678901234567890"
 jwt_expiry_hours = 24
 admin_api_key = "docker_test_admin_12345678901234567890"
 internal_api_key = "docker_test_internal_12345678901234567890"
+api_key_hash_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"  # dev only: 32 bytes as hex
 
 [logging]
 log_level = "DEBUG"

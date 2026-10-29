@@ -41,6 +41,8 @@ pub struct AppState {
     pub linking_processor_status: watch::Sender<LinkingProcessorStatus>,
     pub encryption_client: ApplicationEncryptionClient,
     pub user_client: external_services::UserClient,
+    /// `None` when `auth.api_key_hash_key` is unset, which leaves merchant API keys off.
+    pub api_key_hash_key: Option<common_utils::api_key::ApiKeyHashKey>,
 }
 
 pub struct Health;

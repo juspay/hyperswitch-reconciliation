@@ -125,6 +125,10 @@ pub struct AuthConfig {
     pub jwt_expiry_hours: u64,
     pub admin_api_key: Secret<String>,
     pub internal_api_key: Secret<String>,
+    /// 64 hex characters (32 bytes), KMS-encrypted in production. Unset leaves merchant API keys
+    /// off. Parsed after the secrets are decrypted, see `initialize_server`.
+    #[serde(default)]
+    pub api_key_hash_key: Option<Secret<String>>,
 }
 
 impl Default for AuthConfig {
@@ -134,11 +138,27 @@ impl Default for AuthConfig {
             jwt_expiry_hours: 24,
             admin_api_key: Secret::new("admin_api_key".to_string()),
             internal_api_key: Secret::new("internal_api_key".to_string()),
+            // No usable default: a dummy hash key would make every environment's keys forgeable.
+            api_key_hash_key: None,
         }
     }
 }
 
 impl AuthConfig {
+    /// `Ok(None)` when unset (merchant API keys stay off), an error when set but malformed.
+    /// Call this on the decrypted config only.
+    pub fn parse_api_key_hash_key(
+        &self,
+    ) -> Result<
+        Option<common_utils::api_key::ApiKeyHashKey>,
+        common_utils::api_key::ApiKeyHashKeyError,
+    > {
+        self.api_key_hash_key
+            .as_ref()
+            .map(|hash_key| common_utils::api_key::ApiKeyHashKey::from_hex(hash_key.peek()))
+            .transpose()
+    }
+
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.internal_api_key.peek().trim().is_empty() {
             return Err(error_stack::Report::from(ReconAppError::ValidationError(
@@ -228,7 +248,7 @@ impl Config<SecuredSecret> {
         // 1. Defaults from the implementation of the `Default` trait.
         // 2. Values from config file. The config file accessed depends on the environment
         //    specified by the `RUN_ENV` environment variable. `RUN_ENV` can be one of
-        //    `development` or `production`. If nothing is specified for `RUN_ENV`,
+        //    `development`, `sandbox` or `production`. If nothing is specified for `RUN_ENV`,
         //    `/config/config.toml` file is read.
         // 3. Environment variables prefixed with `RECON` and each level separated by double
         //    underscores.
@@ -283,7 +303,7 @@ impl Config<SecuredSecret> {
             config_path.push(explicit_config_path_val);
         } else {
             let config_file_name = match environment {
-                "production" => "prod.toml",
+                "production" | "sandbox" => "prod.toml",
                 _ => "config.toml",
             };
 
@@ -431,5 +451,52 @@ impl HyperswitchConfigExt for HyperswitchConfig {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod api_key_hash_key_tests {
+    use super::*;
+
+    fn auth_config(hash_key: Option<&str>) -> AuthConfig {
+        AuthConfig {
+            api_key_hash_key: hash_key.map(|key| Secret::new(key.to_string())),
+            ..AuthConfig::default()
+        }
+    }
+
+    #[test]
+    fn unset_hash_key_leaves_the_feature_off() {
+        assert!(AuthConfig::default().api_key_hash_key.is_none());
+        assert!(matches!(
+            auth_config(None).parse_api_key_hash_key(),
+            Ok(None)
+        ));
+    }
+
+    #[test]
+    fn valid_hash_key_is_parsed() {
+        assert!(matches!(
+            auth_config(Some(&"ab".repeat(32))).parse_api_key_hash_key(),
+            Ok(Some(_))
+        ));
+    }
+
+    #[test]
+    fn malformed_hash_key_is_an_error() {
+        for bad in ["", "abcd", &"zz".repeat(32), "${API_KEY_HASH_KEY}"] {
+            assert!(
+                auth_config(Some(bad)).parse_api_key_hash_key().is_err(),
+                "{bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn sandbox_uses_the_production_config_file() {
+        let path = |env| Config::config_path(env, None);
+        assert!(path("sandbox").ends_with("prod.toml"));
+        assert!(path("production").ends_with("prod.toml"));
+        assert!(path("development").ends_with("config.toml"));
     }
 }

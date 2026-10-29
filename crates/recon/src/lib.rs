@@ -142,6 +142,14 @@ pub async fn initialize_server(
     // Create HyperSwitch client
     let user_client = config.user_client.get_inner().get_user_client();
 
+    // Parsed here, not in `AuthConfig::validate`: `Config::validate` runs before decryption, so
+    // under KMS it would see ciphertext.
+    let api_key_hash_key = config
+        .auth
+        .get_inner()
+        .parse_api_key_hash_key()
+        .map_err(|e| format!("Invalid auth.api_key_hash_key: {e}"))?;
+
     // Create app state
     let state = AppState {
         store: storage_impl::Store { master_pool: pool },
@@ -153,6 +161,7 @@ pub async fn initialize_server(
         linking_processor_status: linking_sx,
         encryption_client,
         user_client,
+        api_key_hash_key,
     };
 
     tokio::spawn(core::recon_engine::recon_processor_v2(state.clone(), rx));
