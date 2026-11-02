@@ -129,8 +129,6 @@ pub struct AuthConfig {
     pub jwt_expiry_hours: u64,
     pub admin_api_key: Secret<String>,
     pub internal_api_key: Secret<String>,
-    /// 64 hex characters (32 bytes), KMS-encrypted in production. Unset leaves merchant API keys
-    /// off. Parsed after the secrets are decrypted, see `initialize_server`.
     #[serde(default)]
     pub api_key_hash_key: Option<Secret<String>>,
 }
@@ -150,8 +148,7 @@ impl Default for AuthConfig {
 }
 
 impl AuthConfig {
-    /// `Ok(None)` when unset (merchant API keys stay off), an error when set but malformed.
-    /// Call this on the decrypted config only.
+    /// Call this on the decrypted config only: under KMS the raw value is ciphertext.
     pub fn parse_api_key_hash_key(&self) -> Result<Option<ApiKeyHashKey>, ApiKeyHashKeyError> {
         self.api_key_hash_key
             .as_ref()

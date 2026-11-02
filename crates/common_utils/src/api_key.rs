@@ -1,20 +1,12 @@
-//! Generation and hashing of merchant API keys.
-//!
-//! A key looks like `{env}_{64 base62 chars}`, where `env` is configured per deployment
-//! (`dev`, `sbx`, `prd`). Only a keyed BLAKE3 hash of it is ever stored. The plaintext is shown
-//! once, at creation.
+//! Generation and hashing of merchant API keys: `{env}_{64 base62 chars}`.
 
 use std::fmt;
 
 use masking::{PeekInterface, Secret};
 use rand::{distributions::Alphanumeric, Rng};
 
-/// Random characters after `{env}_`. 64 base62 characters is about 380 bits of entropy.
 pub const API_KEY_RANDOM_LENGTH: usize = 64;
-/// Random characters kept for display, after `{env}_` (`prd_` + 6).
 pub const API_KEY_DISPLAY_RANDOM_LENGTH: usize = 6;
-
-/// Length of the hash key in bytes. It is configured as 64 hex characters.
 pub const API_KEY_HASH_KEY_LENGTH: usize = 32;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -30,8 +22,6 @@ pub enum ApiKeyHashKeyError {
 pub struct ApiKeyHashKey([u8; API_KEY_HASH_KEY_LENGTH]);
 
 impl ApiKeyHashKey {
-    /// Parses the configured value (64 hex characters, surrounding whitespace ignored).
-    ///
     /// The error never contains the input.
     pub fn from_hex(hex_key: &str) -> Result<Self, ApiKeyHashKeyError> {
         let bytes = hex::decode(hex_key.trim()).map_err(|_| ApiKeyHashKeyError::InvalidHex)?;
@@ -53,15 +43,9 @@ impl fmt::Debug for ApiKeyHashKey {
 pub struct PlaintextApiKey(Secret<String>);
 
 impl PlaintextApiKey {
-    /// Generates a key for the given environment prefix (`dev`, `sbx` or `prd`, see
-    /// `recon::env::prefix_for_env`). It must not contain `_`, which ends it.
-    ///
-    /// Uses `thread_rng`, a ChaCha-based CSPRNG seeded from the OS.
+    /// `env_prefix` must not contain `_`, which `display_prefix` splits on.
+    /// Uses `thread_rng`, a CSPRNG.
     pub fn generate(env_prefix: &str) -> Self {
-        debug_assert!(
-            !env_prefix.is_empty() && !env_prefix.contains('_'),
-            "env prefix must be non-empty and must not contain `_`"
-        );
         let random: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(API_KEY_RANDOM_LENGTH)
@@ -71,16 +55,13 @@ impl PlaintextApiKey {
         Self(Secret::new(format!("{env_prefix}_{random}")))
     }
 
-    /// Wraps a key received in a request. The value is trimmed.
     pub fn from_request(value: &str) -> Self {
         Self(Secret::new(value.trim().to_string()))
     }
 
-    /// Environment prefix plus the first few random characters, safe to store and show.
     pub fn display_prefix(&self) -> String {
         let key = self.0.peek();
-        // The env prefix has no `_`, so the first one ends it. A request key without one is
-        // never generated here, but must not panic: show nothing of it.
+        // A request key may not have a `_`: show nothing of it rather than panic.
         key.split_once('_')
             .map(|(env, random)| {
                 let shown: String = random.chars().take(API_KEY_DISPLAY_RANDOM_LENGTH).collect();
@@ -98,13 +79,11 @@ impl PlaintextApiKey {
         )
     }
 
-    /// For the one-time creation response only.
     pub fn expose(&self) -> &str {
         self.0.peek()
     }
 }
 
-/// Hex encoded keyed BLAKE3 hash of a key (64 characters). This is what the database stores.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HashedApiKey(String);
 
@@ -224,7 +203,6 @@ mod tests {
 
         assert!(!format!("{key:?}").contains(key.expose()));
         assert!(!format!("{hash_key:?}").contains("0001"));
-        // The error carries no input either.
         let error = ApiKeyHashKey::from_hex("not hex at all").unwrap_err();
         assert!(!format!("{error} {error:?}").contains("not hex"));
     }
