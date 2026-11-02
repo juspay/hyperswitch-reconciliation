@@ -27,3 +27,14 @@ pub struct ExceptionReportLambdaPayload {
     #[serde(with = "iso8601::option")]
     pub aging_less_than: Option<PrimitiveDateTime>,
 }
+
+#[derive(Serialize)]
+pub struct LinkedEntryReportLambdaPayload {
+    pub profile_id: String,
+    pub rule_id: String,
+    #[serde(with = "iso8601")]
+    pub start_time: PrimitiveDateTime,
+    #[serde(with = "iso8601")]
+    pub end_time: PrimitiveDateTime,
+    pub emails: Vec<String>,
+}
