@@ -17,7 +17,15 @@ pub mod vars {
 
 /// Current environment.
 #[derive(
-    Debug, Default, Deserialize, Serialize, Clone, Copy, strum::Display, strum::EnumString,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    Clone,
+    Copy,
+    strum::Display,
+    strum::EnumString,
+    strum::EnumIter,
 )]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -27,12 +35,10 @@ pub enum Env {
     Development,
     /// Production environment.
     Production,
-    /// Sandbox environment. Runs with production-like infrastructure.
     Sandbox,
 }
 
 impl Env {
-    /// Short lowercase prefix for this environment, used at the start of API keys.
     pub const fn prefix(self) -> &'static str {
         match self {
             Self::Development => "dev",
@@ -45,18 +51,7 @@ impl Env {
 /// Name of current environment. One of "development", "sandbox" or "production".
 pub fn which() -> Env {
     let default_env = Env::Development;
-    std::env::var(vars::RUN_ENV).map_or_else(
-        |_| default_env,
-        |v| {
-            v.parse().unwrap_or_else(|_| {
-                #[allow(clippy::print_stderr)] // The logger has not yet been initialized
-                {
-                    eprintln!("Unrecognised RUN_ENV `{v}`, falling back to development");
-                }
-                default_env
-            })
-        },
-    )
+    std::env::var(vars::RUN_ENV).map_or_else(|_| default_env, |v| v.parse().unwrap_or(default_env))
 }
 
 /// Three letter (lowercase) prefix corresponding to the current environment.
@@ -93,6 +88,15 @@ macro_rules! service_name {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn every_env_prefix_is_a_valid_key_prefix() {
+        use strum::IntoEnumIterator;
+
+        for env in Env::iter() {
+            let prefix = env.prefix();
+            assert!(!prefix.is_empty() && !prefix.contains('_'), "{env}");
+        }
+    }
 
     #[test]
     fn each_env_has_its_own_prefix() {
