@@ -26,6 +26,16 @@ pub mod transformation_history;
 pub type PgPooledConn = async_bb8_diesel::Connection<diesel::PgConnection>;
 pub type StorageResult<T> = error_stack::Result<T, errors::DatabaseError>;
 
+/// A connection read queries can run on.
+pub trait ReadConn: Sync {
+    fn as_read_conn(&self) -> &PgPooledConn;
+}
+
+/// A connection write queries can run on. Every write connection can also run reads.
+pub trait WriteConn: ReadConn {
+    fn as_write_conn(&self) -> &PgPooledConn;
+}
+
 pub(crate) mod diesel_impl {
     use diesel::{
         deserialize::FromSql,

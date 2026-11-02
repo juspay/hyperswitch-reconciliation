@@ -1,5 +1,6 @@
 use storage_impl::{
-    business_profile::BusinessProfileInterface, merchant_account::MerchantAccountInterface,
+    business_profile::{ProfileReadInterface, ProfileWriteInterface},
+    merchant_account::MerchantAccountInterface,
 };
 
 use crate::errors::business_profile::BusinessProfileError;
