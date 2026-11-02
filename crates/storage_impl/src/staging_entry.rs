@@ -14,7 +14,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::database::store::Store;
 
 impl Store {
     pub async fn insert_staging_entry(

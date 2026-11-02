@@ -8,14 +8,11 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::database::store::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait EntryInterface {
-    async fn insert_entry(&self, entry: EntryNew) -> StorageResult<Entry>;
+pub trait EntryReadInterface {
     async fn find_entry_by_id(&self, entry_id: &str) -> StorageResult<Entry>;
-    async fn update_entry_by_id(&self, entry_id: &str, update: EntryUpdate)
-        -> StorageResult<Entry>;
     async fn list_entries_by_account_id(
         &self,
         account_id: &str,
@@ -53,24 +50,17 @@ pub trait EntryInterface {
 }
 
 #[async_trait]
-impl EntryInterface for Store {
-    async fn insert_entry(&self, entry: EntryNew) -> StorageResult<Entry> {
-        let conn = self.get_connection().await?;
-        entry.insert(&conn).await
-    }
+pub trait EntryWriteInterface {
+    async fn insert_entry(&self, entry: EntryNew) -> StorageResult<Entry>;
+    async fn update_entry_by_id(&self, entry_id: &str, update: EntryUpdate)
+        -> StorageResult<Entry>;
+}
 
+#[async_trait]
+impl<T: DatabaseRead + Sync> EntryReadInterface for T {
     async fn find_entry_by_id(&self, entry_id: &str) -> StorageResult<Entry> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::find_by_entry_id(&conn, entry_id.to_string()).await
-    }
-
-    async fn update_entry_by_id(
-        &self,
-        entry_id: &str,
-        update: EntryUpdate,
-    ) -> StorageResult<Entry> {
-        let conn = self.get_connection().await?;
-        Entry::update_by_id(&conn, entry_id, update.into()).await
     }
 
     async fn list_entries_by_account_id(
@@ -78,7 +68,7 @@ impl EntryInterface for Store {
         account_id: &str,
         filters: ListEntriesFilters,
     ) -> StorageResult<Vec<Entry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::list_by_account_id(&conn, account_id, filters).await
     }
 
@@ -87,7 +77,7 @@ impl EntryInterface for Store {
         transaction_id: &str,
         version: Option<i32>,
     ) -> StorageResult<Vec<Entry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::list_by_transaction_id_and_version(&conn, transaction_id, version).await
     }
 
@@ -97,7 +87,7 @@ impl EntryInterface for Store {
         version: i32,
         account_id: &str,
     ) -> StorageResult<Vec<Entry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::list_expected_by_transaction_id_version_and_account(
             &conn,
             transaction_id,
@@ -113,7 +103,7 @@ impl EntryInterface for Store {
         version: i32,
         source_account_id: &str,
     ) -> StorageResult<Entry> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::find_first_pending_source_by_transaction_id_and_version(
             &conn,
             transaction_id,
@@ -124,7 +114,7 @@ impl EntryInterface for Store {
     }
 
     async fn list_entries_by_ids(&self, entry_ids: Vec<String>) -> StorageResult<Vec<Entry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::list_entries_by_ids(&conn, entry_ids).await
     }
 
@@ -133,12 +123,29 @@ impl EntryInterface for Store {
         filters: EntryListFilters,
         pagination: PaginationQuery<EntryListSortField>,
     ) -> StorageResult<EntryPage> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::list_paginated(&conn, filters, pagination).await
     }
 
     async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Entry::list_linking_pending(&conn, limit).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite + Sync> EntryWriteInterface for T {
+    async fn insert_entry(&self, entry: EntryNew) -> StorageResult<Entry> {
+        let conn = self.write_conn().await?;
+        entry.insert(&conn).await
+    }
+
+    async fn update_entry_by_id(
+        &self,
+        entry_id: &str,
+        update: EntryUpdate,
+    ) -> StorageResult<Entry> {
+        let conn = self.write_conn().await?;
+        Entry::update_by_id(&conn, entry_id, update.into()).await
     }
 }

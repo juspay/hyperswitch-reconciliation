@@ -10,7 +10,7 @@ use futures::future;
 use recon_domain_models::behaviour::ReverseConversion;
 use recon_domain_models::entry::DomainEntry;
 use storage_impl::{
-    account::AccountInterface, entry::EntryInterface, entry_link::EntryLinkInterface,
+    account::AccountInterface, entry::EntryReadInterface, entry_link::EntryLinkInterface,
     transaction::TransactionInterface,
 };
 

@@ -27,7 +27,7 @@ use error_stack::ResultExt;
 use futures::future;
 use time::PrimitiveDateTime;
 
-use super::Store;
+use crate::database::store::Store;
 
 #[async_trait]
 pub trait TransactionInterface {

@@ -49,7 +49,7 @@ use recon_domain_models::{
     ApplicationEncryptionInterface, EncryptionHandler,
 };
 use storage_impl::{
-    account::AccountInterface, entry::EntryInterface, search_expectation::SearchCriteria,
+    account::AccountInterface, entry::EntryReadInterface, search_expectation::SearchCriteria,
     search_group::SearchGroupInterface, transaction::TransactionInterface,
 };
 

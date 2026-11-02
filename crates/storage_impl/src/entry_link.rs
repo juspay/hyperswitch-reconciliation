@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use diesel_models::{entry::Entry, entry_link::EntryLink, StorageResult};
 
-use super::Store;
+use crate::database::store::Store;
 
 #[async_trait]
 pub trait EntryLinkInterface {

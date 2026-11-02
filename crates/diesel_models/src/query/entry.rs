@@ -13,7 +13,7 @@ use crate::{
         entry::{self, dsl},
     },
     search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},
-    PgPooledConn, StorageResult,
+    PgPooledConn, ReadConn, StorageResult, WriteConn,
 };
 
 use common_enums::{BalanceDirection, EntryLinkingStatus, EntryStatus, SearchDuplicateStatus};
@@ -294,7 +294,8 @@ async fn update_account_balance(
 }
 
 impl EntryNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<Entry> {
+    pub async fn insert(self, conn: &impl WriteConn) -> StorageResult<Entry> {
+        let conn = conn.as_write_conn();
         let account_id = self.account_id.clone();
         let amount = self.amount;
         let entry_type = self.balance_direction;
@@ -357,9 +358,10 @@ impl EntryNew {
     }
 
     pub async fn batch_insert_chunked(
-        conn: &PgPooledConn,
+        conn: &impl WriteConn,
         entries: Vec<Self>,
     ) -> StorageResult<Vec<Entry>> {
+        let conn = conn.as_write_conn();
         if entries.is_empty() {
             return Ok(Vec::new());
         }
@@ -451,10 +453,11 @@ impl EntryNew {
 
 impl Entry {
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConn,
         entry_id: &str,
         entry_update: EntryUpdateInternal,
     ) -> StorageResult<Self> {
+        let conn = conn.as_write_conn();
         generics::generic_update_with_unique_predicate_get_result::<entry::table, _, _, _>(
             conn,
             dsl::id.eq(entry_id.to_owned()),
@@ -464,15 +467,17 @@ impl Entry {
         .attach_printable_lazy(|| format!("Error while updating entry for entry_id: {entry_id}"))
     }
 
-    pub async fn find_by_entry_id(conn: &PgPooledConn, entry_id: String) -> StorageResult<Self> {
+    pub async fn find_by_entry_id(conn: &impl ReadConn, entry_id: String) -> StorageResult<Self> {
+        let conn = conn.as_read_conn();
         generics::generic_find_by_id::<entry::table, _, _>(conn, entry_id).await
     }
 
     pub async fn list_by_account_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConn,
         account_id: &str,
         filters: ListEntriesFilters,
     ) -> StorageResult<Vec<Self>> {
+        let conn = conn.as_read_conn();
         let mut query = dsl::entry
             .filter(dsl::account_id.eq(account_id.to_owned()))
             .into_boxed();
@@ -515,10 +520,11 @@ impl Entry {
     }
 
     pub async fn list_by_transaction_id_and_version(
-        conn: &PgPooledConn,
+        conn: &impl ReadConn,
         transaction_id: &str,
         version: Option<i32>,
     ) -> StorageResult<Vec<Self>> {
+        let conn = conn.as_read_conn();
         let mut query = dsl::entry
             .filter(dsl::logical_transaction_id.eq(transaction_id.to_owned()))
             .into_boxed();
@@ -549,10 +555,11 @@ impl Entry {
     }
 
     pub async fn list_paginated(
-        conn: &PgPooledConn,
+        conn: &impl ReadConn,
         filters: EntryListFilters,
         pagination: PaginationQuery<EntryListSortField>,
     ) -> StorageResult<EntryPage> {
+        let conn = conn.as_read_conn();
         let logical_transaction_id = filters.logical_transaction_id;
 
         let mut query = dsl::entry
@@ -674,11 +681,12 @@ impl Entry {
     }
 
     pub async fn list_expected_by_transaction_id_version_and_account(
-        conn: &PgPooledConn,
+        conn: &impl ReadConn,
         transaction_id: &str,
         version: i32,
         account_id: &str,
     ) -> StorageResult<Vec<Self>> {
+        let conn = conn.as_read_conn();
         let query = dsl::entry
             .filter(dsl::logical_transaction_id.eq(transaction_id.to_owned()))
             .filter(dsl::transaction_version.eq(version))
@@ -701,11 +709,12 @@ impl Entry {
     }
 
     pub async fn find_first_pending_source_by_transaction_id_and_version(
-        conn: &PgPooledConn,
+        conn: &impl ReadConn,
         transaction_id: &str,
         version: i32,
         source_account_id: &str,
     ) -> StorageResult<Self> {
+        let conn = conn.as_read_conn();
         let query = dsl::entry
             .filter(dsl::logical_transaction_id.eq(transaction_id.to_owned()))
             .filter(dsl::transaction_version.eq(version))
@@ -732,10 +741,11 @@ impl Entry {
     }
 
     pub async fn update_expected_for_source_append(
-        conn: &PgPooledConn,
+        conn: &impl WriteConn,
         current: &Self,
         update: ExpectedEntryUpdateInternal,
     ) -> StorageResult<Self> {
+        let conn = conn.as_write_conn();
         update_account_balance(
             conn,
             &current.account_id,
@@ -778,10 +788,11 @@ impl Entry {
     }
 
     pub async fn discard_entry_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConn,
         entry_id: &str,
         entry_update: EntryUpdateInternal,
     ) -> StorageResult<Self> {
+        let conn = conn.as_write_conn();
         conn.transaction_async(|conn| async move {
             let updated_entry = generics::generic_update_with_unique_predicate_get_result::<
                 entry::table,
@@ -836,10 +847,11 @@ impl Entry {
     }
 
     pub async fn batch_discard_entries_by_transaction_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConn,
         transaction_id: &str,
         entry_update: EntryUpdateInternal,
     ) -> StorageResult<Vec<Self>> {
+        let conn = conn.as_write_conn();
         conn.transaction_async(|conn| async move {
             let updated_entries = generics::generic_update_with_results::<entry::table, _, _, Self>(
                 &conn,
@@ -888,9 +900,10 @@ impl Entry {
     }
 
     pub async fn list_entries_by_ids(
-        conn: &PgPooledConn,
+        conn: &impl ReadConn,
         entry_ids: Vec<String>,
     ) -> StorageResult<Vec<Self>> {
+        let conn = conn.as_read_conn();
         if entry_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -908,7 +921,11 @@ impl Entry {
         .attach_printable_lazy(|| format!("Error while listing entries by IDs: {entry_ids:?}"))
     }
 
-    pub async fn list_linking_pending(conn: &PgPooledConn, limit: u16) -> StorageResult<Vec<Self>> {
+    pub async fn list_linking_pending(
+        conn: &impl ReadConn,
+        limit: u16,
+    ) -> StorageResult<Vec<Self>> {
+        let conn = conn.as_read_conn();
         entry::table
             .filter(entry::linking_status.eq(EntryLinkingStatus::Pending))
             .order((entry::created_at.asc(), entry::id.asc()))

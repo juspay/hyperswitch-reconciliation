@@ -46,7 +46,7 @@ use recon_domain_models::{
     transaction::{SearchExpectationCreation, TransactionCreationData},
 };
 use storage_impl::{
-    account::AccountInterface, entry::EntryInterface, search_expectation::SearchCriteria,
+    account::AccountInterface, entry::EntryReadInterface, search_expectation::SearchCriteria,
     transaction::TransactionInterface,
 };
 

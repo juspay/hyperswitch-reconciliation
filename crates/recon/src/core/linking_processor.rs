@@ -5,7 +5,10 @@ use common_utils::{auth::AuthContext, logging};
 use diesel_models::entry::EntryUpdate;
 use tokio::sync::watch;
 
-use storage_impl::{account::AccountInterface, entry::EntryInterface};
+use storage_impl::{
+    account::AccountInterface,
+    entry::{EntryReadInterface, EntryWriteInterface},
+};
 
 use crate::{
     domain::linking_processor::process_entry_linking_core,

@@ -4,7 +4,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::database::store::Store;
 
 #[async_trait]
 pub trait SearchGroupInterface {

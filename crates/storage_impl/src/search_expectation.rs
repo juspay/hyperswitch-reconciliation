@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::database::store::Store;
 
 pub struct SearchCriteria {
     pub rule_id: String,

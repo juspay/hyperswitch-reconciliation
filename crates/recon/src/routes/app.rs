@@ -13,7 +13,7 @@ use crate::routes::{search_entry_key, search_expectation, search_group};
 use external_services::{
     faas::FaasHandler, file_storage::FileStorageHandler, ApplicationEncryptionClient,
 };
-use storage_impl::Store;
+use storage_impl::database::store::Store;
 
 const INGESTION_UPLOAD_TOTAL_LIMIT_BYTES: usize = 25 * 1024 * 1024;
 const INGESTION_UPLOAD_MEMORY_LIMIT_BYTES: usize = 25 * 1024 * 1024;

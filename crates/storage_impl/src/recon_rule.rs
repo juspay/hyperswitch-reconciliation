@@ -8,7 +8,7 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 
-use super::Store;
+use crate::database::store::Store;
 
 #[async_trait]
 pub trait ReconRuleInterface {

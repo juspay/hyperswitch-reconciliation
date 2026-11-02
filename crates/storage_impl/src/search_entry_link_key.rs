@@ -7,7 +7,7 @@ use diesel_models::{
 };
 use masking::{PeekInterface, Secret};
 
-use super::Store;
+use crate::database::store::Store;
 
 #[derive(Clone, Debug)]
 pub struct SearchEntryLinkSearchCriteria {

@@ -144,7 +144,7 @@ pub async fn initialize_server(
 
     // Create app state
     let state = AppState {
-        store: storage_impl::Store { master_pool: pool },
+        store: storage_impl::database::store::Store { master_pool: pool },
         config: config.clone(),
         file_storage,
         faas,

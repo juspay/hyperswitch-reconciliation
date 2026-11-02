@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::{DatabaseRead, DatabaseWrite};
+use crate::database::store::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait ProfileReadInterface {

@@ -30,7 +30,7 @@ use recon_domain_models::{
     staging_entry::DomainStagingEntry, ApplicationEncryptionInterface, EncryptionHandler,
 };
 use storage_impl::{
-    entry::EntryInterface, metadata_schema::MetadataSchemaInterface,
+    entry::EntryReadInterface, metadata_schema::MetadataSchemaInterface,
     search_entry_key::SearchEntryKeyInterface, transformation::TransformationConfigInterface,
 };
 

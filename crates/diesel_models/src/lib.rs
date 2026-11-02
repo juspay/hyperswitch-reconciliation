@@ -36,6 +36,20 @@ pub trait WriteConn: ReadConn {
     fn as_write_conn(&self) -> &PgPooledConn;
 }
 
+// The plain async connection is always on master (e.g. inside `transaction_async`), so it can
+// run both reads and writes.
+impl ReadConn for PgPooledConn {
+    fn as_read_conn(&self) -> &PgPooledConn {
+        self
+    }
+}
+
+impl WriteConn for PgPooledConn {
+    fn as_write_conn(&self) -> &PgPooledConn {
+        self
+    }
+}
+
 pub(crate) mod diesel_impl {
     use diesel::{
         deserialize::FromSql,

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use diesel_models::{search_entry_key::SearchEntryKey, StorageResult};
 
-use super::Store;
+use crate::database::store::Store;
 
 #[async_trait]
 pub trait SearchEntryKeyInterface {
