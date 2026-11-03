@@ -1,6 +1,7 @@
 use common_enums::ApiKeyStatus;
+use common_utils::date_time;
 use common_utils::id_type::MerchantId;
-use diesel::{Identifiable, Insertable, Queryable, Selectable};
+use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
 use masking::Secret;
 use time::PrimitiveDateTime;
 
@@ -39,4 +40,44 @@ pub struct ApiKeyNew {
     pub expires_at: Option<PrimitiveDateTime>,
     pub last_modified_at: PrimitiveDateTime,
     pub status: ApiKeyStatus,
+}
+
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = api_key)]
+pub struct ApiKeyUpdateInternal {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<ApiKeyStatus>,
+    pub last_modified_at: PrimitiveDateTime,
+}
+
+/// `expires_at` is deliberately not updatable.
+#[derive(Debug, Clone)]
+pub enum ApiKeyUpdate {
+    Update {
+        name: Option<String>,
+        description: Option<String>,
+    },
+    Revoke,
+}
+
+impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
+    fn from(api_key_update: ApiKeyUpdate) -> Self {
+        let last_modified_at = date_time::now();
+
+        match api_key_update {
+            ApiKeyUpdate::Update { name, description } => Self {
+                name,
+                description,
+                status: None,
+                last_modified_at,
+            },
+            ApiKeyUpdate::Revoke => Self {
+                name: None,
+                description: None,
+                status: Some(ApiKeyStatus::Revoked),
+                last_modified_at,
+            },
+        }
+    }
 }

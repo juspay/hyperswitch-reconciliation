@@ -66,6 +66,7 @@ pub fn make_app(
     app = app.service(routes::app::Transformation::server(state.clone()));
     app = app.service(routes::app::Report::server(state.clone()));
     app = app.service(routes::app::MetadataSchema::server(state.clone()));
+    app = app.service(routes::app::ApiKey::server(state.clone()));
     app = app.service(routes::app::SearchGroup::server(state.clone()));
     app = app.service(routes::app::SearchEntryKey::server(state.clone()));
     app = app.service(routes::app::SearchExpectation::server(state.clone()));
