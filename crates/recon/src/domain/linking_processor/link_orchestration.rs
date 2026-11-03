@@ -1,6 +1,6 @@
 use common_enums::EntryLinkSide;
 use diesel_models::link_config::LinkConfig;
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use recon_domain_models::{entry::DomainEntry, transaction::DomainTransaction};
 
 use storage_impl::link_config::LinkConfigInterface;
@@ -41,7 +41,9 @@ pub async fn link_orchestration(
             EntryLinkSide::Confirmation => link_config.confirmation_trigger.validate(domain_entry),
         })
         .max_by_key(|link_config| link_config.priority)
-        .ok_or(report!(LinkingProcessingError::NoLinkConfigFound))?;
+        .ok_or(error_stack::Report::new(
+            LinkingProcessingError::NoLinkConfigFound,
+        ))?;
 
     Ok(LinkProcessingContext {
         link_config,

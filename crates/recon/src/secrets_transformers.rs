@@ -1,6 +1,6 @@
 //! Secret transformers for configuration structs
 use async_trait::async_trait;
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 use external_services::{ApplicationEncryptionConfig, UserConfig};
 use masking::{PeekInterface, Secret};
 use recon_interfaces::secrets_interface::{
@@ -10,6 +10,8 @@ use recon_interfaces::secrets_interface::{
 };
 
 use crate::config::{AuthConfig, Config, DatabaseConfig};
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 #[async_trait]
 impl SecretsHandler for DatabaseConfig {
@@ -63,12 +65,12 @@ pub async fn fetch_raw_secrets(
     let database = DatabaseConfig::convert_to_raw_secret(conf.database, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt database configuration")?;
+        .attach("Failed to decrypt database configuration")?;
 
     let auth = AuthConfig::convert_to_raw_secret(conf.auth, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt auth configuration")?;
+        .attach("Failed to decrypt auth configuration")?;
 
     let application_encryption = ApplicationEncryptionConfig::convert_to_raw_secret(
         conf.application_encryption,
@@ -76,12 +78,12 @@ pub async fn fetch_raw_secrets(
     )
     .await
     .change_context(SecretsManagementError::FetchSecretFailed)
-    .attach_printable("Failed to decrypt application encryption configuration")?;
+    .attach("Failed to decrypt application encryption configuration")?;
 
     let user_client = UserConfig::convert_to_raw_secret(conf.user_client, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt HyperSwitch user configuration")?;
+        .attach("Failed to decrypt HyperSwitch user configuration")?;
 
     Ok(Config {
         database,

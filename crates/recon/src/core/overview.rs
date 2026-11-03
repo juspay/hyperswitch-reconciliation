@@ -17,7 +17,7 @@ use common_types::{
 };
 use common_utils::{auth::AuthContext, date_time};
 use diesel_models::staging_entry::StagingEntryOverviewRow;
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use storage_impl::{
     account::AccountInterface, recon_rule::ReconRuleInterface, transaction::TransactionInterface,
 };
@@ -155,8 +155,8 @@ pub async fn get_transactions_time_series(
     for bucket_row in aggregates {
         let position = buckets
             .position_for(bucket_row.bucket_start)
-            .ok_or_else(|| report!(OverviewError::InternalServerError))
-            .attach_printable_lazy(|| {
+            .ok_or_else(|| error_stack::Report::new(OverviewError::InternalServerError))
+            .attach_with(|| {
                 format!(
                     "time-series bucket {} has no matching axis slot",
                     bucket_row.bucket_start
@@ -172,8 +172,8 @@ pub async fn get_transactions_time_series(
 
         let slot = rule_slots
             .get_mut(position)
-            .ok_or_else(|| report!(OverviewError::InternalServerError))
-            .attach_printable_lazy(|| {
+            .ok_or_else(|| error_stack::Report::new(OverviewError::InternalServerError))
+            .attach_with(|| {
                 format!("time-series bucket position {position} is outside the generated axis")
             })?;
         slot.extend(status_amounts);

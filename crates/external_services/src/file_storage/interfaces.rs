@@ -1,7 +1,8 @@
 //! File storage interfaces and error types
 
 use async_trait::async_trait;
-use error_stack::Result;
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// Trait for file storage operations
 #[async_trait]

@@ -10,7 +10,6 @@ use common_utils::{
     id_type::MerchantId,
     types::keymanager::{Identifier, KeyManagerState},
 };
-use error_stack::Result;
 use masking::{PeekInterface, Secret};
 use recon_domain_models::{
     type_encryption::{CryptoOperation, CryptoOutput},
@@ -22,6 +21,8 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 use serde::Deserialize;
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 /// Configuration for local encryption
 #[derive(Debug, Clone, Deserialize)]
 pub struct LocalEncryptionConfig {

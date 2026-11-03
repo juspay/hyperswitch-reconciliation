@@ -7,7 +7,7 @@ use common_types::metadata_schema::datatypes::balance_direction::{
     BalanceDirectionConfig, BalanceDirectionConfigV1, BalanceDirectionTransformationRule,
     BalanceDirectionTransformationRuleV1,
 };
-use error_stack::{report, Report, ResultExt};
+use error_stack::{Report, ResultExt};
 use std::collections::HashSet;
 
 use crate::domain::metadata_schema::{
@@ -170,8 +170,8 @@ impl ConfigValidator for BalanceDirectionTransformationRuleV1 {
             Self::DefaultValue { .. } | Self::JsonExtract { .. } | Self::Trim => Ok(()),
             Self::StartsWith { prefix, .. } => {
                 if prefix.is_empty() {
-                    return Err(report!(
-                        ConfigFieldValidationError::EmptyStartsWithRulePrefix
+                    return Err(Report::new(
+                        ConfigFieldValidationError::EmptyStartsWithRulePrefix,
                     ));
                 }
                 Ok(())

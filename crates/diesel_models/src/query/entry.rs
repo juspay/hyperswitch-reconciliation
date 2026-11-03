@@ -1,7 +1,7 @@
 use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
 use common_utils::{chunking::chunked, date_time, logging};
 use diesel::{debug_query, pg::Pg, prelude::*};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use futures::future;
 
 use crate::{
@@ -288,7 +288,7 @@ async fn update_account_balance(
     )
     .await
     .change_context(DatabaseError::Others)
-    .attach_printable("Error updating account balances")?;
+    .attach("Error updating account balances")?;
 
     Ok(())
 }
@@ -353,7 +353,7 @@ impl EntryNew {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable("Transaction failed while inserting entry and updating account balance")
+        .attach("Transaction failed while inserting entry and updating account balance")
     }
 
     pub async fn batch_insert_chunked(
@@ -443,7 +443,7 @@ impl EntryNew {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(move || {
+        .attach_with(move || {
             format!("Transaction failed while batch inserting {entry_count} entries and updating account balances")
         })
     }
@@ -461,7 +461,7 @@ impl Entry {
             entry_update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error while updating entry for entry_id: {entry_id}"))
+        .attach_with(|| format!("Error while updating entry for entry_id: {entry_id}"))
     }
 
     pub async fn find_by_entry_id(conn: &PgPooledConn, entry_id: String) -> StorageResult<Self> {
@@ -504,14 +504,12 @@ impl Entry {
             Ok(value) => Ok(value),
             Err(err) => match err {
                 diesel::result::Error::NotFound => {
-                    Err(report!(err)).change_context(DatabaseError::NotFound)
+                    Err(error_stack::Report::new(err)).change_context(DatabaseError::NotFound)
                 }
-                _ => Err(report!(err)).change_context(DatabaseError::Others),
+                _ => Err(error_stack::Report::new(err)).change_context(DatabaseError::Others),
             },
         }
-        .attach_printable_lazy(|| {
-            format!("Error while listing entries for account_id: {account_id}")
-        })
+        .attach_with(|| format!("Error while listing entries for account_id: {account_id}"))
     }
 
     pub async fn list_by_transaction_id_and_version(
@@ -538,14 +536,12 @@ impl Entry {
             Ok(value) => Ok(value),
             Err(err) => match err {
                 diesel::result::Error::NotFound => {
-                    Err(report!(err)).change_context(DatabaseError::NotFound)
+                    Err(error_stack::Report::new(err)).change_context(DatabaseError::NotFound)
                 }
-                _ => Err(report!(err)).change_context(DatabaseError::Others),
+                _ => Err(error_stack::Report::new(err)).change_context(DatabaseError::Others),
             },
         }
-        .attach_printable_lazy(|| {
-            format!("Error while listing entries for transaction_id: {transaction_id}")
-        })
+        .attach_with(|| format!("Error while listing entries for transaction_id: {transaction_id}"))
     }
 
     pub async fn list_paginated(
@@ -654,7 +650,7 @@ impl Entry {
             )
             .await
             .change_context(DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while listing entries for logical_transaction_id: {logical_transaction_id}"
                 )
@@ -693,7 +689,7 @@ impl Entry {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing expected entries for transaction_id: {transaction_id}, version: {version}, account_id: {account_id}"
             )
@@ -722,7 +718,7 @@ impl Entry {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while finding first pending source entry for transaction_id: {transaction_id}, version: {version}, source_account_id: {source_account_id}",
             )
@@ -756,7 +752,7 @@ impl Entry {
                 update,
             )
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while updating expected entry after source append: {}",
                     current.id
@@ -830,7 +826,7 @@ impl Entry {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Transaction failed while discarding entry for entry_id: {entry_id}")
         })
     }
@@ -882,7 +878,7 @@ impl Entry {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Transaction failed while batch discarding entries for transaction_id: {transaction_id}")
         })
     }
@@ -905,7 +901,7 @@ impl Entry {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| format!("Error while listing entries by IDs: {entry_ids:?}"))
+        .attach_with(|| format!("Error while listing entries by IDs: {entry_ids:?}"))
     }
 
     pub async fn list_linking_pending(conn: &PgPooledConn, limit: u16) -> StorageResult<Vec<Self>> {

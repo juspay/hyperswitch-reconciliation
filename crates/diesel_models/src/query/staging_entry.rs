@@ -12,7 +12,7 @@ use common_types::{
 use common_utils::{chunking::chunked, logging};
 use diesel::dsl::{case_when, count_star};
 use diesel::{debug_query, pg::Pg, prelude::*};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 const STAGING_ENTRY_BATCH_CHUNK_SIZE: usize = 1000;
 
@@ -82,7 +82,7 @@ impl StagingEntry {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while finding staging entries for profile_id: {profile_id} and ids: {ids:?}"
             )
@@ -159,7 +159,7 @@ impl StagingEntry {
                     .collect()
             })
             .map_err(|err| {
-                report!(errors::DatabaseError::Others).attach_printable(format!(
+                error_stack::Report::new(errors::DatabaseError::Others).attach(format!(
                     "Error while listing staging entries for profile_id: {profile_id}: {err}"
                 ))
             })
@@ -298,7 +298,7 @@ impl StagingEntry {
                     .collect()
             })
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while listing v2 staging entries for profile_id: {profile_id}")
             })?;
 
@@ -337,7 +337,7 @@ impl StagingEntry {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| "Error while listing all staging entries".to_string())
+        .attach_with(|| "Error while listing all staging entries".to_string())
     }
 
     pub async fn count_pending_by_profile(
@@ -357,7 +357,7 @@ impl StagingEntry {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while counting pending staging entries for profile_id: {profile_id}")
         })
     }
@@ -373,7 +373,7 @@ impl StagingEntry {
             staging_entry_update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error while updating staging entry for id: {id}"))
+        .attach_with(|| format!("Error while updating staging entry for id: {id}"))
     }
 
     pub async fn aggregate_status_counts_by_account(
@@ -425,7 +425,7 @@ impl StagingEntry {
             )
             .await
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while aggregating staging entry status counts for profile_id: {profile_id}"
                 )
@@ -491,7 +491,7 @@ impl StagingEntryNew {
         })
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Transaction failed while batch inserting {entries_count} staging entries")
         })
     }

@@ -97,7 +97,7 @@ pub async fn send_request(
                 }
                 _ => HttpClientError::RequestNotSent(error.to_string()),
             })
-            .attach_printable("Unable to send request to connector")
+            .attach("Unable to send request to connector")
     });
 
     let send_request = async {
@@ -111,7 +111,7 @@ pub async fn send_request(
                 }
                 _ => HttpClientError::RequestNotSent(error.to_string()),
             })
-            .attach_printable("Unable to send request to connector")
+            .attach("Unable to send request to connector")
     };
 
     let response = send_request.await;

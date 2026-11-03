@@ -6,7 +6,6 @@ use std::{
     sync::LazyLock,
 };
 
-use error_stack::report;
 use globset::Glob;
 use regex::Regex;
 
@@ -38,21 +37,21 @@ pub fn validate_email(email: &str) -> CustomResult<(), ValidationError> {
     });
     let email_regex = match EMAIL_REGEX.as_ref() {
         Some(regex) => Ok(regex),
-        None => Err(report!(ValidationError::InvalidValue {
-            message: "Invalid regex expression".into()
+        None => Err(error_stack::Report::new(ValidationError::InvalidValue {
+            message: "Invalid regex expression".into(),
         })),
     }?;
 
     const EMAIL_MAX_LENGTH: usize = 319;
     if email.is_empty() || email.chars().count() > EMAIL_MAX_LENGTH {
-        return Err(report!(ValidationError::InvalidValue {
-            message: "Email address is either empty or exceeds maximum allowed length".into()
+        return Err(error_stack::Report::new(ValidationError::InvalidValue {
+            message: "Email address is either empty or exceeds maximum allowed length".into(),
         }));
     }
 
     if !email_regex.is_match(email) {
-        return Err(report!(ValidationError::InvalidValue {
-            message: "Invalid email address format".into()
+        return Err(error_stack::Report::new(ValidationError::InvalidValue {
+            message: "Invalid email address format".into(),
         }));
     }
 
@@ -80,10 +79,10 @@ pub fn validate_domain_against_allowed_domains(
 
 pub fn validate_sftp_file_path(file_path: &Path) -> CustomResult<(), ValidationError> {
     let path = file_path.to_str().ok_or_else(|| {
-        report!(ValidationError::IncorrectValueProvided {
+        error_stack::Report::new(ValidationError::IncorrectValueProvided {
             field_name: "file_path",
         })
-        .attach_printable("SFTP file_path must be valid UTF-8")
+        .attach("SFTP file_path must be valid UTF-8")
     })?;
     if path.is_empty()
         || path.contains(['\\', '\0'])
@@ -95,10 +94,10 @@ pub fn validate_sftp_file_path(file_path: &Path) -> CustomResult<(), ValidationE
         })
         || matches!(path.rsplit('/').next(), None | Some("" | "." | ".."))
     {
-        return Err(report!(ValidationError::IncorrectValueProvided {
+        return Err(error_stack::Report::new(ValidationError::IncorrectValueProvided {
             field_name: "file_path",
         })
-        .attach_printable("SFTP file_path must be a relative file path without parent-directory components or backslashes"));
+        .attach("SFTP file_path must be a relative file path without parent-directory components or backslashes"));
     }
     Ok(())
 }
