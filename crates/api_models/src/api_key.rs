@@ -9,7 +9,7 @@ use utoipa::ToSchema;
 #[serde(untagged)]
 pub enum ApiKeyExpiration {
     Never(NeverMarker),
-    DateTime(PrimitiveDateTime),
+    DateTime(#[serde(with = "common_utils::custom_serde::iso8601")] PrimitiveDateTime),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -45,7 +45,7 @@ pub struct CreateApiKeyRequest {
     #[schema(example = "Used by the nightly reporting job")]
     pub description: Option<String>,
     /// A future datetime, or `"never"`
-    #[schema(example = "2027-01-01T00:00:00")]
+    #[schema(example = "2027-01-01T00:00:00.000Z")]
     pub expires_at: ApiKeyExpiration,
 }
 
@@ -72,11 +72,13 @@ pub struct ApiKeyResponse {
     pub created_by: Option<String>,
     #[schema(example = "active")]
     pub status: ApiKeyStatus,
-    #[schema(example = "2026-01-01T00:00:00")]
+    #[schema(example = "2026-01-01T00:00:00.000Z")]
+    #[serde(with = "common_utils::custom_serde::iso8601")]
     pub created_at: PrimitiveDateTime,
-    #[schema(example = "2027-01-01T00:00:00")]
+    #[schema(example = "2027-01-01T00:00:00.000Z")]
     pub expires_at: ApiKeyExpiration,
-    #[schema(example = "2026-01-01T00:00:00")]
+    #[schema(example = "2026-01-01T00:00:00.000Z")]
+    #[serde(with = "common_utils::custom_serde::iso8601")]
     pub last_modified_at: PrimitiveDateTime,
 }
 

@@ -10,7 +10,10 @@ use time::Duration;
 use crate::common::TestApp;
 
 fn expires_in_days(days: i64) -> Value {
-    serde_json::to_value(date_time::now() + Duration::days(days)).unwrap()
+    json!((date_time::now() + Duration::days(days))
+        .assume_utc()
+        .format(&time::format_description::well_known::Rfc3339)
+        .unwrap())
 }
 
 fn create_body(name: &str, days: i64) -> Value {
