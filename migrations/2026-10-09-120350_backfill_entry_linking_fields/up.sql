@@ -12,7 +12,6 @@ BEGIN
               AND (linking_status IS NULL OR linking_data IS NULL)
             ORDER BY id
             LIMIT 5000
-            FOR UPDATE
         ), updated AS (
             UPDATE entry AS e
             SET linking_status = COALESCE(e.linking_status, CASE
@@ -32,12 +31,11 @@ BEGIN
 
         COMMIT;
 
-        RAISE NOTICE 'Updated % rows', rows_updated;
+        RAISE NOTICE 'Updated % rows; last ID: %', rows_updated, batch_last_id;
         EXIT WHEN rows_updated = 0;
 
         -- Advance through the primary key instead of rescanning completed rows.
         last_id := batch_last_id;
-        PERFORM pg_sleep(1);
     END LOOP;
 END;
 $$;
