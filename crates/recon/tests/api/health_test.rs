@@ -1,4 +1,4 @@
-use api_models::health::{DeepHealthResponse, HealthStatus};
+use api_models::health::DeepHealthResponse;
 
 use crate::common::TestApp;
 use pretty_assertions::assert_eq;
@@ -45,10 +45,9 @@ async fn deep_health_reports_each_component() {
     assert_eq!(response.status(), 200);
 
     let body: DeepHealthResponse = response.json().await.unwrap();
-    assert_eq!(body.status, HealthStatus::Healthy);
-    assert_eq!(body.database.status, HealthStatus::Healthy);
-    assert_eq!(body.encryption.status, HealthStatus::NotApplicable);
-    assert_eq!(body.user_client.status, HealthStatus::NotApplicable);
-    assert_eq!(body.recon_processor.status, HealthStatus::Healthy);
-    assert_eq!(body.linking_processor.status, HealthStatus::Healthy);
+    assert!(body.database.is_healthy());
+    assert!(body.encryption.is_healthy());
+    assert!(body.user_client.is_healthy());
+    assert!(body.recon_processor.is_healthy());
+    assert!(body.linking_processor.is_healthy());
 }

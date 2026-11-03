@@ -58,7 +58,7 @@
 
 ## Design Decisions
 <!-- AI-UPDATED: 2026-11-03 - Client health checks for /deep_health -->
-- **Client `health_check()` returns `Option`**: `ApplicationEncryptionClient` and `UserClient` return `None` for `Local`/`MockUserClient` (nothing external to check) so `/deep_health` reports `not_applicable` instead of a fake `healthy`. File storage and FaaS have no health check on purpose - see `ai-docs/domains/health/AGENT-NOTES.md`
+- **Client `health_check()`**: `ApplicationEncryptionClient` and `UserClient` return `Ok(())` for `Local`/`MockUserClient` (nothing external to check). File storage and FaaS have no health check on purpose - see `ai-docs/domains/health/AGENT-NOTES.md`
 <!-- AI-UPDATED: 2026-08-20 - Lambda client construction -->
 - **Lambda SDK client is built once in `AwsLambdaClient::new()`**, never per invocation
   - Rebuilding re-runs the entire credential provider chain on every call

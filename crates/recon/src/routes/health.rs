@@ -1,5 +1,5 @@
 use actix_web::{web, HttpRequest, Responder};
-use api_models::health::{ComponentHealth, DeepHealthResponse, HealthStatus, ProcessorHealth};
+use api_models::health::{ComponentHealth, DeepHealthResponse};
 use utoipa::OpenApi;
 
 use super::AppState;
@@ -18,7 +18,7 @@ use crate::{
         get_health,
         get_deep_health,
     ),
-    components(schemas(DeepHealthResponse, ComponentHealth, ProcessorHealth, HealthStatus)),
+    components(schemas(DeepHealthResponse, ComponentHealth)),
     tags(
         (name = "Health", description = "Health check endpoints"),
     ),
@@ -42,7 +42,7 @@ pub async fn get_health(_state: web::Data<AppState>) -> impl Responder {
     path = "/deep_health",
     tag = "Health",
     responses(
-        (status = 200, description = "All dependencies are healthy or not applicable", body = DeepHealthResponse),
+        (status = 200, description = "All dependencies are healthy", body = DeepHealthResponse),
         (status = 503, description = "At least one dependency is unhealthy", body = DeepHealthResponse),
     ),
 )]

@@ -1,45 +1,49 @@
+use actix_web::http::StatusCode;
 use api_models::health::DeepHealthResponse;
-use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
 
 use crate::{
     routes::AppState,
-    types::ReconResponse,
-    utils::health::{
-        health_response, overall_status, run_check, run_optional_check, ProcessorStatusExt,
-    },
+    types::{ApplicationResponse, ReconResponse},
+    utils::health::{processor_health, run_check, HealthComponent},
 };
 
 pub async fn deep_health_check(state: AppState) -> ReconResponse<DeepHealthResponse> {
     let (database, encryption, user_client) = futures::join!(
-        run_check("database", state.store.health_check()),
-        run_optional_check("encryption", state.encryption_client.health_check()),
-        run_optional_check("user_client", state.user_client.health_check()),
+        run_check(HealthComponent::Database, state.store.health_check()),
+        run_check(
+            HealthComponent::Encryption,
+            state.encryption_client.health_check()
+        ),
+        run_check(
+            HealthComponent::UserClient,
+            state.user_client.health_check()
+        ),
     );
+    let recon_processor = processor_health(&state.recon_processor_status);
+    let linking_processor = processor_health(&state.linking_processor_status);
 
-    let recon_processor = state
-        .recon_processor_status
-        .processor_health(ReconProcessorStatus::Running);
-    let linking_processor = state
-        .linking_processor_status
-        .processor_health(LinkingProcessorStatus::Running);
+    let all_healthy = [
+        &database,
+        &encryption,
+        &user_client,
+        &recon_processor,
+        &linking_processor,
+    ]
+    .iter()
+    .all(|component| component.is_healthy());
 
-    let status = overall_status(&[
-        database.status,
-        encryption.status,
-        user_client.status,
-        recon_processor.status,
-        linking_processor.status,
-    ]);
-
-    Ok(health_response(
-        status,
-        DeepHealthResponse {
-            status,
+    Ok(ApplicationResponse::Json {
+        data: DeepHealthResponse {
             database,
             encryption,
             user_client,
             recon_processor,
             linking_processor,
         },
-    ))
+        status: if all_healthy {
+            StatusCode::OK
+        } else {
+            StatusCode::SERVICE_UNAVAILABLE
+        },
+    })
 }

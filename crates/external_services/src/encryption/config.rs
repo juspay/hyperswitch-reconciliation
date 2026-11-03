@@ -120,10 +120,10 @@ impl ApplicationEncryptionInterface for ApplicationEncryptionClient {
 }
 
 impl ApplicationEncryptionClient {
-    pub async fn health_check(&self) -> Option<CustomResult<(), KeyManagerClientError>> {
+    pub async fn health_check(&self) -> CustomResult<(), KeyManagerClientError> {
         match self {
-            Self::Local(_) => None,
-            Self::KeymanagerService(client) => Some(client.health_check().await),
+            Self::Local(_) => Ok(()),
+            Self::KeymanagerService(client) => client.health_check().await,
         }
     }
 

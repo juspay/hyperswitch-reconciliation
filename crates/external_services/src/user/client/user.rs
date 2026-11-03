@@ -17,10 +17,10 @@ impl UserClient {
         }
     }
 
-    pub async fn health_check(&self) -> Option<HyperswitchResult<()>> {
+    pub async fn health_check(&self) -> HyperswitchResult<()> {
         match self {
-            Self::MockUserClient(_) => None,
-            Self::Hyperswitch(client) => Some(client.health_check().await),
+            Self::MockUserClient(_) => Ok(()),
+            Self::Hyperswitch(client) => client.health_check().await,
         }
     }
 }

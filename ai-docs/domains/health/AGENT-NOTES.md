@@ -11,8 +11,8 @@
 - `database`: plain `SELECT 1` - read only, by choice. Hyperswitch's router also inserts/deletes a `configs` row; recon never writes from a health check
 - `encryption`: keymanager `GET {url}/health` over the **main mTLS port** (443 -> 5000) with recon's client cert, via `common_utils::keymanager::health_check_key_manager`. The keymanager also serves `/health` on its plain-HTTP management port 6128 (its own k8s probes use that) - don't switch to it, the mTLS path is what recon actually depends on. No tenant header needed
 - `user_client`: Hyperswitch's **shallow** `GET {base_url}/health`, not `/health/ready` - otherwise a Hyperswitch Redis/locker blip would mark recon unhealthy
-- `recon_processor` / `linking_processor`: each task owns the only `Receiver` on its `watch` channel and loops forever, so `Sender::receiver_count() == 0` means it exited or panicked. `running: false` (admin-stopped) is still healthy
-- Local encryption and the mock user client have nothing to check: their `health_check()` returns `None`, rendered as `not_applicable` (distinct from `healthy`)
+- `recon_processor` / `linking_processor`: each task owns the only `Receiver` on its `watch` channel and loops forever, so `Sender::receiver_count() == 0` means it exited or panicked. An admin-stopped processor is still healthy; its run state is on the `recon_engine/status` API, not here
+- Local encryption and the mock user client have nothing external to check: their `health_check()` returns `Ok(())`, so they report `healthy`
 
 ## Deliberately Not Checked
 <!-- AI-UPDATED: 2026-11-03 - Deep health check added -->
@@ -22,9 +22,10 @@
 
 ## Design Decisions
 <!-- AI-UPDATED: 2026-11-03 - Deep health check added -->
-- Checks run concurrently, each with a 5s timeout (`utils/health.rs`). The endpoint always returns the full per-component report: 200 when all are healthy or `not_applicable`, 503 otherwise. Unlike Hyperswitch's `/health/ready`, it doesn't stop at the first failure, so one outage can't hide another
+- Checks run concurrently, each with a 5s timeout (`utils/health.rs`). The endpoint always returns the full per-component report: 200 when all are healthy, 503 otherwise. Unlike Hyperswitch's `/health/ready`, it doesn't stop at the first failure, so one outage can't hide another
 - Backend-variant dispatch lives in `external_services` (`ApplicationEncryptionClient::health_check`, `UserClient::health_check`); `core/health.rs` only orchestrates
 - Path is `/deep_health` (its own scope), not `/health/deep`
+- One `status`-tagged `ComponentHealth` enum for every component (processors too, without `latency_ms`); `error` exists only on `unhealthy`. No overall `status` field: the HTTP code (200/503) is the overall result. Component names in logs come from the `HealthComponent` enum, not string literals
 
 ## Common Gotchas
 <!-- AI-UPDATED: 2026-11-03 - Deep health check added -->
