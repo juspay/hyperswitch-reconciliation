@@ -33,6 +33,7 @@ Look in `domains/[feature]/` and read ALL files present:
 - `api-keys/` - Merchant-level API keys: table, store, and design notes
 - `encryption/` - Application encryption system with LocalEncryption and KeymanagerService strategies
 - `audit-trail/` - Chronological activity tracking with event grouping and profile-scoped views
+- `health/` - `/health` (shallow, k8s probes) vs `/deep_health` (per-dependency report, 503 on failure)
 - `transactions/` - Transaction lifecycle, versioning, entries, and profile overview aggregation
   - `OVERVIEW-API.md` - Non-obvious aggregation, status, and time-range semantics
   - `MANUAL-RECONCILIATION.md` - Exception-management reconcile endpoints (v1 and the v2 delta API)

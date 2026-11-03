@@ -53,6 +53,16 @@ impl Health {
     }
 }
 
+pub struct DeepHealth;
+
+impl DeepHealth {
+    pub fn server(state: AppState) -> Scope {
+        web::scope("/deep_health")
+            .app_data(web::Data::new(state))
+            .service(web::resource("").route(web::get().to(health::get_deep_health)))
+    }
+}
+
 pub struct MerchantAccount;
 
 impl MerchantAccount {

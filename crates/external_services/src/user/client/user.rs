@@ -1,5 +1,5 @@
 use crate::{
-    hyperswitch::client::HyperswitchClient,
+    hyperswitch::{client::HyperswitchClient, types::HyperswitchResult},
     user::{client::mock_user_client::MockUserClient, interfaces::UserInterface},
 };
 
@@ -14,6 +14,13 @@ impl UserClient {
         match self {
             Self::MockUserClient(mock_user_client) => mock_user_client,
             Self::Hyperswitch(hyperswitch_client) => hyperswitch_client,
+        }
+    }
+
+    pub async fn health_check(&self) -> Option<HyperswitchResult<()>> {
+        match self {
+            Self::MockUserClient(_) => None,
+            Self::Hyperswitch(client) => Some(client.health_check().await),
         }
     }
 }
