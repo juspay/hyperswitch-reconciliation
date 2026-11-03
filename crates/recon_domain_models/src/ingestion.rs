@@ -254,11 +254,8 @@ impl DomainIngestionConfigData {
             Self::V1(v1) => match v1 {
                 IngestionConfigV1::Psp(psp) => match psp {
                     IngestionConfigPsp::Adyen(adyen) => IngestionConnectionDataApi::Adyen {
-                        hmac_secret: adyen.hmac_secret.clone(),
                         webhook_basic_auth_username: adyen.webhook_basic_auth.username,
-                        webhook_basic_auth_password: adyen.webhook_basic_auth.password,
                         report_basic_auth_username: adyen.report_basic_auth.username,
-                        report_basic_auth_password: adyen.report_basic_auth.password,
                     },
                 },
                 IngestionConfigV1::SftpInternal(sftp) => IngestionConnectionDataApi::SftpInternal {

@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use actix_multipart::form::{bytes::Bytes, MultipartForm};
 use common_enums::IngestionStatus;
-use common_utils::crypto::EncryptableName;
 use common_utils::id_type::MerchantId;
 use masking::Secret;
 use serde::{Deserialize, Serialize};
@@ -110,18 +109,16 @@ pub struct IngestionConfigResponse {
     pub data: IngestionConnectionData,
 }
 
+/// Connection details returned in responses.
+///
+/// Secrets (HMAC key, passwords) are deliberately absent: `Secret<T>` serializes in exposed
+/// form over HTTP, so the only safe response is one that never carries them.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "ingestion_type", rename_all = "snake_case")]
 pub enum IngestionConnectionData {
     Adyen {
-        #[schema(value_type = String, example = "hmac_secret")]
-        hmac_secret: EncryptableName,
         webhook_basic_auth_username: String,
-        #[schema(value_type = String, example = "webhook_basic_auth_password")]
-        webhook_basic_auth_password: EncryptableName,
         report_basic_auth_username: String,
-        #[schema(value_type = String, example = "report_basic_auth_password")]
-        report_basic_auth_password: EncryptableName,
     },
     SftpInternal {
         #[schema(value_type = String, example = "path/to/file")]

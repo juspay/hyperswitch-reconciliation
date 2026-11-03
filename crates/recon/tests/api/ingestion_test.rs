@@ -1333,3 +1333,79 @@ async fn trigger_sftp_with_internal_key_passes_auth() {
         "An authenticated SFTP trigger should reach processing and record history"
     );
 }
+
+const ADYEN_SECRET_VALUES: [&str; 3] = [
+    "44782DEF547AAA06C910C43932B1EB0C71FC68D9D0C057550C48EC2ACF6BA056",
+    "webhook_pass",
+    "report_pass",
+];
+
+fn assert_no_adyen_secrets(body: &str) {
+    for secret in ADYEN_SECRET_VALUES {
+        assert!(!body.contains(secret), "response leaked secret: {secret}");
+    }
+    for key in [
+        "hmac_secret",
+        "webhook_basic_auth_password",
+        "report_basic_auth_password",
+    ] {
+        assert!(!body.contains(key), "response exposes secret field: {key}");
+    }
+}
+
+#[actix_web::test]
+async fn adyen_config_responses_do_not_expose_secrets() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+
+    let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
+    let account_id =
+        create_test_account(&client, &token, "Test Account", BalanceDirection::Debit).await;
+
+    let request = ingestion_config_request(&account_id, &profile_id, &merchant_id);
+    let create_response = client
+        .post("/ingestions/config")
+        .with_admin_key()
+        .json(&request)
+        .send()
+        .await;
+    assert_eq!(create_response.status(), 201);
+    let body = create_response.text().await.unwrap();
+    assert_no_adyen_secrets(&body);
+    let created: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(created["data"]["ingestion_type"], "adyen");
+    assert_eq!(
+        created["data"]["webhook_basic_auth_username"],
+        "webhook_user"
+    );
+    assert_eq!(created["data"]["report_basic_auth_username"], "report_user");
+    let ingestion_id = created["ingestion_id"].as_str().unwrap().to_string();
+
+    let get_response = client
+        .get(&format!("/ingestions/config/{ingestion_id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(get_response.status(), 200);
+    assert_no_adyen_secrets(&get_response.text().await.unwrap());
+
+    let list_response = client
+        .get("/ingestions/config")
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(list_response.status(), 200);
+    assert_no_adyen_secrets(&list_response.text().await.unwrap());
+
+    let update_response = client
+        .put(&format!("/ingestions/config/{ingestion_id}"))
+        .with_admin_key()
+        .json(&IngestionConfigUpdateRequest {
+            is_active: Some(false),
+            config: Some(create_adyen_config()),
+        })
+        .send()
+        .await;
+    assert_eq!(update_response.status(), 200);
+    assert_no_adyen_secrets(&update_response.text().await.unwrap());
+}
