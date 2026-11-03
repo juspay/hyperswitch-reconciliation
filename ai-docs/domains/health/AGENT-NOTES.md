@@ -3,7 +3,7 @@
 ## Critical Rules
 <!-- AI-UPDATED: 2026-11-03 - Deep health check added -->
 - **`/health` stays shallow; Kubernetes probes must use it, never `/deep_health`**. A failing readiness probe pulls the pod from traffic, so one dependency (keymanager, Hyperswitch) being down would take every pod, and therefore every API, out of service at once. Probes live in `hyperswitch-infra/infra-configurations/recon/*-values.yaml`
-- **`/deep_health` is unauthenticated (`NoAuth`) and exposed at the edge** (`hyperswitch-infra/envoy-whitelist-paths/{prod,sandbox}/recon-engine/allowedlist.txt`, same as Hyperswitch's `/health/ready`). Responses carry only the error enum's `Display` text; the full `error_stack` report (hosts, URLs) is logged, never returned
+- **`/deep_health` is unauthenticated (`NoAuth`) and exposed at the edge in sandbox only** (`hyperswitch-infra/envoy-whitelist-paths/sandbox/recon-engine/allowedlist.txt`); prod is cluster-internal until it's added to the prod allowlist. Responses carry only the error enum's `Display` text; the full `error_stack` report (hosts, URLs) is logged, never returned
 - **Never add a check that needs an infra change** (new IAM permission, network path, or port). Every check reuses a connection recon already makes for real work
 
 ## What Is Checked
