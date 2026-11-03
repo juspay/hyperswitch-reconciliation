@@ -57,7 +57,7 @@
 - File keys are case-sensitive in both S3 and FileSystem backends
 
 ## Design Decisions
-<!-- AI-UPDATED: 2026-11-03 - Client health checks for /deep_health -->
+<!-- AI-UPDATED: 2026-11-03 - Client health checks for /health/deep -->
 - **Client `health_check()`**: `ApplicationEncryptionClient` and `UserClient` return `Ok(())` for `Local`/`MockUserClient` (nothing external to check). File storage and FaaS have no health check on purpose - see `ai-docs/domains/health/AGENT-NOTES.md`
 <!-- AI-UPDATED: 2026-08-20 - Lambda client construction -->
 - **Lambda SDK client is built once in `AwsLambdaClient::new()`**, never per invocation

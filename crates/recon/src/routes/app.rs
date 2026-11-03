@@ -50,16 +50,7 @@ impl Health {
         web::scope("/health")
             .app_data(web::Data::new(state))
             .service(web::resource("").route(web::get().to(health::get_health)))
-    }
-}
-
-pub struct DeepHealth;
-
-impl DeepHealth {
-    pub fn server(state: AppState) -> Scope {
-        web::scope("/deep_health")
-            .app_data(web::Data::new(state))
-            .service(web::resource("").route(web::get().to(health::get_deep_health)))
+            .service(web::resource("/deep").route(web::get().to(health::get_deep_health)))
     }
 }
 

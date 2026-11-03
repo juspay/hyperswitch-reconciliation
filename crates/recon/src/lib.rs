@@ -49,7 +49,6 @@ pub fn make_app(
         ));
 
     app = app.service(routes::app::Health::server(state.clone()));
-    app = app.service(routes::app::DeepHealth::server(state.clone()));
     app = app.service(routes::app::MerchantAccount::server(state.clone()));
     app = app.service(routes::app::BusinessProfile::server(state.clone()));
     app = app.service(routes::app::Account::server(state.clone()));

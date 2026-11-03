@@ -1,49 +1,33 @@
 use actix_web::http::StatusCode;
 use api_models::health::DeepHealthResponse;
+use common_enums::HealthComponent;
+use strum::IntoEnumIterator;
 
 use crate::{
+    domain::health,
     routes::AppState,
     types::{ApplicationResponse, ReconResponse},
-    utils::health::{processor_health, run_check, HealthComponent},
 };
 
-pub async fn deep_health_check(state: AppState) -> ReconResponse<DeepHealthResponse> {
-    let (database, encryption, user_client) = futures::join!(
-        run_check(HealthComponent::Database, state.store.health_check()),
-        run_check(
-            HealthComponent::Encryption,
-            state.encryption_client.health_check()
-        ),
-        run_check(
-            HealthComponent::UserClient,
-            state.user_client.health_check()
-        ),
-    );
-    let recon_processor = processor_health(&state.recon_processor_status);
-    let linking_processor = processor_health(&state.linking_processor_status);
+pub async fn health_check() -> ReconResponse<()> {
+    Ok(ApplicationResponse::TextPlain("OK".to_string()))
+}
 
-    let all_healthy = [
-        &database,
-        &encryption,
-        &user_client,
-        &recon_processor,
-        &linking_processor,
-    ]
-    .iter()
-    .all(|component| component.is_healthy());
+pub async fn deep_health_check(state: AppState) -> ReconResponse<DeepHealthResponse> {
+    let components = futures::future::join_all(
+        HealthComponent::iter().map(|component| health::check(&state, component)),
+    )
+    .await;
+    let response = DeepHealthResponse { components };
+
+    let status = if response.is_healthy() {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
 
     Ok(ApplicationResponse::Json {
-        data: DeepHealthResponse {
-            database,
-            encryption,
-            user_client,
-            recon_processor,
-            linking_processor,
-        },
-        status: if all_healthy {
-            StatusCode::OK
-        } else {
-            StatusCode::SERVICE_UNAVAILABLE
-        },
+        data: response,
+        status,
     })
 }

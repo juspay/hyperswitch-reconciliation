@@ -1,4 +1,6 @@
 use api_models::health::DeepHealthResponse;
+use common_enums::HealthComponent;
+use strum::IntoEnumIterator;
 
 use crate::common::TestApp;
 use pretty_assertions::assert_eq;
@@ -39,15 +41,12 @@ async fn deep_health_reports_each_component() {
     let client = app.api_client();
 
     // Act
-    let response = client.get("/deep_health").send().await;
+    let response = client.get("/health/deep").send().await;
 
     // Assert
     assert_eq!(response.status(), 200);
 
     let body: DeepHealthResponse = response.json().await.unwrap();
-    assert!(body.database.is_healthy());
-    assert!(body.encryption.is_healthy());
-    assert!(body.user_client.is_healthy());
-    assert!(body.recon_processor.is_healthy());
-    assert!(body.linking_processor.is_healthy());
+    assert_eq!(body.components.len(), HealthComponent::iter().count());
+    assert!(body.is_healthy());
 }

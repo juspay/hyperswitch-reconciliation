@@ -33,13 +33,16 @@ pub struct HealthApi;
         (status = 200, description = "Service is healthy", body = String),
     ),
 )]
-pub async fn get_health(_state: web::Data<AppState>) -> impl Responder {
-    actix_web::HttpResponse::Ok().body("OK")
+pub async fn get_health(state: web::Data<AppState>, http_req: HttpRequest) -> impl Responder {
+    api::server_wrap(NoAuth, &http_req, state, |_state, _auth| async move {
+        core::health::health_check().await
+    })
+    .await
 }
 
 #[utoipa::path(
     get,
-    path = "/deep_health",
+    path = "/health/deep",
     tag = "Health",
     responses(
         (status = 200, description = "All dependencies are healthy", body = DeepHealthResponse),

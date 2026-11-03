@@ -2,8 +2,8 @@
 
 ## Critical Rules
 <!-- AI-UPDATED: 2026-11-03 - Deep health check added -->
-- **`/health` stays shallow; liveness/readiness probes must use it, never `/deep_health`**. A failing readiness probe pulls the instance from traffic, so one dependency (keymanager, Hyperswitch) being down would take every instance, and therefore every API, out of service at once
-- **`/deep_health` is unauthenticated (`NoAuth`)**, so responses carry only the error enum's `Display` text; the full `error_stack` report (hosts, URLs) is logged, never returned
+- **`/health` stays shallow; liveness/readiness probes must use it, never `/health/deep`**. A failing readiness probe pulls the instance from traffic, so one dependency (keymanager, Hyperswitch) being down would take every instance, and therefore every API, out of service at once
+- **`/health/deep` is unauthenticated (`NoAuth`)**, so responses carry only the error enum's `Display` text; the full `error_stack` report (hosts, URLs) is logged, never returned
 - **Every check reuses a client recon already uses for real work**. Don't add a check that needs a new connection or permission just for health
 
 ## What Is Checked
@@ -21,11 +21,14 @@
 - **Secrets management** - only used at startup; if the process booted, it worked
 
 ## Design Decisions
-<!-- AI-UPDATED: 2026-11-03 - Deep health check added -->
-- Checks run concurrently, each with a 5s timeout (`utils/health.rs`). The endpoint always returns the full per-component report: 200 when all are healthy, 503 otherwise. Unlike Hyperswitch's `/health/ready`, it doesn't stop at the first failure, so one outage can't hide another
-- Backend-variant dispatch lives in `external_services` (`ApplicationEncryptionClient::health_check`, `UserClient::health_check`); `core/health.rs` only orchestrates
-- Path is `/deep_health` (its own scope), not `/health/deep`
-- One `status`-tagged `ComponentHealth` enum for every component (processors too, without `latency_ms`); `error` exists only on `unhealthy`. No overall `status` field: the HTTP code (200/503) is the overall result. Component names in logs come from the `HealthComponent` enum, not string literals
+<!-- AI-UPDATED: 2026-11-04 - Deep health check moved to domain + component list -->
+- Checks run concurrently, each with a 5s timeout (`domain/health.rs`). The endpoint always returns the full per-component report: 200 when all are healthy, 503 otherwise. Unlike Hyperswitch's `/health/ready`, it doesn't stop at the first failure, so one outage can't hide another
+- Backend-variant dispatch lives in `external_services` (`ApplicationEncryptionClient::health_check`, `UserClient::health_check`)
+- Layers: `routes/health.rs` wraps both handlers in `server_wrap(NoAuth)`; `core/health.rs` holds both flows (`health_check` returns plain-text `OK`, `deep_health_check` iterates `HealthComponent` and picks 200/503); `domain/health.rs::check` matches each `HealthComponent` variant to its check, applies the timeout and builds `ComponentHealth`
+- `HealthComponent` lives in `common_enums` with `strum::EnumIter`. Adding a component = one enum variant + one match arm in `domain::health::check` (the match is exhaustive, so the compiler forces it) + one `HealthCheckError` variant
+- Path is `/health/deep`, a resource under the `/health` scope (not its own scope)
+- Response is `{ components: [...] }`; each entry is one `status`-tagged `ComponentHealth` (`healthy { component }` / `unhealthy { component, error }`). No latency and no overall `status` field: the HTTP code (200/503) is the overall result
+- Each client error is `change_context`-ed into `HealthCheckError` (`errors/health.rs`), so the response shows a fixed per-component message (e.g. `Unable to reach the database`); the underlying cause is only in the logged report
 
 ## Common Gotchas
 <!-- AI-UPDATED: 2026-11-03 - Deep health check added -->

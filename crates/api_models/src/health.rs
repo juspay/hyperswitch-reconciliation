@@ -1,3 +1,4 @@
+use common_enums::HealthComponent;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -5,27 +6,23 @@ use utoipa::ToSchema;
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ComponentHealth {
     Healthy {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        latency_ms: Option<u64>,
+        component: HealthComponent,
     },
     Unhealthy {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        latency_ms: Option<u64>,
+        component: HealthComponent,
         error: String,
     },
 }
 
-impl ComponentHealth {
-    pub fn is_healthy(&self) -> bool {
-        matches!(self, Self::Healthy { .. })
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DeepHealthResponse {
-    pub database: ComponentHealth,
-    pub encryption: ComponentHealth,
-    pub user_client: ComponentHealth,
-    pub recon_processor: ComponentHealth,
-    pub linking_processor: ComponentHealth,
+    pub components: Vec<ComponentHealth>,
+}
+
+impl DeepHealthResponse {
+    pub fn is_healthy(&self) -> bool {
+        self.components
+            .iter()
+            .all(|health| matches!(health, ComponentHealth::Healthy { .. }))
+    }
 }
