@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.03.0
+
+### Miscellaneous Tasks
+
+- **migrations:** Chunk entry linking backfill queries ([#28](https://github.com/juspay/hyperswitch-reconciliation/pull/28)) ([`8b1e59f`](https://github.com/juspay/hyperswitch-reconciliation/commit/8b1e59f38c833c922f4d07c17ca667cd64130f56))
+
+**Full Changelog:** [`2026.11.02.0...2026.11.03.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.02.0...2026.11.03.0)
+
+- - -
+
 ## 2026.11.02.0
 
 ### Features
