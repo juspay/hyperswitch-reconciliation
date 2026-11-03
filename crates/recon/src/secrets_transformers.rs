@@ -9,7 +9,7 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 
-use crate::config::{AuthConfig, Config, DatabaseConfig};
+use crate::config::{ApiKeysConfig, AuthConfig, Config, DatabaseConfig};
 
 #[async_trait]
 impl SecretsHandler for DatabaseConfig {
@@ -45,17 +45,29 @@ impl SecretsHandler for AuthConfig {
         let internal_api_key = secret_management_client
             .get_secret(auth.internal_api_key.clone())
             .await?;
-        let api_key_hash_key = match auth.api_key_hash_key.clone() {
-            Some(hash_key) => Some(secret_management_client.get_secret(hash_key).await?),
-            None => None,
-        };
 
         Ok(value.transition_state(|auth| Self {
             jwt_secret: Secret::new(jwt_secret.peek().clone()),
             admin_api_key: Secret::new(admin_api_key.peek().clone()),
             internal_api_key: Secret::new(internal_api_key.peek().clone()),
-            api_key_hash_key: api_key_hash_key.map(|hash_key| Secret::new(hash_key.peek().clone())),
             ..auth
+        }))
+    }
+}
+
+#[async_trait]
+impl SecretsHandler for ApiKeysConfig {
+    async fn convert_to_raw_secret(
+        value: SecretStateContainer<Self, SecuredSecret>,
+        secret_management_client: &dyn SecretManagementInterface,
+    ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
+        let hash_key = match value.get_inner().hash_key.clone() {
+            Some(hash_key) => Some(secret_management_client.get_secret(hash_key).await?),
+            None => None,
+        };
+
+        Ok(value.transition_state(|_| Self {
+            hash_key: hash_key.map(|hash_key| Secret::new(hash_key.peek().clone())),
         }))
     }
 }
@@ -74,6 +86,11 @@ pub async fn fetch_raw_secrets(
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
         .attach_printable("Failed to decrypt auth configuration")?;
+
+    let api_keys = ApiKeysConfig::convert_to_raw_secret(conf.api_keys, secret_management_client)
+        .await
+        .change_context(SecretsManagementError::FetchSecretFailed)
+        .attach_printable("Failed to decrypt API keys configuration")?;
 
     let application_encryption = ApplicationEncryptionConfig::convert_to_raw_secret(
         conf.application_encryption,
@@ -94,6 +111,7 @@ pub async fn fetch_raw_secrets(
         proxy: conf.proxy,
         logging: conf.logging,
         auth,
+        api_keys,
         secrets_management: conf.secrets_management,
         file_storage: conf.file_storage,
         faas: conf.faas,

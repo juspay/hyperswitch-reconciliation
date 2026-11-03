@@ -29,10 +29,10 @@ export RECON__SERVER__WORKERS=4
 
 Use `RUN_ENV` to control which config file is loaded:
 - `RUN_ENV=production` → loads `config/prod.toml`
-- `RUN_ENV=sandbox` → loads `config/prod.toml` (no `sandbox.toml`; a local convenience only)
+- `RUN_ENV=sandbox` → loads `config/sandbox.toml` (same shape as `prod.toml` but sandbox-named DB/bucket values, so a missed override can't point at production)
 - `RUN_ENV=development` or unset → loads `config/config.toml`
 
-`RUN_ENV` also sets the API key prefix via `env::prefix_for_env()`: `dev`, `sbx`, `prd`. In deployed environments the config file is optional (`required(false)`); values are supplied as `RECON__SECTION__KEY` variables, which override the file. Example: `RECON__AUTH__API_KEY_HASH_KEY`.
+`RUN_ENV` also sets the API key prefix via `env::prefix_for_env()`: `dev`, `sbx`, `prd`. In deployed environments the config file is optional (`required(false)`); values are supplied as `RECON__SECTION__KEY` variables, which override the file. Example: `RECON__API_KEYS__HASH_KEY`.
 
 ### Command Line Options
 
@@ -68,7 +68,7 @@ Use `RUN_ENV` to control which config file is loaded:
 
 ### Validate vs decrypt order
 - `Config::validate()` runs in `bin/recon.rs` on `Config<SecuredSecret>`, **before** `fetch_raw_secrets`. Under `aws_kms` a secret is still ciphertext at that point, so a format check (hex, length, decode) there fails every production boot. Only check emptiness in `validate`.
-- Parse formatted secrets in `initialize_server` after `fetch_raw_secrets` and fail startup there. Example: `auth.api_key_hash_key` via `AuthConfig::parse_api_key_hash_key`.
+- Parse formatted secrets in `initialize_server` after `fetch_raw_secrets` and fail startup there. Example: `api_keys.hash_key` via `ApiKeysConfig::parse`.
 
 ### Data Type Formatting
 

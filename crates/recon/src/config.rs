@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use crate::{env, errors::ReconAppError};
 use base64::Engine;
 use common_utils::{
-    api_key::{ApiKeyHashKey, ApiKeyHashKeyError},
+    api_key::{ApiKeyHashKey, ApiKeyHashKeyError, MerchantApiKeys},
     consts::BASE64_ENGINE,
     logging::LoggerConfig,
 };
@@ -129,8 +129,6 @@ pub struct AuthConfig {
     pub jwt_expiry_hours: u64,
     pub admin_api_key: Secret<String>,
     pub internal_api_key: Secret<String>,
-    #[serde(default)]
-    pub api_key_hash_key: Option<Secret<String>>,
 }
 
 impl Default for AuthConfig {
@@ -140,22 +138,30 @@ impl Default for AuthConfig {
             jwt_expiry_hours: 24,
             admin_api_key: Secret::new("admin_api_key".to_string()),
             internal_api_key: Secret::new("internal_api_key".to_string()),
-            // No usable default: a publicly known hash key removes the protection the keyed hash gives
-            // against a leaked `api_key` table.
-            api_key_hash_key: None,
+        }
+    }
+}
+
+/// No default `hash_key`: a publicly known one defeats the keyed hash.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct ApiKeysConfig {
+    pub hash_key: Option<Secret<String>>,
+}
+
+impl ApiKeysConfig {
+    /// Call this on the decrypted config only: under KMS the raw value is ciphertext.
+    pub fn parse(&self) -> Result<MerchantApiKeys, ApiKeyHashKeyError> {
+        match &self.hash_key {
+            Some(hash_key) => Ok(MerchantApiKeys::Enabled {
+                hash_key: ApiKeyHashKey::from_hex(hash_key.peek())?,
+            }),
+            None => Ok(MerchantApiKeys::Disabled),
         }
     }
 }
 
 impl AuthConfig {
-    /// Call this on the decrypted config only: under KMS the raw value is ciphertext.
-    pub fn parse_api_key_hash_key(&self) -> Result<Option<ApiKeyHashKey>, ApiKeyHashKeyError> {
-        self.api_key_hash_key
-            .as_ref()
-            .map(|hash_key| ApiKeyHashKey::from_hex(hash_key.peek()))
-            .transpose()
-    }
-
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.internal_api_key.peek().trim().is_empty() {
             return Err(error_stack::Report::from(ReconAppError::ValidationError(
@@ -225,6 +231,7 @@ pub struct Config<S: SecretState> {
     pub proxy: Proxy,
     pub logging: LoggerConfig,
     pub auth: SecretStateContainer<AuthConfig, S>,
+    pub api_keys: SecretStateContainer<ApiKeysConfig, S>,
     pub secrets_management: SecretsManagementConfig,
     pub file_storage: FileStorageConfig,
     pub faas: FaasConfig,
@@ -300,7 +307,8 @@ impl Config<SecuredSecret> {
             config_path.push(explicit_config_path_val);
         } else {
             let config_file_name = match environment {
-                "production" | "sandbox" => "prod.toml",
+                "production" => "prod.toml",
+                "sandbox" => "sandbox.toml",
                 _ => "config.toml",
             };
 
@@ -455,44 +463,40 @@ impl HyperswitchConfigExt for HyperswitchConfig {
 mod api_key_hash_key_tests {
     use super::*;
 
-    fn auth_config(hash_key: Option<&str>) -> AuthConfig {
-        AuthConfig {
-            api_key_hash_key: hash_key.map(|key| Secret::new(key.to_string())),
-            ..AuthConfig::default()
+    fn api_keys_config(hash_key: Option<&str>) -> ApiKeysConfig {
+        ApiKeysConfig {
+            hash_key: hash_key.map(|key| Secret::new(key.to_string())),
         }
     }
 
     #[test]
     fn unset_hash_key_leaves_the_feature_off() {
-        assert!(AuthConfig::default().api_key_hash_key.is_none());
+        assert!(ApiKeysConfig::default().hash_key.is_none());
         assert!(matches!(
-            auth_config(None).parse_api_key_hash_key(),
-            Ok(None)
+            api_keys_config(None).parse(),
+            Ok(MerchantApiKeys::Disabled)
         ));
     }
 
     #[test]
     fn valid_hash_key_is_parsed() {
         assert!(matches!(
-            auth_config(Some(&"ab".repeat(32))).parse_api_key_hash_key(),
-            Ok(Some(_))
+            api_keys_config(Some(&"ab".repeat(32))).parse(),
+            Ok(MerchantApiKeys::Enabled { .. })
         ));
     }
 
     #[test]
     fn malformed_hash_key_is_an_error() {
         for bad in ["", "abcd", &"zz".repeat(32), "${API_KEY_HASH_KEY}"] {
-            assert!(
-                auth_config(Some(bad)).parse_api_key_hash_key().is_err(),
-                "{bad}"
-            );
+            assert!(api_keys_config(Some(bad)).parse().is_err(), "{bad}");
         }
     }
 
     #[test]
-    fn sandbox_uses_the_production_config_file() {
+    fn sandbox_uses_its_own_config_file() {
         let path = |env| Config::config_path(env, None);
-        assert!(path("sandbox").ends_with("prod.toml"));
+        assert!(path("sandbox").ends_with("sandbox.toml"));
         assert!(path("production").ends_with("prod.toml"));
         assert!(path("development").ends_with("config.toml"));
     }

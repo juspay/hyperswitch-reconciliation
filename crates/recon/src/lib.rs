@@ -96,13 +96,12 @@ pub async fn initialize_server(
             .await
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
 
-    // Parsed right after decryption (before any connection is opened), not in `AuthConfig::validate`: `Config::validate` runs before decryption, so
-    // under KMS it would see ciphertext.
-    let api_key_hash_key = config
-        .auth
+    // Not in `Config::validate`: that runs before decryption, so under KMS it would see ciphertext.
+    let merchant_api_keys = config
+        .api_keys
         .get_inner()
-        .parse_api_key_hash_key()
-        .map_err(|e| format!("Invalid auth.api_key_hash_key: {e}"))?;
+        .parse()
+        .map_err(|e| format!("Invalid api_keys.hash_key: {e}"))?;
 
     // Create connection pool
     let manager =
@@ -161,7 +160,7 @@ pub async fn initialize_server(
         linking_processor_status: linking_sx,
         encryption_client,
         user_client,
-        api_key_hash_key,
+        merchant_api_keys,
     };
 
     tokio::spawn(core::recon_engine::recon_processor_v2(state.clone(), rx));

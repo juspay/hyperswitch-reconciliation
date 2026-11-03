@@ -1,9 +1,6 @@
-//! Generation and hashing of merchant API keys: `{env}_{64 base62 chars}`.
+use masking::{PeekInterface, Secret, StrongSecret};
 
-use std::fmt;
-
-use masking::{PeekInterface, Secret};
-use rand::{distributions::Alphanumeric, Rng};
+use crate::crypto::generate_cryptographically_secure_random_string;
 
 pub const API_KEY_RANDOM_LENGTH: usize = 64;
 pub const API_KEY_DISPLAY_RANDOM_LENGTH: usize = 6;
@@ -18,45 +15,40 @@ pub enum ApiKeyHashKeyError {
 }
 
 /// Server-wide key for the keyed hash. There is no rotation: changing it invalidates every key.
-#[derive(Clone)]
-pub struct ApiKeyHashKey([u8; API_KEY_HASH_KEY_LENGTH]);
+#[derive(Debug, Clone)]
+pub struct ApiKeyHashKey(StrongSecret<[u8; API_KEY_HASH_KEY_LENGTH]>);
 
 impl ApiKeyHashKey {
-    /// The error never contains the input.
     pub fn from_hex(hex_key: &str) -> Result<Self, ApiKeyHashKeyError> {
-        let bytes = hex::decode(hex_key.trim()).map_err(|_| ApiKeyHashKeyError::InvalidHex)?;
-        let key = <[u8; API_KEY_HASH_KEY_LENGTH]>::try_from(bytes)
-            .map_err(|_| ApiKeyHashKeyError::InvalidLength)?;
+        let mut key = [0u8; API_KEY_HASH_KEY_LENGTH];
+        hex::decode_to_slice(hex_key.trim(), &mut key).map_err(|e| match e {
+            hex::FromHexError::InvalidStringLength => ApiKeyHashKeyError::InvalidLength,
+            _ => ApiKeyHashKeyError::InvalidHex,
+        })?;
 
-        Ok(Self(key))
+        Ok(Self(StrongSecret::new(key)))
     }
 }
 
-impl fmt::Debug for ApiKeyHashKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("ApiKeyHashKey(*** masked ***)")
-    }
-}
-
-/// The plaintext key. Deliberately has no `Display`, and `Debug` is masked by `Secret`.
 #[derive(Debug, Clone)]
-pub struct PlaintextApiKey(Secret<String>);
+pub enum MerchantApiKeys {
+    Enabled { hash_key: ApiKeyHashKey },
+    Disabled,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaintextApiKey(StrongSecret<String>);
 
 impl PlaintextApiKey {
     /// `env_prefix` must not contain `_`, which `display_prefix` splits on.
-    /// Uses `thread_rng`, a CSPRNG.
     pub fn generate(env_prefix: &str) -> Self {
-        let random: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(API_KEY_RANDOM_LENGTH)
-            .map(char::from)
-            .collect();
+        let random = generate_cryptographically_secure_random_string(API_KEY_RANDOM_LENGTH);
 
-        Self(Secret::new(format!("{env_prefix}_{random}")))
+        Self(StrongSecret::new(format!("{env_prefix}_{random}")))
     }
 
     pub fn from_request(value: &str) -> Self {
-        Self(Secret::new(value.trim().to_string()))
+        Self(StrongSecret::new(value.trim().to_string()))
     }
 
     pub fn display_prefix(&self) -> String {
@@ -70,13 +62,12 @@ impl PlaintextApiKey {
             .unwrap_or_default()
     }
 
-    /// The only hashing entry point, so creation and authentication can't disagree.
     pub fn hash(&self, hash_key: &ApiKeyHashKey) -> HashedApiKey {
-        HashedApiKey(
-            blake3::keyed_hash(&hash_key.0, self.0.peek().as_bytes())
+        HashedApiKey(Secret::new(
+            blake3::keyed_hash(hash_key.0.peek(), self.0.peek().as_bytes())
                 .to_hex()
                 .to_string(),
-        )
+        ))
     }
 
     pub fn expose(&self) -> &str {
@@ -85,15 +76,15 @@ impl PlaintextApiKey {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HashedApiKey(String);
+pub struct HashedApiKey(Secret<String>);
 
 impl HashedApiKey {
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub fn peek(&self) -> &str {
+        self.0.peek()
     }
 }
 
-impl From<HashedApiKey> for String {
+impl From<HashedApiKey> for Secret<String> {
     fn from(hashed: HashedApiKey) -> Self {
         hashed.0
     }
@@ -153,8 +144,8 @@ mod tests {
 
         let first = key.hash(&hash_key);
         assert_eq!(first, key.hash(&hash_key));
-        assert_eq!(first.as_str().len(), 64);
-        assert!(first.as_str().chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(first.peek().len(), 64);
+        assert!(first.peek().chars().all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -200,8 +191,10 @@ mod tests {
     fn debug_never_reveals_secrets() {
         let key = PlaintextApiKey::generate("dev");
         let hash_key = ApiKeyHashKey::from_hex(KEY_A).unwrap();
+        let hashed = key.hash(&hash_key);
 
         assert!(!format!("{key:?}").contains(key.expose()));
+        assert!(!format!("{hashed:?}").contains(hashed.peek()));
         assert!(!format!("{hash_key:?}").contains("0001"));
         let error = ApiKeyHashKey::from_hex("not hex at all").unwrap_err();
         assert!(!format!("{error} {error:?}").contains("not hex"));
