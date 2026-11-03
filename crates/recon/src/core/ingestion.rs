@@ -70,7 +70,7 @@ pub async fn create_ingestion_config(
     // Convert API request to Diesel model
     let diesel_config = to_diesel_config(request.config, &merchant_encryptor)
         .await
-        .change_context(IngestionError::InternalServerError)?;
+        .switch()?;
 
     let ingestion_config_new = IngestionConfigNew::new(
         request.profile_id,
@@ -235,9 +235,7 @@ pub async fn update_ingestion_config(
             .get_encryptor_for_merchant(merchant_id);
 
         // Convert API request to Diesel model
-        let diesel_config = to_diesel_config(config_data, &encryptor)
-            .await
-            .change_context(IngestionError::InternalServerError)?;
+        let diesel_config = to_diesel_config(config_data, &encryptor).await.switch()?;
 
         let update = IngestionConfigUpdate::UpdateConfig {
             config: diesel_config,
@@ -345,6 +343,7 @@ pub async fn trigger_ingestion(
             raw_payload,
             headers.clone(),
             state.config.auth.get_inner().internal_api_key.clone(),
+            ingestion_config.merchant_id.clone(),
             &merchant_encryptor,
         )
         .await

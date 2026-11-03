@@ -8,6 +8,7 @@ use api_models::ingestion::{
 use common_utils::{
     errors::{CustomResult, ValidationError},
     id_type::MerchantId,
+    validation::validate_sftp_file_path,
 };
 use diesel_models::ingestion_config::IngestionConfigNew;
 use diesel_models::ingestion_config::{
@@ -95,9 +96,14 @@ pub async fn to_diesel_config(
                 }),
             )))
         }
-        IngestionConfigDataApi::SftpInternal { file_path } => Ok(DieselIngestionConfigData::V1(
-            DieselIngestionConfigV1::SftpInternal(DieselSftpInternalIngestionConfig { file_path }),
-        )),
+        IngestionConfigDataApi::SftpInternal { file_path } => {
+            validate_sftp_file_path(&file_path)?;
+            Ok(DieselIngestionConfigData::V1(
+                DieselIngestionConfigV1::SftpInternal(DieselSftpInternalIngestionConfig {
+                    file_path,
+                }),
+            ))
+        }
         IngestionConfigDataApi::Manual => Ok(DieselIngestionConfigData::V1(
             DieselIngestionConfigV1::Manual,
         )),
