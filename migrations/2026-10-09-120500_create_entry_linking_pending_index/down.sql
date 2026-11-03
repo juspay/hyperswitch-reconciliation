@@ -1,1 +1,0 @@
-DROP INDEX CONCURRENTLY IF EXISTS idx_entry_linking_pending_created_at_id;
