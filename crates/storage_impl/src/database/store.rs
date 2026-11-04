@@ -22,6 +22,10 @@ impl Store {
         })
     }
 
+    pub(crate) fn get_master_pool(&self) -> &PgPool {
+        &self.master_pool
+    }
+
     /// Get a connection from the pool
     pub async fn get_connection(&self) -> StorageResult<PgPooledConn<'_>> {
         self.master_pool
