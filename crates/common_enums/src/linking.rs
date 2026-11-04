@@ -45,7 +45,7 @@ pub enum DieselEntryLinkingStatus {
     #[default]
     Pending,
     Processed,
-    FailedExpected,
+    FailedExpectedEntry,
     FailedInternalError,
     FailedNoTransformationConfigFound,
     FailedNoLinkConfigFound,

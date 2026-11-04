@@ -8,7 +8,7 @@ The linking processor associates persisted entries from transaction and confirma
 |---|---|
 | `EntryLinkStatus::Final` (`final`) | Final link between posted entries |
 | `EntryLinkStatus::Provisional` (`provisional`) | Historical link between non-posted entries |
-| `entry.linking_status` | Flat Diesel state: `pending`, `processed`, or `failed_<reason>` (e.g. `failed_expected`) |
+| `entry.linking_status` | Flat Diesel state: `pending`, `processed`, or `failed_<reason>` (e.g. `failed_expected_entry`) |
 | `search_entry_link_key.status` | Search state: `open` / `matched` for non-posted keys, `posted_open` / `posted_matched` for posted keys |
 
 - **All new entries, including Expected placeholders, start with `Pending`.** The linking processor records Expected entries as Failed with error type Expected before schema/config resolution or creating keys. Explicit enqueue accepts all Failed reasons, including Expected failures. There is no NotApplicable state.
@@ -164,7 +164,7 @@ There are two deliberate error paths, following the recon engine's separation be
 
 <!-- AI-UPDATED: 2026-11-04 - Separate flat Diesel and hierarchical domain linking status -->
 - `entry.linking_status` uses `DieselEntryLinkingStatus`: Pending, Processed, and six `Failed<Reason>` variants. `DomainEntryLinkingStatus` uses `Failed(EntryLinkingFailureReason)` and serializes as status/sub_status. Conversions are total in both directions; messages and missing-field details stay in versioned JSONB `linking_data`.
-- Linking status/data remain separate from reconciliation status/data. `EntryUpdate::LinkingUpdate` derives domain status from data, then converts to Diesel status; never hand-write a generic `failed` value. The database failure strings are `failed_expected`, `failed_internal_error`, `failed_no_transformation_config_found`, `failed_no_link_config_found`, `failed_missing_search_identifier_value`, and `failed_multiple_posted_links_found`.
+- Linking status/data remain separate from reconciliation status/data. `EntryUpdate::LinkingUpdate` derives domain status from data, then converts to Diesel status; never hand-write a generic `failed` value. The database failure strings are `failed_expected_entry`, `failed_internal_error`, `failed_no_transformation_config_found`, `failed_no_link_config_found`, `failed_missing_search_identifier_value`, and `failed_multiple_posted_links_found`.
 - Pending data serializes as `{"data_version":"v1","status":"pending"}`. Failures additionally carry `failure_data_version`, an `error_type` object, and its `error_type_version` / `error_type` tags.
 - `EntryNew::new` and domain constructors set all new entries to Pending without checking reconciliation status. `DiscardUpdate` deliberately leaves linking state unchanged.
 <!-- AI-UPDATED: 2026-11-04 - Keep linking fields nullable during processor rollout -->

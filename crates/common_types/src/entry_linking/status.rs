@@ -31,7 +31,7 @@ impl From<DomainEntryLinkingStatus> for DieselEntryLinkingStatus {
             DomainEntryLinkingStatus::Pending => Self::Pending,
             DomainEntryLinkingStatus::Processed => Self::Processed,
             DomainEntryLinkingStatus::Failed(reason) => match reason {
-                EntryLinkingFailureReason::Expected => Self::FailedExpected,
+                EntryLinkingFailureReason::Expected => Self::FailedExpectedEntry,
                 EntryLinkingFailureReason::InternalError => Self::FailedInternalError,
                 EntryLinkingFailureReason::NoTransformationConfigFound => {
                     Self::FailedNoTransformationConfigFound
@@ -53,7 +53,7 @@ impl From<DieselEntryLinkingStatus> for DomainEntryLinkingStatus {
         match value {
             DieselEntryLinkingStatus::Pending => Self::Pending,
             DieselEntryLinkingStatus::Processed => Self::Processed,
-            DieselEntryLinkingStatus::FailedExpected => {
+            DieselEntryLinkingStatus::FailedExpectedEntry => {
                 Self::Failed(EntryLinkingFailureReason::Expected)
             }
             DieselEntryLinkingStatus::FailedInternalError => {
