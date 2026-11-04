@@ -6,20 +6,27 @@ use error_stack::{report, ResultExt};
 
 use crate::{
     business_profile::{BusinessProfile, BusinessProfileNew, BusinessProfileUpdateInternal},
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::business_profile::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl BusinessProfile {
-    pub async fn find_by_profile_id(conn: &PgPooledConn, profile_id: &str) -> StorageResult<Self> {
-        generics::generic_find_by_id::<business_profile::table, _, _>(conn, profile_id.to_owned())
-            .await
+    pub async fn find_by_profile_id(
+        conn: &impl ReadConnection,
+        profile_id: &str,
+    ) -> StorageResult<Self> {
+        generics::generic_find_by_id::<business_profile::table, _, _>(
+            conn.async_conn(),
+            profile_id.to_owned(),
+        )
+        .await
     }
 
     pub async fn list_by_merchant_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         merchant_id: MerchantId,
     ) -> StorageResult<Vec<Self>> {
         let query = dsl::business_profile.filter(dsl::merchant_id.eq(merchant_id.to_owned()));
@@ -27,7 +34,7 @@ impl BusinessProfile {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<business_profile::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -49,12 +56,12 @@ impl BusinessProfile {
     }
 
     pub async fn update_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         profile_id: &str,
         business_profile_update: BusinessProfileUpdateInternal,
     ) -> StorageResult<Self> {
         generics::generic_update_by_id::<business_profile::table, _, _, _>(
-            conn,
+            conn.async_conn(),
             profile_id.to_owned(),
             business_profile_update,
         )
@@ -63,7 +70,7 @@ impl BusinessProfile {
 }
 
 impl BusinessProfileNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<BusinessProfile> {
-        generics::generic_insert(conn, self).await
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<BusinessProfile> {
+        generics::generic_insert(conn.async_conn(), self).await
     }
 }
