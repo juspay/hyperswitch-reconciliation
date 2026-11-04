@@ -76,9 +76,14 @@ impl From<DieselEntryLinkingStatus> for DomainEntryLinkingStatus {
 }
 
 impl DomainEntryLinkingStatus {
-    pub fn enqueuable_statuses() -> Vec<Self> {
-        EntryLinkingFailureReason::iter()
-            .map(Self::Failed)
-            .collect()
+    pub fn iter() -> impl Iterator<Item = Self> {
+        DieselEntryLinkingStatus::iter().map(Self::from)
+    }
+
+    pub fn is_enqueuable(&self) -> bool {
+        match self {
+            Self::Pending | Self::Processed => false,
+            Self::Failed(_) => true,
+        }
     }
 }

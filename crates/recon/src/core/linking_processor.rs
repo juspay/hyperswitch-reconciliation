@@ -59,11 +59,12 @@ pub async fn enqueue_entry(
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 
     let linking_status = entry.linking_status.map(DomainEntryLinkingStatus::from);
-    let expected_statuses = DomainEntryLinkingStatus::enqueuable_statuses();
-    if !linking_status.is_some_and(|status| expected_statuses.contains(&status)) {
+    if !linking_status.is_some_and(|status| status.is_enqueuable()) {
         return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
             current_status: linking_status,
-            expected_statuses,
+            expected_statuses: DomainEntryLinkingStatus::iter()
+                .filter(|status| status.is_enqueuable())
+                .collect(),
         }
         .into());
     }

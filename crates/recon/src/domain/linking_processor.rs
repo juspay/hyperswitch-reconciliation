@@ -62,15 +62,17 @@ pub async fn process_entry_linking_core(
     state: &AppState,
     entry: DieselEntry,
 ) -> LinkingProcessorResult<LinkingTriggerResponse> {
-    if entry.status == EntryStatus::Expected {
-        let reason = process_linking_error_context(
-            state,
-            Report::new(LinkingProcessingError::Expected),
-            &entry,
-        )
-        .await?;
-        return Ok(LinkingTriggerResponse::Failure(reason));
-    }
+    process_linking_or_fail!(
+        async {
+            if entry.status == EntryStatus::Expected {
+                Err(Report::new(LinkingProcessingError::Expected))
+            } else {
+                Ok(())
+            }
+        },
+        state,
+        &entry
+    );
 
     let merchant_encryptor = state
         .encryption_client
