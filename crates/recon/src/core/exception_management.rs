@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
 use storage_impl::{
-    metadata_schema::MetadataSchemaInterface, recon_rule::ReconRuleInterface,
-    transaction::TransactionInterface, transformation::TransformationConfigInterface,
+    database::connection::DatabaseWrite,
+    metadata_schema::MetadataSchemaInterface,
+    recon_rule::ReconRuleInterface,
+    transaction::{TransactionReadInterface, TransactionWriteInterface},
+    transformation::TransformationConfigInterface,
 };
 
 use crate::{
@@ -55,7 +58,6 @@ use api_models::{
     user::User,
     AccountData,
 };
-use async_bb8_diesel::AsyncConnection;
 use common_enums::{
     DieselStagingEntryStatus, DieselTransactionStatus, EntryStatus, ResolutionActionType,
 };
@@ -74,6 +76,7 @@ use common_types::{
 };
 use common_utils::{auth::AuthContext, logging};
 use diesel_models::{
+    connection::{ReadConnection, WriteConnection},
     entry::EntryNew,
     errors::DatabaseError,
     search_duplicate::SearchDuplicateNew,
@@ -214,12 +217,13 @@ pub async fn force_reconcile_transaction(
     // 4. Execute all operations atomically in a database transaction
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(TransactionError::InternalServerError)?;
 
     let reconciled_transaction = conn
-        .transaction_async(|conn| async move {
+        .transaction(|txn| async move {
+            let conn = txn.async_conn();
             // Step 1: Archive old data using the centralized function
             let transaction = domain_transaction.convert();
 
@@ -230,7 +234,7 @@ pub async fn force_reconcile_transaction(
                 _archived_search_group,
             ) = state
                 .store
-                .discard_transaction_with_entries_and_expectations(&conn, transaction.clone())
+                .discard_transaction_with_entries_and_expectations(&txn, transaction.clone())
                 .await
                 .map_err(|e| *e.current_context())?;
 
@@ -260,7 +264,7 @@ pub async fn force_reconcile_transaction(
                 .collect();
 
             // Step 3: Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(&conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(conn, new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert force reconciled entries: {:?}", e);
@@ -281,7 +285,7 @@ pub async fn force_reconcile_transaction(
 
             // Step 4: Insert the force reconciled transaction
             let db_transaction = force_reconciled_transaction_new
-                .insert(&conn)
+                .insert(&txn)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to insert force reconciled transaction: {:?}", e);
@@ -819,12 +823,13 @@ pub async fn manual_transaction_reconciliation(
 
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(TransactionError::InternalServerError)?;
 
     let final_transaction = conn
-        .transaction_async(|conn| async move {
+        .transaction(|txn| async move {
+            let conn = txn.async_conn();
             // Archive old transaction, entries, and expectations
             let (
                 _archived_transaction,
@@ -834,7 +839,7 @@ pub async fn manual_transaction_reconciliation(
             ) = state
                 .store
                 .discard_transaction_with_entries_and_expectations(
-                    &conn,
+                    &txn,
                     existing_transaction.clone(),
                 )
                 .await
@@ -849,7 +854,7 @@ pub async fn manual_transaction_reconciliation(
                     original_data: staging_entry.data.clone(),
                 };
 
-                DieselStagingEntry::update_by_id(&conn, &staging_entry.id, archive_update.into())
+                DieselStagingEntry::update_by_id(conn, &staging_entry.id, archive_update.into())
                     .await
                     .map_err(|e| {
                         logging::error!("Failed to archive staging entry: {e}");
@@ -859,7 +864,7 @@ pub async fn manual_transaction_reconciliation(
                 // Insert processed staging entry
                 processed_staging_entry
                     .clone()
-                    .insert(&conn)
+                    .insert(conn)
                     .await
                     .map_err(|e| {
                         logging::error!("Failed to insert processed staging entry: {e}");
@@ -867,14 +872,14 @@ pub async fn manual_transaction_reconciliation(
                     })?;
 
                 // Insert search duplicate
-                search_duplicate.clone().insert(&conn).await.map_err(|e| {
+                search_duplicate.clone().insert(conn).await.map_err(|e| {
                     logging::error!("Failed to insert search duplicate: {e}");
                     *e.current_context()
                 })?;
             }
 
             // Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(&conn, entries_to_create)
+            let inserted_entries = EntryNew::batch_insert_chunked(conn, entries_to_create)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert new entries: {e}");
@@ -890,7 +895,7 @@ pub async fn manual_transaction_reconciliation(
                 },
                 Some(auth_context.user_id),
             )
-            .insert(&conn)
+            .insert(&txn)
             .await
             .map_err(|e| {
                 logging::error!("Failed to insert new transaction: {e}");
@@ -1090,23 +1095,24 @@ pub async fn manual_transaction_reconciliation_v2(
 
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(TransactionError::InternalServerError)?;
 
     let user_id = auth_context.user_id.clone();
 
     let transaction = conn
-        .transaction_async(|conn| async move {
+        .transaction(|txn| async move {
+            let conn = txn.async_conn();
             let (transaction, _, _, _) = state
                 .store
-                .discard_transaction_with_entries_and_expectations(&conn, existing_transaction)
+                .discard_transaction_with_entries_and_expectations(&txn, existing_transaction)
                 .await
                 .map_err(|e| *e.current_context())?;
 
             for link in staging_links.into_values() {
                 DieselStagingEntry::update_by_id(
-                    &conn,
+                    conn,
                     &link.snapshot.id,
                     StagingEntryUpdate::DiscardUpdate {
                         original_data: link.snapshot.data,
@@ -1116,16 +1122,16 @@ pub async fn manual_transaction_reconciliation_v2(
                 .await
                 .map_err(|e| *e.current_context())?;
                 link.processed
-                    .insert(&conn)
+                    .insert(conn)
                     .await
                     .map_err(|e| *e.current_context())?;
                 link.search_duplicate
-                    .insert(&conn)
+                    .insert(conn)
                     .await
                     .map_err(|e| *e.current_context())?;
             }
 
-            let inserted_entries = EntryNew::batch_insert_chunked(&conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(conn, new_entries)
                 .await
                 .map_err(|e| *e.current_context())?;
 
@@ -1137,7 +1143,7 @@ pub async fn manual_transaction_reconciliation_v2(
                 },
                 Some(user_id),
             )
-            .insert(&conn)
+            .insert(&txn)
             .await
             .map_err(|e| *e.current_context())?;
 
@@ -1153,7 +1159,7 @@ pub async fn manual_transaction_reconciliation_v2(
                 })
                 .collect();
 
-            SearchEntryKeyNew::batch_insert(search_entry_keys, &conn)
+            SearchEntryKeyNew::batch_insert(search_entry_keys, conn)
                 .await
                 .map_err(|e| *e.current_context())?;
 
