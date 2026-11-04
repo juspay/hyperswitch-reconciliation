@@ -15,6 +15,7 @@ use recon_interfaces::{
     types::Proxy,
 };
 use serde::Deserialize;
+use storage_impl::config::Database;
 
 pub type ApplicationResult<T> = Result<T, error_stack::Report<ReconAppError>>;
 
@@ -24,64 +25,6 @@ pub struct CmdLineConf {
     /// Application will look for "config/config.toml" if this option isn't specified.
     #[arg(short = 'f', long, value_name = "FILE")]
     pub config_path: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct DatabaseConfig {
-    pub username: String,
-    pub password: Secret<String>,
-    pub host: String,
-    pub port: u16,
-    pub dbname: String,
-}
-
-impl Default for DatabaseConfig {
-    fn default() -> Self {
-        Self {
-            username: "db_user".to_string(),
-            password: Secret::new("db_pass".to_string()),
-            host: "localhost".to_string(),
-            port: 5432,
-            dbname: "recon".to_string(),
-        }
-    }
-}
-
-impl DatabaseConfig {
-    pub fn get_database_url(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.peek(),
-            self.host,
-            self.port,
-            self.dbname
-        )
-    }
-
-    pub fn validate(&self) -> ApplicationResult<()> {
-        if self.username.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database username must not be empty".into(),
-            )));
-        }
-        if self.password.peek().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database password must not be empty".into(),
-            )));
-        }
-        if self.host.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database host must not be empty".into(),
-            )));
-        }
-        if self.dbname.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database name must not be empty".into(),
-            )));
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -203,7 +146,7 @@ impl ReportConfig {
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct Config<S: SecretState> {
-    pub database: SecretStateContainer<DatabaseConfig, S>,
+    pub database: SecretStateContainer<Database, S>,
     pub server: ServerConfig,
     pub proxy: Proxy,
     pub logging: LoggerConfig,
@@ -257,7 +200,11 @@ impl Config<SecuredSecret> {
 
     pub fn validate(&self) -> ApplicationResult<()> {
         self.server.validate()?;
-        self.database.get_inner().validate()?;
+        self.database.get_inner().validate().map_err(|error| {
+            error_stack::Report::from(ReconAppError::ValidationError(
+                error.current_context().to_string(),
+            ))
+        })?;
         self.auth.get_inner().validate()?;
         self.application_encryption.get_inner().validate()?;
         self.user_client.get_inner().validate()?;

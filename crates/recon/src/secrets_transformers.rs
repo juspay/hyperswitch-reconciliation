@@ -9,25 +9,9 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 
-use crate::config::{AuthConfig, Config, DatabaseConfig};
+use storage_impl::config::Database;
 
-#[async_trait]
-impl SecretsHandler for DatabaseConfig {
-    async fn convert_to_raw_secret(
-        value: SecretStateContainer<Self, SecuredSecret>,
-        secret_management_client: &dyn SecretManagementInterface,
-    ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
-        let db = value.get_inner();
-        let db_password = secret_management_client
-            .get_secret(db.password.clone())
-            .await?;
-
-        Ok(value.transition_state(|db| Self {
-            password: Secret::new(db_password.peek().clone()),
-            ..db
-        }))
-    }
-}
+use crate::config::{AuthConfig, Config};
 
 #[async_trait]
 impl SecretsHandler for AuthConfig {
@@ -60,7 +44,7 @@ pub async fn fetch_raw_secrets(
     conf: Config<SecuredSecret>,
     secret_management_client: &dyn SecretManagementInterface,
 ) -> Result<Config<RawSecret>, SecretsManagementError> {
-    let database = DatabaseConfig::convert_to_raw_secret(conf.database, secret_management_client)
+    let database = Database::convert_to_raw_secret(conf.database, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
         .attach_printable("Failed to decrypt database configuration")?;
