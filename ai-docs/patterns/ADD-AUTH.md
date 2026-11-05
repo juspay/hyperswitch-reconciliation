@@ -47,7 +47,7 @@ pub async fn admin_endpoint(
 ) -> impl Responder {
     let auth = AdminApiAuth;
     
-    // Validate admin API key from api-key header
+    // Validate admin API key from `Authorization: admin-api-key=<secret>`
     auth.validate(&req, state.as_ref().clone())
         .await
         .map_err(|_| HttpResponse::Unauthorized().finish())?;
@@ -56,6 +56,12 @@ pub async fn admin_endpoint(
     // ... admin logic
 }
 ```
+
+### API Key Authentication
+- **Header:** `Authorization: api-key=<key>` plus a mandatory `x-profile-id`. Exactly one credential per request.
+- `JwtOrApiKey::new(permission)` checks `permission` only for JWT callers. API keys are not checked against any permission yet, so do not put it on a route until key scopes exist.
+- `auth_context.auth_method == AuthMethod::ApiKey` means `user_id` is `apikey:<id>`, not a Hyperswitch user.
+- Admin key: `Authorization: admin-api-key=<secret>`. See `domains/api-keys/AGENT-NOTES.md`.
 
 ## Full Implementation
 ```rust
@@ -266,7 +272,7 @@ pub async fn protected_with_error_details(
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin API key documentation -->
-- **Header-based**: Uses `api-key` header, NOT `Authorization: Bearer`
+- **Header-based**: `Authorization: admin-api-key=<secret>`, NOT `Bearer`
 - **No JWT validation**: Bypasses JWT token validation entirely
 - **No auth context**: Returns `()` - admin operations don't need merchant/profile scope
 - **Simple comparison**: Validates against configured admin_api_key
@@ -295,7 +301,7 @@ pub async fn protected_with_error_details(
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin auth gotchas -->
-- Using `Authorization: Bearer` header instead of `api-key` header
+- Using `Authorization: Bearer` instead of `Authorization: admin-api-key=<secret>`
 - Trying to extract AuthContext from AdminApiAuth (returns `()`)
 - Using AdminApiAuth for user-scoped operations (use JWT instead)
 - Forgetting to configure admin_api_key in environment configs

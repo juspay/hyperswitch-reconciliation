@@ -7,7 +7,7 @@
 - **Gotcha**: Use JwtAuth::with_merchant() for merchant-scoped endpoints
 - **Gotcha**: Bootstrap endpoint creates merchant + profile only (no token returned)
 - **Critical**: JWT claims MUST include non-empty `user_id` - validation fails otherwise
-- **Critical**: AdminApiAuth uses `api-key` header, NOT `Authorization: Bearer`
+- **Critical**: AdminApiAuth uses `Authorization: admin-api-key=<secret>`, NOT `Bearer`; API keys use `Authorization: api-key=<key>` + `x-profile-id`
 - **Critical**: Admin endpoints bypass JWT validation entirely - different auth flow
 - **Critical**: Service-to-service routes (transformation trigger) use `InternalApiKeyAuth` with the `x-internal-api-key` header and `auth.internal_api_key`, a different key from `admin_api_key`. Never use `NoAuth` for them
 - **Critical**: Admin API key required for merchant creation and bootstrap

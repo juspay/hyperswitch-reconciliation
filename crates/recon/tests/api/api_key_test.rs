@@ -210,6 +210,61 @@ async fn management_requires_a_jwt() {
     // Invalid bearer token.
     let response = client.get("/api_keys").with_auth("not-a-jwt").send().await;
     assert_eq!(response.status(), 401);
+
+    let response = client
+        .get("/api_keys")
+        .header(
+            "Authorization",
+            "admin-api-key=test_admin_12345678901234567890,api-key=dev_abc",
+        )
+        .header("x-merchant-id", merchant_id.get_string_repr())
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    let response = client
+        .get("/api_keys")
+        .header("Authorization", &format!("Bearer {token}, admin-api-key=x"))
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+}
+
+#[tokio::test]
+async fn credentials_are_only_read_from_the_authorization_header() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (merchant_id, _, token) = client.bootstrap("ak_hdr_merchant", "ak_hdr_profile").await;
+    let admin_key = "test_admin_12345678901234567890";
+
+    let response = client
+        .get("/api_keys")
+        .header("Authorization", &format!("admin-api-key={admin_key}"))
+        .header("x-merchant-id", merchant_id.get_string_repr())
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+
+    let response = client
+        .get("/api_keys")
+        .header("api-key", admin_key)
+        .header("x-merchant-id", merchant_id.get_string_repr())
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    for authorization in ["admin-api-key=wrong", "api-key=dev_not_a_real_key"] {
+        let response = client
+            .get("/api_keys")
+            .header("Authorization", authorization)
+            .header("x-merchant-id", merchant_id.get_string_repr())
+            .send()
+            .await;
+        assert_eq!(response.status(), 401, "{authorization}");
+    }
+
+    let response = client.get("/api_keys").with_auth(&token).send().await;
+    assert_eq!(response.status(), 200);
 }
 
 #[tokio::test]
