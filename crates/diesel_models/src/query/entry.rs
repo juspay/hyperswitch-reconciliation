@@ -919,6 +919,30 @@ impl Entry {
             .await
             .change_context(DatabaseError::Others)
     }
+
+    pub async fn update_null_linking(
+        conn: &PgPooledConn,
+        entry_statuses: Vec<EntryStatus>,
+        entry_update: EntryUpdateInternal,
+        limit: u16,
+    ) -> StorageResult<usize> {
+        let candidate = diesel::alias!(entry as null_linking_candidate);
+        let candidate_ids = candidate
+            .select(candidate.field(dsl::id))
+            .filter(candidate.field(dsl::linking_status).is_null())
+            .filter(candidate.field(dsl::status).eq_any(entry_statuses.clone()))
+            .limit(i64::from(limit));
+
+        generics::generic_update::<entry::table, _, _>(
+            conn,
+            dsl::id
+                .eq_any(candidate_ids)
+                .and(dsl::linking_status.is_null())
+                .and(dsl::status.eq_any(entry_statuses)),
+            entry_update,
+        )
+        .await
+    }
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
 use api_models::recon_engine::{
-    ProcessorStatusRequest, ProcessorStatusResponse, ReconTriggerResponse,
+    LinkingStatusContext, ProcessorStatusRequest, ProcessorStatusResponse, ReconTriggerResponse,
 };
 
 use crate::{
@@ -24,7 +24,8 @@ use super::AppState;
         schemas(
             ReconTriggerResponse,
             ProcessorStatusResponse,
-            ProcessorStatusRequest
+            ProcessorStatusRequest,
+            LinkingStatusContext
         )
     ),
     tags(
@@ -126,8 +127,8 @@ pub async fn get_processor_status(
     tag = "Recon Engine",
     request_body = ProcessorStatusRequest,
     responses(
-        (status = 200, description = "Processor status updated"),
-        (status = 400, description = "Invalid status value"),
+        (status = 200, description = "Requested processor status and entry linking status changes applied"),
+        (status = 400, description = "Invalid status or linking status context value"),
         (status = 500, description = "Internal server error"),
     ),
     security(("ApiKey" = [])),
@@ -138,7 +139,7 @@ pub async fn set_processor_status(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(AdminApiAuth, &http_req, state, |state, _auth| async move {
-        core::recon_engine::set_processor_status(state, req.status).await
+        core::recon_engine::set_processor_status(state, req.into_inner()).await
     })
     .await
 }
