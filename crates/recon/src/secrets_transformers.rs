@@ -61,13 +61,12 @@ impl SecretsHandler for ApiKeysConfig {
         value: SecretStateContainer<Self, SecuredSecret>,
         secret_management_client: &dyn SecretManagementInterface,
     ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
-        let hash_key = match value.get_inner().hash_key.clone() {
-            Some(hash_key) => Some(secret_management_client.get_secret(hash_key).await?),
-            None => None,
-        };
+        let hash_key = secret_management_client
+            .get_secret(value.get_inner().hash_key.clone())
+            .await?;
 
         Ok(value.transition_state(|_| Self {
-            hash_key: hash_key.map(|hash_key| Secret::new(hash_key.peek().clone())),
+            hash_key: Secret::new(hash_key.peek().clone()),
         }))
     }
 }

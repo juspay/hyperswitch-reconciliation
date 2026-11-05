@@ -42,7 +42,7 @@ pub struct AppState {
     pub linking_processor_status: watch::Sender<LinkingProcessorStatus>,
     pub encryption_client: ApplicationEncryptionClient,
     pub user_client: external_services::UserClient,
-    pub api_key_hash_key: Option<ApiKeyHashKey>,
+    pub api_key_hash_key: ApiKeyHashKey,
 }
 
 pub struct Health;

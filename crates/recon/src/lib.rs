@@ -96,7 +96,7 @@ pub async fn initialize_server(
             .await
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
 
-    // Not in `Config::validate`: that runs before decryption, so under KMS it would see ciphertext.
+    // Format is checked here, not in `Config::validate`: that runs before decryption (ciphertext under KMS).
     let api_key_hash_key = config
         .api_keys
         .get_inner()

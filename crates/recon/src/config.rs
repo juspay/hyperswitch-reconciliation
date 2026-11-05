@@ -143,20 +143,35 @@ impl Default for AuthConfig {
     }
 }
 
-/// No default `hash_key`: a publicly known one defeats the keyed hash.
-#[derive(Debug, Clone, Deserialize, Default)]
-#[serde(default)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ApiKeysConfig {
-    pub hash_key: Option<Secret<String>>,
+    pub hash_key: Secret<String>,
+}
+
+/// Empty on purpose, so a missing `[api_keys]` section fails `validate`: a publicly known default
+/// would defeat the keyed hash.
+impl Default for ApiKeysConfig {
+    fn default() -> Self {
+        Self {
+            hash_key: Secret::new(String::new()),
+        }
+    }
 }
 
 impl ApiKeysConfig {
-    /// Call this on the decrypted config only: under KMS the raw value is ciphertext.
-    pub fn get_hash_key(&self) -> CustomResult<Option<ApiKeyHashKey>, CryptoError> {
-        self.hash_key
-            .as_ref()
-            .map(|hash_key| ApiKeyHashKey::from_hex(hash_key.peek()))
-            .transpose()
+    /// Emptiness only: this runs before decryption, when the value is ciphertext under KMS.
+    pub fn validate(&self) -> ApplicationResult<()> {
+        if self.hash_key.peek().trim().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "api_keys.hash_key must not be empty".into(),
+            )));
+        }
+        Ok(())
+    }
+
+    /// Call this on the decrypted config only.
+    pub fn get_hash_key(&self) -> CustomResult<ApiKeyHashKey, CryptoError> {
+        ApiKeyHashKey::from_hex(self.hash_key.peek())
     }
 }
 
@@ -282,6 +297,7 @@ impl Config<SecuredSecret> {
         self.server.validate()?;
         self.database.get_inner().validate()?;
         self.auth.get_inner().validate()?;
+        self.api_keys.get_inner().validate()?;
         self.application_encryption.get_inner().validate()?;
         self.user_client.get_inner().validate()?;
         self.reporting_service.validate()?;
@@ -462,30 +478,28 @@ impl HyperswitchConfigExt for HyperswitchConfig {
 mod api_key_hash_key_tests {
     use super::*;
 
-    fn api_keys_config(hash_key: Option<&str>) -> ApiKeysConfig {
+    fn api_keys_config(hash_key: &str) -> ApiKeysConfig {
         ApiKeysConfig {
-            hash_key: hash_key.map(|key| Secret::new(key.to_string())),
+            hash_key: Secret::new(hash_key.to_string()),
         }
     }
 
     #[test]
-    fn unset_hash_key_leaves_the_feature_off() {
-        assert!(ApiKeysConfig::default().hash_key.is_none());
-        assert!(matches!(api_keys_config(None).get_hash_key(), Ok(None)));
+    fn missing_or_blank_hash_key_fails_validation() {
+        assert!(ApiKeysConfig::default().validate().is_err());
+        assert!(api_keys_config("  ").validate().is_err());
+        assert!(api_keys_config("${API_KEY_HASH_KEY}").validate().is_ok());
     }
 
     #[test]
     fn valid_hash_key_is_parsed() {
-        assert!(matches!(
-            api_keys_config(Some(&"ab".repeat(32))).get_hash_key(),
-            Ok(Some(_))
-        ));
+        assert!(api_keys_config(&"ab".repeat(32)).get_hash_key().is_ok());
     }
 
     #[test]
     fn malformed_hash_key_is_an_error() {
         for bad in ["", "abcd", &"zz".repeat(32), "${API_KEY_HASH_KEY}"] {
-            assert!(api_keys_config(Some(bad)).get_hash_key().is_err(), "{bad}");
+            assert!(api_keys_config(bad).get_hash_key().is_err(), "{bad}");
         }
     }
 
