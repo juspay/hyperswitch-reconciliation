@@ -1,6 +1,6 @@
 use common_enums::ReconProcessorStatus;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::transaction::GetTransactionResponse;
 
@@ -26,6 +26,12 @@ pub struct ProcessorStatusRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ProcessorStatusUpdateResponse {
     pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, IntoParams)]
+pub struct ProcessorStatusUpdateQuery {
+    #[param(example = 5000)]
+    pub limit: Option<u16>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]

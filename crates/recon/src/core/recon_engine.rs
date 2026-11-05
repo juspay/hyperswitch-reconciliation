@@ -1,6 +1,6 @@
 use api_models::recon_engine::{
-    ProcessorStatusRequest, ProcessorStatusResponse, ProcessorStatusUpdateResponse,
-    ReconTriggerResponse,
+    ProcessorStatusRequest, ProcessorStatusResponse, ProcessorStatusUpdateQuery,
+    ProcessorStatusUpdateResponse, ReconTriggerResponse,
 };
 use common_enums::{DieselStagingEntryStatus, ReconProcessorStatus};
 use common_types::staging_entry::status::DomainStagingEntryStatus;
@@ -75,9 +75,10 @@ pub async fn process_duplicate_staging_entry(
 pub async fn set_processor_status(
     state: AppState,
     request: ProcessorStatusRequest,
+    query: ProcessorStatusUpdateQuery,
 ) -> ReconEngineResponse<ProcessorStatusUpdateResponse> {
     let next_cursor = match request.linking_status_context {
-        Some(context) => update_null_linking_status(&state, context, request.cursor)
+        Some(context) => update_null_linking_status(&state, context, request.cursor, query.limit)
             .await
             .change_context(ReconEngineError::InternalServerError)?,
         None => None,
