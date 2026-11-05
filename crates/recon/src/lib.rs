@@ -8,7 +8,9 @@ use async_bb8_diesel::ConnectionManager;
 use bb8::Pool;
 use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
 use diesel::PgConnection;
-use external_services::{faas::FaasHandler, file_storage::FileStorageHandler};
+use external_services::{
+    faas::FaasHandler, file_storage::FileStorageHandler, scheduler::SchedulerHandler,
+};
 use http::StatusCode;
 use recon_interfaces::secrets_interface::secret_state::{RawSecret, SecuredSecret};
 use routes::AppState;
@@ -114,6 +116,10 @@ pub async fn initialize_server(
         .await
         .map_err(|e| format!("Failed to create FaaS client: {e}"))?;
 
+    // Create scheduler client
+    let scheduler = SchedulerHandler::from_config(config.scheduler.get_inner())
+        .map_err(|e| format!("Failed to create scheduler client: {e}"))?;
+
     // Create SFTP file storage handler for ingestion
     let sftp_file_storage =
         FileStorageHandler::from_config(&config.ingestion_service.sftp_file_storage)
@@ -148,6 +154,7 @@ pub async fn initialize_server(
         config: config.clone(),
         file_storage,
         faas,
+        scheduler,
         ingestion,
         recon_processor_status: sx,
         linking_processor_status: linking_sx,

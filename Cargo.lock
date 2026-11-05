@@ -2031,11 +2031,13 @@ dependencies = [
  "aws-sdk-kms",
  "aws-sdk-lambda",
  "aws-sdk-s3",
+ "aws-smithy-types",
  "base64 0.22.1",
  "common_types",
  "common_utils",
  "error-stack",
  "hyper 1.7.0",
+ "invokr_sdk",
  "masking",
  "oci_kms",
  "once_cell",
@@ -2049,6 +2051,7 @@ dependencies = [
  "strum 0.26.3",
  "tempfile",
  "thiserror 2.0.17",
+ "time",
  "tokio",
  "tracing",
  "url",
@@ -2774,6 +2777,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc150e5ce2330295b8616ce0e3f53250e53af31759a9dbedad1621ba29151847"
 dependencies = [
  "cfb",
+]
+
+[[package]]
+name = "invokr_sdk"
+version = "0.5.0"
+source = "git+https://github.com/juspay/invokr.git?tag=v0.5.0#dd43dc7a0a6041ed55c6d3352549ef1a65f122a4"
+dependencies = [
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "tracing",
 ]
 
 [[package]]
