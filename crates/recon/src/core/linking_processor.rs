@@ -120,7 +120,8 @@ const NULL_LINKING_UPDATE_LIMIT: u16 = 5000;
 pub async fn update_null_linking_status(
     state: &AppState,
     context: LinkingStatusContext,
-) -> LinkingProcessorResult<()> {
+    cursor: Option<String>,
+) -> LinkingProcessorResult<Option<String>> {
     let (entry_statuses, failure) = match context {
         LinkingStatusContext::Expected => (
             vec![EntryStatus::Expected],
@@ -134,18 +135,22 @@ pub async fn update_null_linking_status(
         ),
     };
 
-    let updated = state
+    let updated_ids = state
         .store
         .update_null_entry_linking(
             entry_statuses,
+            cursor,
             failed_linking_data(failure),
             NULL_LINKING_UPDATE_LIMIT,
         )
         .await
         .change_context(LinkingProcessorError::InternalServerError)?;
-    logging::info!("Set linking status on {updated} entries for {context:?}");
+    logging::info!(
+        "Set linking status on {} entries for {context:?}",
+        updated_ids.len()
+    );
 
-    Ok(())
+    Ok(updated_ids.into_iter().max())
 }
 
 pub async fn linking_processor(

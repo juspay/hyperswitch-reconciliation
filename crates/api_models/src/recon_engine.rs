@@ -20,6 +20,12 @@ pub struct ProcessorStatusResponse {
 pub struct ProcessorStatusRequest {
     pub status: Option<ReconProcessorStatus>,
     pub linking_status_context: Option<LinkingStatusContext>,
+    pub cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ProcessorStatusUpdateResponse {
+    pub next_cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]

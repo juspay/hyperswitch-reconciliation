@@ -56,9 +56,10 @@ pub trait EntryInterface {
     async fn update_null_entry_linking(
         &self,
         entry_statuses: Vec<EntryStatus>,
+        cursor: Option<String>,
         linking_data: EntryLinkingData,
         limit: u16,
-    ) -> StorageResult<usize>;
+    ) -> StorageResult<Vec<String>>;
 }
 
 #[async_trait]
@@ -154,13 +155,15 @@ impl EntryInterface for Store {
     async fn update_null_entry_linking(
         &self,
         entry_statuses: Vec<EntryStatus>,
+        cursor: Option<String>,
         linking_data: EntryLinkingData,
         limit: u16,
-    ) -> StorageResult<usize> {
+    ) -> StorageResult<Vec<String>> {
         let conn = self.get_connection().await?;
         Entry::update_null_linking(
             &conn,
             entry_statuses,
+            cursor,
             EntryUpdate::LinkingUpdate { data: linking_data }.into(),
             limit,
         )

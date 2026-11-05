@@ -923,25 +923,37 @@ impl Entry {
     pub async fn update_null_linking(
         conn: &PgPooledConn,
         entry_statuses: Vec<EntryStatus>,
+        cursor: Option<String>,
         entry_update: EntryUpdateInternal,
         limit: u16,
-    ) -> StorageResult<usize> {
+    ) -> StorageResult<Vec<String>> {
         let candidate = diesel::alias!(entry as null_linking_candidate);
         let candidate_ids = candidate
             .select(candidate.field(dsl::id))
+            .filter(candidate.field(dsl::id).gt(cursor.unwrap_or_default()))
             .filter(candidate.field(dsl::linking_status).is_null())
             .filter(candidate.field(dsl::status).eq_any(entry_statuses.clone()))
+            .order(candidate.field(dsl::id).asc())
             .limit(i64::from(limit));
 
-        generics::generic_update::<entry::table, _, _>(
-            conn,
-            dsl::id
-                .eq_any(candidate_ids)
-                .and(dsl::linking_status.is_null())
-                .and(dsl::status.eq_any(entry_statuses)),
-            entry_update,
+        let query = diesel::update(entry::table)
+            .filter(
+                dsl::id
+                    .eq_any(candidate_ids)
+                    .and(dsl::linking_status.is_null())
+                    .and(dsl::status.eq_any(entry_statuses)),
+            )
+            .set(entry_update)
+            .returning(dsl::id);
+
+        logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
+
+        generics::db_metrics::track_database_call::<entry::table, _, _>(
+            query.get_results_async(conn),
+            generics::db_metrics::DatabaseOperation::UpdateWithResults,
         )
         .await
+        .change_context(DatabaseError::Others)
     }
 }
 
