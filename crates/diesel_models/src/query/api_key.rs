@@ -19,6 +19,19 @@ impl ApiKeyNew {
 }
 
 impl ApiKey {
+    pub async fn find_active_by_hashed_api_key(
+        conn: &PgPooledConn,
+        hashed_api_key: &str,
+    ) -> StorageResult<Self> {
+        generics::generic_find_one::<api_key::table, _, _>(
+            conn,
+            dsl::hashed_api_key
+                .eq(hashed_api_key.to_owned())
+                .and(dsl::status.eq(ApiKeyStatus::Active)),
+        )
+        .await
+    }
+
     pub async fn find_active_by_merchant_id_and_api_key_id(
         conn: &PgPooledConn,
         merchant_id: &MerchantId,
