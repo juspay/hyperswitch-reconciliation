@@ -3,7 +3,8 @@ use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
 use api_models::recon_engine::{
-    LinkingStatusContext, ProcessorStatusRequest, ProcessorStatusResponse, ReconTriggerResponse,
+    LinkingStatusContext, ProcessorStatusRequest, ProcessorStatusResponse,
+    ProcessorStatusUpdateResponse, ReconTriggerResponse,
 };
 
 use crate::{
@@ -25,7 +26,8 @@ use super::AppState;
             ReconTriggerResponse,
             ProcessorStatusResponse,
             ProcessorStatusRequest,
-            LinkingStatusContext
+            LinkingStatusContext,
+            ProcessorStatusUpdateResponse
         )
     ),
     tags(
@@ -127,7 +129,7 @@ pub async fn get_processor_status(
     tag = "Recon Engine",
     request_body = ProcessorStatusRequest,
     responses(
-        (status = 200, description = "Requested processor status and entry linking status changes applied"),
+        (status = 200, description = "Requested processor status and entry linking status changes applied", body = ProcessorStatusUpdateResponse),
         (status = 400, description = "Invalid status or linking status context value"),
         (status = 500, description = "Internal server error"),
     ),
