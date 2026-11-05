@@ -38,6 +38,9 @@ create_directories = true
 [faas]
 faas_backend = "noop"
 
+[scheduler]
+scheduler_backend = "noop"
+
 [ingestion_service]
 transformation_base_url = "http://localhost:8080"
 
