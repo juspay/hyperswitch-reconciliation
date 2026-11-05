@@ -18,5 +18,13 @@ pub struct ProcessorStatusResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ProcessorStatusRequest {
-    pub status: ReconProcessorStatus,
+    pub status: Option<ReconProcessorStatus>,
+    pub linking_status_context: Option<LinkingStatusContext>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LinkingStatusContext {
+    Expected,
+    NonExpected,
 }
