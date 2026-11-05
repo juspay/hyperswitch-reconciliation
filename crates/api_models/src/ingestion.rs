@@ -109,10 +109,7 @@ pub struct IngestionConfigResponse {
     pub data: IngestionConnectionData,
 }
 
-/// Connection details returned in responses.
-///
-/// Secrets (HMAC key, passwords) are deliberately absent: `Secret<T>` serializes in exposed
-/// form over HTTP, so the only safe response is one that never carries them.
+/// Connection details for an ingestion config. Secrets are never returned.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "ingestion_type", rename_all = "snake_case")]
 pub enum IngestionConnectionData {
