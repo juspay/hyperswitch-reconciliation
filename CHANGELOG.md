@@ -4,6 +4,17 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.05.0
+
+### Bug Fixes
+
+- **ingestion:** Scope SFTP file access to the configured merchant ([#25](https://github.com/juspay/hyperswitch-reconciliation/pull/25)) ([`969b731`](https://github.com/juspay/hyperswitch-reconciliation/commit/969b73113f781186b2fecbb87f888864d512d168))
+- **linking:** Use detailed statuses and defer linking backfill ([#35](https://github.com/juspay/hyperswitch-reconciliation/pull/35)) ([`67ff8dd`](https://github.com/juspay/hyperswitch-reconciliation/commit/67ff8dda5d7a26a61b9570ca4d378248e2a784d3))
+
+**Full Changelog:** [`2026.11.03.0...2026.11.05.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.03.0...2026.11.05.0)
+
+- - -
+
 ## 2026.11.03.0
 
 ### Miscellaneous Tasks

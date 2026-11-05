@@ -1,4 +1,4 @@
-use common_enums::EntryLinkingStatus;
+use common_types::entry_linking::status::DomainEntryLinkingStatus;
 use error_stack::Report;
 use thiserror::Error;
 
@@ -16,11 +16,11 @@ pub enum LinkingProcessorError {
     EntryNotFound,
 
     #[error(
-        "Invalid entry linking status: {current_status}. Expected statuses: {expected_statuses:?}"
+        "Invalid entry linking status: {current_status:?}. Expected statuses: {expected_statuses:?}"
     )]
     InvalidEntryLinkingStatus {
-        current_status: EntryLinkingStatus,
-        expected_statuses: Vec<EntryLinkingStatus>,
+        current_status: Option<DomainEntryLinkingStatus>,
+        expected_statuses: Vec<DomainEntryLinkingStatus>,
     },
 }
 

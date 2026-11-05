@@ -16,7 +16,9 @@ use crate::{
     PgPooledConn, StorageResult,
 };
 
-use common_enums::{BalanceDirection, EntryLinkingStatus, EntryStatus, SearchDuplicateStatus};
+use common_enums::{
+    BalanceDirection, DieselEntryLinkingStatus, EntryStatus, SearchDuplicateStatus,
+};
 use common_types::{
     entry::{EntryListFilters, EntryListSortField, ListEntriesFilters},
     pagination::{CursorDirection, PaginationQuery},
@@ -906,7 +908,7 @@ impl Entry {
 
     pub async fn list_linking_pending(conn: &PgPooledConn, limit: u16) -> StorageResult<Vec<Self>> {
         entry::table
-            .filter(entry::linking_status.eq(EntryLinkingStatus::Pending))
+            .filter(entry::linking_status.eq(DieselEntryLinkingStatus::Pending))
             .order((entry::created_at.asc(), entry::id.asc()))
             .limit(i64::from(limit))
             .load_async(conn)
