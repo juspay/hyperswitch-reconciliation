@@ -68,7 +68,7 @@ Use `RUN_ENV` to control which config file is loaded:
 
 ### Validate vs decrypt order
 - `Config::validate()` runs in `bin/recon.rs` on `Config<SecuredSecret>`, **before** `fetch_raw_secrets`. Under `aws_kms` a secret is still ciphertext at that point, so a format check (hex, length, decode) there fails every production boot. Only check emptiness in `validate`.
-- Parse formatted secrets in `initialize_server` after `fetch_raw_secrets` and fail startup there. Example: `api_keys.hash_key` via `ApiKeysConfig::parse`.
+- Parse formatted secrets in `initialize_server` after `fetch_raw_secrets` and fail startup there. Example: `api_keys.hash_key` via `ApiKeysConfig::get_hash_key`.
 
 ### Data Type Formatting
 

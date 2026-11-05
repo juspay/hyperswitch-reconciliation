@@ -3,8 +3,9 @@ use std::{fs, path::PathBuf};
 use crate::{env, errors::ReconAppError};
 use base64::Engine;
 use common_utils::{
-    api_key::{ApiKeyHashKey, ApiKeyHashKeyError, MerchantApiKeys},
+    api_key::ApiKeyHashKey,
     consts::BASE64_ENGINE,
+    errors::{CryptoError, CustomResult},
     logging::LoggerConfig,
 };
 use config::{Environment, File};
@@ -151,13 +152,11 @@ pub struct ApiKeysConfig {
 
 impl ApiKeysConfig {
     /// Call this on the decrypted config only: under KMS the raw value is ciphertext.
-    pub fn parse(&self) -> Result<MerchantApiKeys, ApiKeyHashKeyError> {
-        match &self.hash_key {
-            Some(hash_key) => Ok(MerchantApiKeys::Enabled {
-                hash_key: ApiKeyHashKey::from_hex(hash_key.peek())?,
-            }),
-            None => Ok(MerchantApiKeys::Disabled),
-        }
+    pub fn get_hash_key(&self) -> CustomResult<Option<ApiKeyHashKey>, CryptoError> {
+        self.hash_key
+            .as_ref()
+            .map(|hash_key| ApiKeyHashKey::from_hex(hash_key.peek()))
+            .transpose()
     }
 }
 
@@ -472,24 +471,21 @@ mod api_key_hash_key_tests {
     #[test]
     fn unset_hash_key_leaves_the_feature_off() {
         assert!(ApiKeysConfig::default().hash_key.is_none());
-        assert!(matches!(
-            api_keys_config(None).parse(),
-            Ok(MerchantApiKeys::Disabled)
-        ));
+        assert!(matches!(api_keys_config(None).get_hash_key(), Ok(None)));
     }
 
     #[test]
     fn valid_hash_key_is_parsed() {
         assert!(matches!(
-            api_keys_config(Some(&"ab".repeat(32))).parse(),
-            Ok(MerchantApiKeys::Enabled { .. })
+            api_keys_config(Some(&"ab".repeat(32))).get_hash_key(),
+            Ok(Some(_))
         ));
     }
 
     #[test]
     fn malformed_hash_key_is_an_error() {
         for bad in ["", "abcd", &"zz".repeat(32), "${API_KEY_HASH_KEY}"] {
-            assert!(api_keys_config(Some(bad)).parse().is_err(), "{bad}");
+            assert!(api_keys_config(Some(bad)).get_hash_key().is_err(), "{bad}");
         }
     }
 

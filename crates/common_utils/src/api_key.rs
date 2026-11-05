@@ -1,39 +1,31 @@
+use error_stack::Report;
 use masking::{PeekInterface, Secret, StrongSecret};
 
-use crate::crypto::generate_cryptographically_secure_random_string;
+use crate::{
+    crypto::generate_cryptographically_secure_random_string,
+    errors::{CryptoError, CustomResult},
+};
 
 pub const API_KEY_RANDOM_LENGTH: usize = 64;
 pub const API_KEY_DISPLAY_RANDOM_LENGTH: usize = 6;
 pub const API_KEY_HASH_KEY_LENGTH: usize = 32;
-
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub enum ApiKeyHashKeyError {
-    #[error("API key hash key must be {} hex characters", API_KEY_HASH_KEY_LENGTH * 2)]
-    InvalidLength,
-    #[error("API key hash key must be hex encoded")]
-    InvalidHex,
-}
 
 /// Server-wide key for the keyed hash. There is no rotation: changing it invalidates every key.
 #[derive(Debug, Clone)]
 pub struct ApiKeyHashKey(StrongSecret<[u8; API_KEY_HASH_KEY_LENGTH]>);
 
 impl ApiKeyHashKey {
-    pub fn from_hex(hex_key: &str) -> Result<Self, ApiKeyHashKeyError> {
+    pub fn from_hex(hex_key: &str) -> CustomResult<Self, CryptoError> {
         let mut key = [0u8; API_KEY_HASH_KEY_LENGTH];
-        hex::decode_to_slice(hex_key.trim(), &mut key).map_err(|e| match e {
-            hex::FromHexError::InvalidStringLength => ApiKeyHashKeyError::InvalidLength,
-            _ => ApiKeyHashKeyError::InvalidHex,
+        hex::decode_to_slice(hex_key.trim(), &mut key).map_err(|e| {
+            Report::new(match e {
+                hex::FromHexError::InvalidStringLength => CryptoError::InvalidKeyLength,
+                _ => CryptoError::DecodingFailed,
+            })
         })?;
 
         Ok(Self(StrongSecret::new(key)))
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum MerchantApiKeys {
-    Enabled { hash_key: ApiKeyHashKey },
-    Disabled,
 }
 
 #[derive(Debug, Clone)]
@@ -172,17 +164,18 @@ mod tests {
 
     #[test]
     fn hash_key_parsing_rejects_bad_input() {
+        let context = |input: &str| {
+            ApiKeyHashKey::from_hex(input)
+                .unwrap_err()
+                .current_context()
+                .to_string()
+        };
+
+        assert_eq!(context("abcd"), CryptoError::InvalidKeyLength.to_string());
+        assert_eq!(context(""), CryptoError::InvalidKeyLength.to_string());
         assert_eq!(
-            ApiKeyHashKey::from_hex("abcd").unwrap_err(),
-            ApiKeyHashKeyError::InvalidLength
-        );
-        assert_eq!(
-            ApiKeyHashKey::from_hex(&"zz".repeat(32)).unwrap_err(),
-            ApiKeyHashKeyError::InvalidHex
-        );
-        assert_eq!(
-            ApiKeyHashKey::from_hex("").unwrap_err(),
-            ApiKeyHashKeyError::InvalidLength
+            context(&"zz".repeat(32)),
+            CryptoError::DecodingFailed.to_string()
         );
         assert!(ApiKeyHashKey::from_hex(&format!(" {KEY_A}\n")).is_ok());
     }
@@ -196,7 +189,8 @@ mod tests {
         assert!(!format!("{key:?}").contains(key.expose()));
         assert!(!format!("{hashed:?}").contains(hashed.peek()));
         assert!(!format!("{hash_key:?}").contains("0001"));
-        let error = ApiKeyHashKey::from_hex("not hex at all").unwrap_err();
-        assert!(!format!("{error} {error:?}").contains("not hex"));
+        let error = ApiKeyHashKey::from_hex(&"zq".repeat(32)).unwrap_err();
+        assert!(!format!("{error} {error:?}").contains("zq"));
+        assert!(!format!("{error:?}").contains("position"));
     }
 }
