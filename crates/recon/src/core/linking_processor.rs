@@ -1,6 +1,8 @@
 use api_models::linking_processor::{LinkingProcessorStatusResponse, LinkingTriggerResponse};
-use common_enums::{EntryLinkingStatus, LinkingProcessorStatus};
-use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
+use common_enums::LinkingProcessorStatus;
+use common_types::entry_linking::{
+    status::DomainEntryLinkingStatus, EntryLinkingData, EntryLinkingDataV1,
+};
 use common_utils::{auth::AuthContext, logging};
 use diesel_models::entry::EntryUpdate;
 use tokio::sync::watch;
@@ -56,11 +58,13 @@ pub async fn enqueue_entry(
         .await
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 
-    let expected_statuses = EntryLinkingStatus::enqueuable_statuses();
-    if !expected_statuses.contains(&entry.linking_status) {
+    let linking_status = entry.linking_status.map(DomainEntryLinkingStatus::from);
+    if !linking_status.is_some_and(|status| status.is_enqueuable()) {
         return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
-            current_status: entry.linking_status,
-            expected_statuses,
+            current_status: linking_status,
+            expected_statuses: DomainEntryLinkingStatus::iter()
+                .filter(|status| status.is_enqueuable())
+                .collect(),
         }
         .into());
     }
@@ -89,10 +93,11 @@ pub async fn process_entry(
         .await
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 
-    if entry.linking_status != EntryLinkingStatus::Pending {
+    let linking_status = entry.linking_status.map(DomainEntryLinkingStatus::from);
+    if linking_status != Some(DomainEntryLinkingStatus::Pending) {
         return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
-            current_status: entry.linking_status,
-            expected_statuses: vec![EntryLinkingStatus::Pending],
+            current_status: linking_status,
+            expected_statuses: vec![DomainEntryLinkingStatus::Pending],
         }
         .into());
     }
