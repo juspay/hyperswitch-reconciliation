@@ -121,6 +121,7 @@ pub async fn update_null_linking_status(
     state: &AppState,
     context: LinkingStatusContext,
     cursor: Option<String>,
+    limit: Option<u16>,
 ) -> LinkingProcessorResult<Option<String>> {
     let (entry_statuses, failure) = match context {
         LinkingStatusContext::Expected => (
@@ -141,7 +142,9 @@ pub async fn update_null_linking_status(
             entry_statuses,
             cursor,
             failed_linking_data(failure),
-            NULL_LINKING_UPDATE_LIMIT,
+            limit
+                .unwrap_or(NULL_LINKING_UPDATE_LIMIT)
+                .min(NULL_LINKING_UPDATE_LIMIT),
         )
         .await
         .change_context(LinkingProcessorError::InternalServerError)?;

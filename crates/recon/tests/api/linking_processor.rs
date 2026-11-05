@@ -971,15 +971,26 @@ async fn processor_status_linking_context_keeps_existing_linking_state() {
         .await;
     assert_eq!(response.status(), 401);
 
-    for body in [
-        json!({}),
-        json!({ "linking_status_context": "expected" }),
-        json!({ "linking_status_context": "non_expected" }),
-        json!({ "linking_status_context": "non_expected", "cursor": "entry_" }),
+    for (query, body) in [
+        ("", json!({})),
+        ("", json!({ "linking_status_context": "expected" })),
+        (
+            "?limit=10",
+            json!({ "linking_status_context": "non_expected" }),
+        ),
+        (
+            "?limit=10000",
+            json!({ "linking_status_context": "non_expected", "cursor": "entry_" }),
+        ),
     ] {
-        let response = client.post(path).with_admin_key().json(&body).send().await;
+        let response = client
+            .post(&format!("{path}{query}"))
+            .with_admin_key()
+            .json(&body)
+            .send()
+            .await;
         let result: Value = client.expect_success(response).await;
-        assert!(result["next_cursor"].is_null(), "{body}: {result}");
+        assert!(result["next_cursor"].is_null(), "{query} {body}: {result}");
     }
 
     // No request set `status`, so the processor keeps its initial state.
