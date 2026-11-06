@@ -91,7 +91,7 @@ pub async fn fetch_raw_secrets(
     let api_keys = ApiKeysConfig::convert_to_raw_secret(conf.api_keys, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt API keys configuration")?;
+        .attach("Failed to decrypt API keys configuration")?;
 
     let application_encryption = ApplicationEncryptionConfig::convert_to_raw_secret(
         conf.application_encryption,
