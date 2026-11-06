@@ -17,7 +17,15 @@ pub mod vars {
 
 /// Current environment.
 #[derive(
-    Debug, Default, Deserialize, Serialize, Clone, Copy, strum::Display, strum::EnumString,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    Clone,
+    Copy,
+    strum::Display,
+    strum::EnumString,
+    strum::EnumIter,
 )]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -27,21 +35,29 @@ pub enum Env {
     Development,
     /// Production environment.
     Production,
+    Sandbox,
 }
 
-/// Name of current environment. Either "development" or "production".
+impl Env {
+    pub const fn prefix(self) -> &'static str {
+        match self {
+            Self::Development => "dev",
+            Self::Sandbox => "sbx",
+            Self::Production => "prd",
+        }
+    }
+}
+
+/// Name of current environment. One of "development", "sandbox" or "production".
 pub fn which() -> Env {
     let default_env = Env::Development;
     std::env::var(vars::RUN_ENV).map_or_else(|_| default_env, |v| v.parse().unwrap_or(default_env))
 }
 
 /// Three letter (lowercase) prefix corresponding to the current environment.
-/// Either `dev` or `prd`.
+/// One of `dev`, `sbx` or `prd`.
 pub fn prefix_for_env() -> &'static str {
-    match which() {
-        Env::Development => "dev",
-        Env::Production => "prd",
-    }
+    which().prefix()
 }
 
 /// Path to the root directory of the cargo workspace.
@@ -67,4 +83,25 @@ macro_rules! service_name {
     () => {
         env!("CARGO_BIN_NAME")
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn every_env_prefix_is_a_valid_key_prefix() {
+        use strum::IntoEnumIterator;
+
+        for env in Env::iter() {
+            let prefix = env.prefix();
+            assert!(!prefix.is_empty() && !prefix.contains('_'), "{env}");
+        }
+    }
+
+    #[test]
+    fn each_env_has_its_own_prefix() {
+        assert_eq!(Env::Development.prefix(), "dev");
+        assert_eq!(Env::Sandbox.prefix(), "sbx");
+        assert_eq!(Env::Production.prefix(), "prd");
+    }
 }
