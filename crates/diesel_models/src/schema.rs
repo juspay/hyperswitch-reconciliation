@@ -105,8 +105,8 @@ diesel::table! {
         entry_identifier -> Text,
         exposed_metadata -> Jsonb,
         #[max_length = 64]
-        linking_status -> Nullable<Varchar>,
-        linking_data -> Nullable<Jsonb>,
+        linking_status -> Varchar,
+        linking_data -> Jsonb,
     }
 }
 

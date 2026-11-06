@@ -58,8 +58,8 @@ pub async fn enqueue_entry(
         .await
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 
-    let linking_status = entry.linking_status.map(DomainEntryLinkingStatus::from);
-    if !linking_status.is_some_and(|status| status.is_enqueuable()) {
+    let linking_status = DomainEntryLinkingStatus::from(entry.linking_status);
+    if !linking_status.is_enqueuable() {
         return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
             current_status: linking_status,
             expected_statuses: DomainEntryLinkingStatus::iter()
@@ -93,8 +93,8 @@ pub async fn process_entry(
         .await
         .to_not_found_response(|| LinkingProcessorError::EntryNotFound)?;
 
-    let linking_status = entry.linking_status.map(DomainEntryLinkingStatus::from);
-    if linking_status != Some(DomainEntryLinkingStatus::Pending) {
+    let linking_status = DomainEntryLinkingStatus::from(entry.linking_status);
+    if linking_status != DomainEntryLinkingStatus::Pending {
         return Err(LinkingProcessorError::InvalidEntryLinkingStatus {
             current_status: linking_status,
             expected_statuses: vec![DomainEntryLinkingStatus::Pending],
