@@ -5,7 +5,7 @@ use diesel::{debug_query, pg::Pg, prelude::*, BoolExpressionMethods, ExpressionM
 use error_stack::{report, ResultExt};
 
 use crate::{
-    api_key::{ApiKey, ApiKeyNew},
+    api_key::{ApiKey, ApiKeyNew, ApiKeyUpdateInternal},
     errors,
     query::generics,
     schema::api_key::{self, dsl},
@@ -32,6 +32,24 @@ impl ApiKey {
                 .and(dsl::status.eq(ApiKeyStatus::Active)),
         )
         .await
+    }
+
+    pub async fn update_active_by_merchant_id_and_api_key_id(
+        conn: &PgPooledConn,
+        merchant_id: &MerchantId,
+        api_key_id: &str,
+        update: ApiKeyUpdateInternal,
+    ) -> StorageResult<Self> {
+        generics::generic_update_with_unique_predicate_get_result::<api_key::table, _, _, _>(
+            conn,
+            dsl::merchant_id
+                .eq(merchant_id.to_owned())
+                .and(dsl::id.eq(api_key_id.to_owned()))
+                .and(dsl::status.eq(ApiKeyStatus::Active)),
+            update,
+        )
+        .await
+        .attach_printable_lazy(|| format!("Error updating API key: id={api_key_id}"))
     }
 
     pub async fn list_active_by_merchant_id(

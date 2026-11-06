@@ -1,6 +1,6 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. The table, diesel model, store interface and key generation/hashing exist so far; there are no endpoints or auth yet.
+Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; keys do not authenticate any route yet.
 
 ## Data Model
 - **`merchant_id` is not a database foreign key**: the repo does not enforce FKs at DB level (`domains/database`), so callers must check the merchant exists.
@@ -8,12 +8,12 @@ Merchant-level API keys for machine access to recon. The table, diesel model, st
 - **`hashed_api_key` is `Secret<String>`**: `generic_insert` attaches the `Debug` of the inserted values to its error. Masking keeps the hash out of logs when an insert fails.
 - **`ApiKey` is deliberately not `Serialize`**: it can't be returned from an endpoint by accident. Build a response DTO.
 - **`created_by` is nullable** (`Option<String>` in the model) so a non-user creator, e.g. admin API, can be added later without an `ALTER TABLE`. For now key creation is JWT-only, so the core layer must always set it to the `user_id`.
-- **`expires_at` NULL means never expires.** Whether that is allowed is a core-layer rule, so the column stays nullable. Expiry is not checked in the store.
+- **`expires_at` is `NOT NULL`: there are no never-expiring keys.** The 1-year cap is a core-layer rule (`MAX_EXPIRY_DAYS` in `core/api_key.rs`), not a DB constraint. Expiry is not checked in the store.
 - **`expires_at` must not change after creation**: moving it would let a leaked or old key be extended indefinitely. To get a longer life, create a new key and revoke the old one.
 
 ## Status
 - `status` is `VARCHAR(64)`, not a DB enum, so adding a state needs no `ALTER TYPE`. Expiry is derived from `expires_at`, never stored as a status.
-- Find and list only return `status = 'active'` rows. Nothing writes `revoked` yet.
+- Find and list only return `status = 'active'` rows. Revoke writes `revoked` and bumps `last_modified_at`; every update is filtered to `status = 'active'`, so a revoked key can't be revived or revoked twice (both return `NotFound`).
 
 ## Store
 - Queries are scoped by `merchant_id`, so one merchant's id can never read another's key. Find returns `NotFound`; list returns an empty `Vec`.
@@ -25,3 +25,12 @@ Merchant-level API keys for machine access to recon. The table, diesel model, st
 - The hash key is format-checked in `initialize_server` **after** decryption, not in `Config::validate` (which only checks it is non-empty) (ciphertext under KMS, see `patterns/CONFIGURATION.md`). A malformed value fails startup. Parse errors never include the value.
 - **No rotation**: changing the hash key invalidates every issued key.
 - The row `id` is not generated in `common_utils::api_key`. The create handler (management endpoints PR) calls `generate_id_with_default_len("apikey")`. The `id` is the safe handle for URLs and logs; never log the plaintext key or its hash.
+
+## Management Endpoints (`/api_keys`, JWT or admin key)
+- POST/GET `/api_keys`, GET/PUT/DELETE `/api_keys/{api_key_id}`. DELETE is a soft revoke and returns the key with `status: revoked`; afterwards get/list/update/delete all return 404.
+- **Permission is `MerchantReconApiKeyRead/Write`** (`entities: [Merchant]`, needed `Merchant` in `recon_derive`'s `EntityType`). Hyperswitch must know `ReconApiKey` (its PR H) or its `authorize_token` rejects the string. Only a merchant-level role can hold it, so profile-level users can't mint keys. The mock user client allows every permission, so tests can't prove this part.
+- The merchant always comes from `AuthContext`; every store call filters by it, so another merchant's key id is a 404, not a 403.
+- Create: `expires_at` must be stated: a future datetime, or `"never"` (stored as NULL, returned as `"never"`). Missing or `null` is a 400, so a client bug can't mint a permanent key. No maximum, matching Hyperswitch. Without `last_used_at`, permanent keys can't be audited for staleness. It is not updatable (`UpdateApiKeyRequest` has `deny_unknown_fields`, so sending it is a 400). Returns the plaintext once, with `Cache-Control: no-store` (`ApplicationResponse::JsonNoStore`).
+- `created_by` is the JWT `user_id`.
+- **Admin key access** (`JwtOrAdminApiAuth`): `api-key` = admin secret plus a mandatory `x-merchant-id`, as in Hyperswitch. No permission check, so it is the one way around the merchant-level-only rule. The merchant must exist (401 otherwise) and the header scopes every query, so it can only touch that merchant's keys. `created_by` is NULL. Bearer token + `api-key` together, or neither, is 401. The admin key shares the `api-key` header with merchant keys until the planned rename to `admin-api-key`; do that before any merchant-key route exists.
+- Datetimes in API models must use `common_utils::custom_serde::iso8601` (RFC 3339 with an offset, e.g. `2027-01-01T00:00:00Z`). Plain `PrimitiveDateTime` serde is not ISO: it rejected real clients while tests that reused the same serde passed, so tests send the string form.

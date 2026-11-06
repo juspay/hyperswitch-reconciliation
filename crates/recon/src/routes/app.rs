@@ -9,7 +9,7 @@ use recon_interfaces::secrets_interface::secret_state::RawSecret;
 
 use crate::config::{Config, IngestionServiceConfig};
 use crate::openapi::create_openapi;
-use crate::routes::{search_entry_key, search_expectation, search_group};
+use crate::routes::{api_key, search_entry_key, search_expectation, search_group};
 use common_utils::api_key::ApiKeyHashKey;
 use external_services::{
     faas::FaasHandler, file_storage::FileStorageHandler, ApplicationEncryptionClient,
@@ -486,6 +486,26 @@ impl MetadataSchema {
                 web::resource("/{schema_id}")
                     .route(web::get().to(metadata_schema::get_metadata_schema_by_id))
                     .route(web::put().to(metadata_schema::update_metadata_schema)),
+            )
+    }
+}
+
+pub struct ApiKey;
+
+impl ApiKey {
+    pub fn server(state: AppState) -> Scope {
+        web::scope("/api_keys")
+            .app_data(web::Data::new(state))
+            .service(
+                web::resource("")
+                    .route(web::post().to(api_key::create_api_key))
+                    .route(web::get().to(api_key::list_api_keys)),
+            )
+            .service(
+                web::resource("/{api_key_id}")
+                    .route(web::get().to(api_key::get_api_key))
+                    .route(web::put().to(api_key::update_api_key))
+                    .route(web::delete().to(api_key::revoke_api_key)),
             )
     }
 }

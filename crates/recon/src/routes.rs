@@ -1,4 +1,5 @@
 pub mod account;
+pub mod api_key;
 pub mod app;
 pub mod audit_trail;
 pub mod auth;
