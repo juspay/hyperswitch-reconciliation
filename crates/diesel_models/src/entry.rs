@@ -39,8 +39,8 @@ pub struct Entry {
     pub transformation_config_id: Option<String>,
     pub entry_identifier: String,
     pub exposed_metadata: serde_json::Value,
-    pub linking_status: Option<DieselEntryLinkingStatus>,
-    pub linking_data: Option<EntryLinkingData>,
+    pub linking_status: DieselEntryLinkingStatus,
+    pub linking_data: EntryLinkingData,
 }
 
 #[derive(Debug, Clone)]
@@ -97,8 +97,8 @@ pub struct EntryNew {
     pub transformation_config_id: Option<String>,
     pub entry_identifier: String,
     pub exposed_metadata: serde_json::Value,
-    pub linking_status: Option<DieselEntryLinkingStatus>,
-    pub linking_data: Option<EntryLinkingData>,
+    pub linking_status: DieselEntryLinkingStatus,
+    pub linking_data: EntryLinkingData,
 }
 
 impl EntryNew {
@@ -145,8 +145,8 @@ impl EntryNew {
             transformation_config_id,
             entry_identifier,
             exposed_metadata,
-            linking_status: Some((&linking_data).into()),
-            linking_data: Some(linking_data),
+            linking_status: (&linking_data).into(),
+            linking_data,
         }
     }
 }

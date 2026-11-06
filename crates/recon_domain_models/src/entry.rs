@@ -50,8 +50,8 @@ pub struct DomainEntry {
     pub transformation_id: Option<String>,
     pub order_id: String,
     pub exposed_metadata: serde_json::Value,
-    pub linking_status: Option<DomainEntryLinkingStatus>,
-    pub linking_data: Option<EntryLinkingData>,
+    pub linking_status: DomainEntryLinkingStatus,
+    pub linking_data: EntryLinkingData,
 }
 
 #[async_trait::async_trait]
@@ -107,7 +107,7 @@ impl Conversion for DomainEntry {
             transformation_id: item.transformation_config_id,
             order_id: item.entry_identifier,
             exposed_metadata: item.exposed_metadata,
-            linking_status: item.linking_status.map(Into::into),
+            linking_status: item.linking_status.into(),
             linking_data: item.linking_data,
         })
     }
@@ -140,7 +140,7 @@ impl Conversion for DomainEntry {
             transformation_config_id: self.transformation_id,
             entry_identifier: self.order_id,
             exposed_metadata: self.exposed_metadata,
-            linking_status: self.linking_data.as_ref().map(Into::into),
+            linking_status: (&self.linking_data).into(),
             linking_data: self.linking_data,
         }
     }
@@ -169,7 +169,7 @@ impl Conversion for DomainEntry {
             transformation_config_id: self.transformation_id,
             entry_identifier: self.order_id,
             exposed_metadata: self.exposed_metadata,
-            linking_status: self.linking_status.map(Into::into),
+            linking_status: self.linking_status.into(),
             linking_data: self.linking_data,
         }
     }
@@ -260,8 +260,8 @@ impl DomainEntry {
             transformation_id: data.transformation_id,
             order_id: data.order_id,
             exposed_metadata: data.exposed_metadata,
-            linking_status: Some(DomainEntryLinkingStatus::Pending),
-            linking_data: Some(EntryLinkingData::V1(EntryLinkingDataV1::Pending)),
+            linking_status: DomainEntryLinkingStatus::Pending,
+            linking_data: EntryLinkingData::V1(EntryLinkingDataV1::Pending),
         }
     }
 
@@ -294,8 +294,8 @@ impl DomainEntry {
             transformation_id: None,
             order_id: data.order_id.clone(),
             exposed_metadata: serde_json::json!({}),
-            linking_status: Some(DomainEntryLinkingStatus::Pending),
-            linking_data: Some(EntryLinkingData::V1(EntryLinkingDataV1::Pending)),
+            linking_status: DomainEntryLinkingStatus::Pending,
+            linking_data: EntryLinkingData::V1(EntryLinkingDataV1::Pending),
         }
     }
 }

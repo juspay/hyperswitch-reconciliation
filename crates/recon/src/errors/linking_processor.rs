@@ -19,7 +19,7 @@ pub enum LinkingProcessorError {
         "Invalid entry linking status: {current_status:?}. Expected statuses: {expected_statuses:?}"
     )]
     InvalidEntryLinkingStatus {
-        current_status: Option<DomainEntryLinkingStatus>,
+        current_status: DomainEntryLinkingStatus,
         expected_statuses: Vec<DomainEntryLinkingStatus>,
     },
 }
