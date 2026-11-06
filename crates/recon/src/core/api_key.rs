@@ -10,7 +10,7 @@ use diesel_models::api_key::{ApiKey, ApiKeyNew, ApiKeyUpdate};
 use error_stack::{report, ResultExt};
 use masking::Secret;
 use storage_impl::api_key::ApiKeyInterface;
-use time::PrimitiveDateTime;
+use time::Duration;
 
 use crate::{
     env,
@@ -25,6 +25,7 @@ use crate::{
 
 const MAX_NAME_LENGTH: usize = 64;
 const MAX_DESCRIPTION_LENGTH: usize = 256;
+const MAX_EXPIRY_DAYS: i64 = 365;
 
 fn invalid_request<T>(message: &str) -> Result<T, error_stack::Report<ApiKeyError>> {
     Err(report!(ApiKeyError::InvalidRequest {
@@ -63,7 +64,7 @@ fn to_response(api_key: ApiKey) -> ApiKeyResponse {
         created_by: api_key.created_by,
         status: api_key.status,
         created_at: api_key.created_at,
-        expires_at: api_key.expires_at.into(),
+        expires_at: api_key.expires_at,
         last_modified_at: api_key.last_modified_at,
     }
 }
@@ -79,9 +80,12 @@ pub async fn create_api_key(
     }
 
     let now = date_time::now();
-    let expires_at: Option<PrimitiveDateTime> = request.expires_at.into();
-    if expires_at.is_some_and(|expires_at| expires_at <= now) {
+    let expires_at = request.expires_at;
+    if expires_at <= now {
         return invalid_request("expires_at must be in the future");
+    }
+    if expires_at > now + Duration::days(MAX_EXPIRY_DAYS) {
+        return invalid_request("expires_at must be within 1 year of creation");
     }
 
     let plaintext_key = PlaintextApiKey::generate(env::prefix_for_env());

@@ -9,7 +9,7 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 - **`hashed_api_key` is `Secret<String>`**: `generic_insert` attaches the `Debug` of the inserted values to its error. Masking keeps the hash out of logs when an insert fails.
 - **`ApiKey` is deliberately not `Serialize`**: it can't be returned from an endpoint by accident. Build a response DTO.
 - **`created_by` is nullable** (`Option<String>` in the model) so a non-user creator, e.g. admin API, can be added later without an `ALTER TABLE`. For now key creation is JWT-only, so the core layer must always set it to the `user_id`.
-- **`expires_at` NULL means never expires.** Whether that is allowed is a core-layer rule, so the column stays nullable. Expiry is not checked in the store.
+- **`expires_at` is `NOT NULL`: there are no never-expiring keys.** The 1-year cap is a core-layer rule (`MAX_EXPIRY_DAYS` in `core/api_key.rs`), not a DB constraint. Expiry is not checked in the store.
 - **`expires_at` must not change after creation**: moving it would let a leaked or old key be extended indefinitely. To get a longer life, create a new key and revoke the old one.
 
 ## Status

@@ -48,7 +48,7 @@ diesel::table! {
         #[max_length = 64]
         created_by -> Nullable<Varchar>,
         created_at -> Timestamp,
-        expires_at -> Nullable<Timestamp>,
+        expires_at -> Timestamp,
         last_modified_at -> Timestamp,
         #[max_length = 64]
         status -> Varchar,

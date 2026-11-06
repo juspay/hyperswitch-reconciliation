@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS api_key (
     prefix VARCHAR(24) NOT NULL,
     created_by VARCHAR(64),
     created_at TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
     last_modified_at TIMESTAMP NOT NULL,
     status VARCHAR(64) NOT NULL
 );
