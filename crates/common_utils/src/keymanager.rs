@@ -254,7 +254,7 @@ pub async fn health_check_key_manager(
         Err(errors::KeyManagerClientError::Unexpected(
             response.bytes().await.unwrap_or_default(),
         ))
-        .attach_printable_lazy(|| format!("Keymanager health check returned status {status}"))
+        .attach_with(|| format!("Keymanager health check returned status {status}"))
     }
 }
 
