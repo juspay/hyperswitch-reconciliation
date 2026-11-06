@@ -1,6 +1,4 @@
-use api_models::api_key::{
-    ApiKeyExpiration, ApiKeyResponse, CreateApiKeyResponse, ListApiKeysResponse,
-};
+use api_models::api_key::{ApiKeyResponse, CreateApiKeyResponse, ListApiKeysResponse};
 use common_enums::ApiKeyStatus;
 use common_utils::date_time;
 use masking::PeekInterface;
@@ -101,6 +99,9 @@ async fn create_rejects_invalid_expiry_and_name() {
     for body in [
         create_body("past", -1),
         json!({ "name": "bad", "expires_at": "forever" }),
+        json!({ "name": "bad", "expires_at": "never" }),
+        json!({ "name": "bad", "expires_at": null }),
+        create_body("too long", 366),
         create_body("   ", 30),
         create_body(&"n".repeat(65), 30),
     ] {
@@ -124,22 +125,20 @@ async fn create_rejects_invalid_expiry_and_name() {
 }
 
 #[tokio::test]
-async fn never_expiring_key_must_be_explicit() {
+async fn expiry_is_capped_at_one_year() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (_, _, token) = client
-        .bootstrap("ak_never_merchant", "ak_never_profile")
-        .await;
+    let (_, _, token) = client.bootstrap("ak_cap_merchant", "ak_cap_profile").await;
 
+    // Just inside the cap (a day of slack for clock drift between test and server).
     let response = client
         .post("/api_keys")
         .with_auth(&token)
-        .json(&json!({ "name": "permanent", "expires_at": "never" }))
+        .json(&create_body("almost a year", 364))
         .send()
         .await;
     assert_eq!(response.status(), 201);
     let created: CreateApiKeyResponse = response.json().await.unwrap();
-    assert_eq!(created.api_key_details.expires_at, ApiKeyExpiration::NEVER);
 
     let response = client
         .get(&format!("/api_keys/{}", created.api_key_details.id))
@@ -147,13 +146,12 @@ async fn never_expiring_key_must_be_explicit() {
         .send()
         .await;
     let fetched: Value = client.expect_success(response).await;
-    assert_eq!(fetched["expires_at"], "never");
+    assert!(fetched["expires_at"].is_string());
 
-    // null is not "never".
     let response = client
         .post("/api_keys")
         .with_auth(&token)
-        .json(&json!({ "name": "null expiry", "expires_at": null }))
+        .json(&create_body("two years", 730))
         .send()
         .await;
     assert_eq!(response.status(), 400);

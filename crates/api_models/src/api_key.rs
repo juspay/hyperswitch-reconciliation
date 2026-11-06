@@ -5,38 +5,6 @@ use serde::{Deserialize, Serialize};
 use time::PrimitiveDateTime;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
-#[serde(untagged)]
-pub enum ApiKeyExpiration {
-    Never(NeverMarker),
-    DateTime(#[serde(with = "common_utils::custom_serde::iso8601")] PrimitiveDateTime),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum NeverMarker {
-    Never,
-}
-
-impl ApiKeyExpiration {
-    pub const NEVER: Self = Self::Never(NeverMarker::Never);
-}
-
-impl From<ApiKeyExpiration> for Option<PrimitiveDateTime> {
-    fn from(expiration: ApiKeyExpiration) -> Self {
-        match expiration {
-            ApiKeyExpiration::Never(_) => None,
-            ApiKeyExpiration::DateTime(date_time) => Some(date_time),
-        }
-    }
-}
-
-impl From<Option<PrimitiveDateTime>> for ApiKeyExpiration {
-    fn from(date_time: Option<PrimitiveDateTime>) -> Self {
-        date_time.map_or(Self::NEVER, Self::DateTime)
-    }
-}
-
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CreateApiKeyRequest {
@@ -44,9 +12,10 @@ pub struct CreateApiKeyRequest {
     pub name: String,
     #[schema(example = "Used by the nightly reporting job")]
     pub description: Option<String>,
-    /// A future datetime, or `"never"`
+    /// A future datetime, at most 1 year after the key is created
     #[schema(example = "2027-01-01T00:00:00.000Z")]
-    pub expires_at: ApiKeyExpiration,
+    #[serde(with = "common_utils::custom_serde::iso8601")]
+    pub expires_at: PrimitiveDateTime,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -76,7 +45,8 @@ pub struct ApiKeyResponse {
     #[serde(with = "common_utils::custom_serde::iso8601")]
     pub created_at: PrimitiveDateTime,
     #[schema(example = "2027-01-01T00:00:00.000Z")]
-    pub expires_at: ApiKeyExpiration,
+    #[serde(with = "common_utils::custom_serde::iso8601")]
+    pub expires_at: PrimitiveDateTime,
     #[schema(example = "2026-01-01T00:00:00.000Z")]
     #[serde(with = "common_utils::custom_serde::iso8601")]
     pub last_modified_at: PrimitiveDateTime,
