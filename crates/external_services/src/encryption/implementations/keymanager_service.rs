@@ -46,7 +46,7 @@ impl ApplicationEncryptionInterface for KeymanagerServiceEncryption {
         )
         .await
         .change_context(ApplicationEncryptionError::EncryptionFailed)
-        .attach_printable("Failed to create key in KeyManager")?;
+        .attach("Failed to create key in KeyManager")?;
 
         Ok(())
     }

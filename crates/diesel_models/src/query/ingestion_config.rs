@@ -2,7 +2,7 @@ use async_bb8_diesel::AsyncRunQueryDsl;
 use common_types::ingestion::ListIngestionConfigsFilters;
 use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use crate::{
     errors,
@@ -32,7 +32,7 @@ impl IngestionConfig {
 
         generics::generic_find_one::<ingestion_config::table, _, _>(conn, predicate)
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while finding ingestion config by profile_id: {profile_id} and ingestion_id: {ingestion_id}")
             })
     }
@@ -70,8 +70,8 @@ impl IngestionConfig {
         )
         .await
         .map_err(|err| {
-            report!(errors::DatabaseError::Others)
-                .attach_printable(format!("Error while listing ingestion configs: {err}"))
+            error_stack::Report::new(errors::DatabaseError::Others)
+                .attach(format!("Error while listing ingestion configs: {err}"))
         })
     }
 
@@ -90,7 +90,7 @@ impl IngestionConfig {
             update,
         )
         .await
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while updating ingestion config with ingestion_id: {ingestion_id}")
         })
     }

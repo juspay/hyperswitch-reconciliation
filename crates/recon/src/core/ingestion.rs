@@ -330,7 +330,7 @@ pub async fn trigger_ingestion(
         })?;
 
     if !ingestion_config.is_active {
-        return Err(error_stack::report!(IngestionError::IngestionNotActive));
+        return Err(error_stack::Report::new(IngestionError::IngestionNotActive));
     }
 
     let merchant_encryptor = state
@@ -549,7 +549,7 @@ pub async fn upload_file_to_ingestion(
         })?;
 
     if !config.is_active {
-        return Err(error_stack::report!(IngestionError::IngestionNotActive));
+        return Err(error_stack::Report::new(IngestionError::IngestionNotActive));
     }
 
     let context = config
@@ -586,21 +586,21 @@ pub async fn download_ingested_file(
     // Check if the ingestion has processed data (file not available if no data)
     let data = history
         .data
-        .ok_or(error_stack::report!(IngestionError::FileNotAvailable))?;
+        .ok_or(error_stack::Report::new(IngestionError::FileNotAvailable))?;
 
     // Extract file key and filename from processed data
     let file_key = data
         .get_file_key()
-        .ok_or(error_stack::report!(IngestionError::FileNotAvailable))?;
+        .ok_or(error_stack::Report::new(IngestionError::FileNotAvailable))?;
 
     let file_name = data
         .get_file_name()
-        .ok_or(error_stack::report!(IngestionError::FileNotAvailable))?;
+        .ok_or(error_stack::Report::new(IngestionError::FileNotAvailable))?;
 
     // Convert PathBuf to &str for file storage
-    let file_key_str = file_key
-        .to_str()
-        .ok_or(error_stack::report!(IngestionError::InternalServerError))?;
+    let file_key_str = file_key.to_str().ok_or(error_stack::Report::new(
+        IngestionError::InternalServerError,
+    ))?;
 
     // Retrieve file from storage
     let file_bytes = state

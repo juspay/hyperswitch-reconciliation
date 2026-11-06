@@ -42,7 +42,7 @@ impl SearchDuplicate {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing search duplicates for staging_entry_id: {staging_entry_id}"
             )
@@ -74,7 +74,7 @@ impl SearchDuplicate {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing search duplicates for transformation_id: {transformation_id}, field_path: {field_path}, hashed_field_value: [REDACTED]"
             )
@@ -92,7 +92,7 @@ impl SearchDuplicate {
             search_duplicate_update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error while updating search duplicates for primary_staging_entry_id: {primary_staging_entry_id}"))
+        .attach_with(|| format!("Error while updating search duplicates for primary_staging_entry_id: {primary_staging_entry_id}"))
     }
 }
 
@@ -116,8 +116,6 @@ impl SearchDuplicateNew {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
-            format!("Error while batch inserting {duplicate_count} search duplicates")
-        })
+        .attach_with(|| format!("Error while batch inserting {duplicate_count} search duplicates"))
     }
 }

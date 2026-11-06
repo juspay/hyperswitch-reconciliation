@@ -40,7 +40,7 @@ pub fn create_client(
             .use_rustls_tls()
             .build()
             .change_context(HttpClientError::ClientConstructionFailed)
-            .attach_printable("Failed to construct client with certificate and certificate key");
+            .attach("Failed to construct client with certificate and certificate key");
     }
 
     // Case 2: Use provided CA certificate for server authentication only (one-way TLS)
@@ -48,13 +48,13 @@ pub fn create_client(
         let pem = ca_pem.expose().replace("\\r\\n", "\n"); // Fix escaped newlines
         let cert = reqwest::Certificate::from_pem(pem.as_bytes())
             .change_context(HttpClientError::ClientConstructionFailed)
-            .attach_printable("Failed to parse CA certificate PEM block")?;
+            .attach("Failed to parse CA certificate PEM block")?;
         let client_builder = get_client_builder(proxy_config)?.add_root_certificate(cert);
         return client_builder
             .use_rustls_tls()
             .build()
             .change_context(HttpClientError::ClientConstructionFailed)
-            .attach_printable("Failed to construct client with CA certificate");
+            .attach("Failed to construct client with CA certificate");
     }
 
     // Case 3: Default client (no certs)
@@ -81,7 +81,7 @@ pub fn get_client_builder(
         client_builder = client_builder.proxy(
             reqwest::Proxy::https(url)
                 .change_context(HttpClientError::InvalidProxyConfiguration)
-                .attach_printable("HTTPS proxy configuration error")?
+                .attach("HTTPS proxy configuration error")?
                 .no_proxy(proxy_exclusion_config.clone()),
         );
     }
@@ -91,7 +91,7 @@ pub fn get_client_builder(
         client_builder = client_builder.proxy(
             reqwest::Proxy::http(url)
                 .change_context(HttpClientError::InvalidProxyConfiguration)
-                .attach_printable("HTTP proxy configuration error")?
+                .attach("HTTP proxy configuration error")?
                 .no_proxy(proxy_exclusion_config),
         );
     }
@@ -143,7 +143,7 @@ fn get_base_client(proxy_config: &Proxy) -> CustomResult<reqwest::Client, HttpCl
             get_client_builder(proxy_config)?
                 .build()
                 .change_context(HttpClientError::ClientConstructionFailed)
-                .attach_printable("Failed to construct base client")
+                .attach("Failed to construct base client")
         })?
         .clone())
 }

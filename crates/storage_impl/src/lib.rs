@@ -22,7 +22,7 @@ pub mod transformation;
 use async_bb8_diesel::AsyncRunQueryDsl;
 use diesel::PgConnection;
 use diesel_models::{errors::DatabaseError, StorageResult};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 pub type PgPool = bb8::Pool<async_bb8_diesel::ConnectionManager<PgConnection>>;
 pub type PgPooledConn<'a> =
@@ -39,9 +39,9 @@ impl Store {
         self.master_pool
             .get()
             .await
-            .map_err(|error| report!(error))
+            .map_err(|error| error_stack::Report::new(error))
             .change_context(DatabaseError::DatabaseConnectionError)
-            .attach_printable("Failed to get database connection from pool")
+            .attach("Failed to get database connection from pool")
     }
 
     pub async fn health_check(&self) -> StorageResult<()> {

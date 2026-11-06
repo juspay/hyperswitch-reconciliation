@@ -36,7 +36,7 @@ impl ReconRuleAccount {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing recon rule accounts for account_id: {account_id} and account_type: {account_type}"
             )

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 use serde::Deserialize;
 
 use recon_interfaces::secrets_interface::{SecretManagementInterface, SecretsManagementError};
@@ -12,6 +12,8 @@ use crate::secrets::implementations::{
     no_encryption::NoEncryption,
     oci_kms::{OciKmsClient, OciKmsConfig},
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// Enum representing configuration options for secrets management.
 #[derive(Debug, Clone, Default, Deserialize)]

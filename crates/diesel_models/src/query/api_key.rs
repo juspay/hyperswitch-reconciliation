@@ -2,7 +2,7 @@ use async_bb8_diesel::AsyncRunQueryDsl;
 use common_enums::ApiKeyStatus;
 use common_utils::{id_type::MerchantId, logging};
 use diesel::{debug_query, pg::Pg, prelude::*, BoolExpressionMethods, ExpressionMethods};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use crate::{
     api_key::{ApiKey, ApiKeyNew},
@@ -50,9 +50,9 @@ impl ApiKey {
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
-        .map_err(|err| report!(err))
+        .map_err(|err| error_stack::Report::new(err))
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing API keys for merchant_id: {}",
                 merchant_id.get_string_repr()

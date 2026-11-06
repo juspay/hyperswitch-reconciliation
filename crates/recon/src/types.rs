@@ -37,4 +37,4 @@ impl<R> ApplicationResponse<R> {
 
 // Type alias for our responses
 pub type ReconResponse<T> =
-    error_stack::Result<ApplicationResponse<T>, crate::errors::ReconAppError>;
+    Result<ApplicationResponse<T>, error_stack::Report<crate::errors::ReconAppError>>;

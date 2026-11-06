@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use actix_web::http::header::HeaderMap;
 use common_utils::id_type::MerchantId;
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use masking::{PeekInterface, Secret};
 use recon_domain_models::ingestion::sftp_internal::SftpInternalIngestionConfig;
 
@@ -38,7 +38,7 @@ pub fn authenticate_sftp_internal(context: &SftpInternalIngestionContext) -> Par
         get_internal_api_key(&context.headers).change_context(invalid_authentication())?;
 
     if request_internal_api_key != context.internal_api_key.peek() {
-        return Err(report!(invalid_authentication()));
+        return Err(error_stack::Report::new(invalid_authentication()));
     }
 
     Ok(())
@@ -73,10 +73,10 @@ pub async fn download_sftp_internal_file(
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| {
-            report!(DownloadStageError::InvalidUrl {
+            error_stack::Report::new(DownloadStageError::InvalidUrl {
                 url: file_key.to_string(),
             })
-            .attach_printable("Could not extract filename from path")
+            .attach("Could not extract filename from path")
         })?
         .to_string();
 

@@ -245,7 +245,7 @@ async fn create_with_related_entities(
     })
     .await
     .change_context(DatabaseError::DatabaseConnectionError)
-    .attach_printable("Failed to create entities in transaction")
+    .attach("Failed to create entities in transaction")
 }
 ```
 
