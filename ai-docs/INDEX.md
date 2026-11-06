@@ -28,7 +28,7 @@ Look in `domains/[feature]/` and read ALL files present:
 <!-- AI-UPDATED: 2026-10-23 - Link config updates, inline processing, and linked-entry lookup navigation -->
 - `linking/` - Entry linking across transaction/confirmation flows on one account
   - [AGENT-NOTES.md](domains/linking/AGENT-NOTES.md) - Final/provisional links, config API/update constraints, matching keys, admin inline processing, linked-entry lookup, enqueue/retry limits, and migration/worker contracts
-- `external-services/` - Secret management, AWS S3/OCI file storage, FaaS invocation, and external integrations
+- `external-services/` - Secret management, AWS S3/OCI file storage, FaaS invocation, Invokr scheduling, and external integrations
 - `file-storage/` - File upload/download API validation, organization, and storage integration gotchas
 - `api-keys/` - Merchant-level API keys: table, store, and design notes
 - `encryption/` - Application encryption system with LocalEncryption and KeymanagerService strategies

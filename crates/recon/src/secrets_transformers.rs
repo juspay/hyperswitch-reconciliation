@@ -1,7 +1,7 @@
 //! Secret transformers for configuration structs
 use async_trait::async_trait;
 use error_stack::{Result, ResultExt};
-use external_services::{ApplicationEncryptionConfig, UserConfig};
+use external_services::{ApplicationEncryptionConfig, SchedulerConfig, UserConfig};
 use masking::{PeekInterface, Secret};
 use recon_interfaces::secrets_interface::{
     secret_handler::SecretsHandler,
@@ -83,6 +83,12 @@ pub async fn fetch_raw_secrets(
         .change_context(SecretsManagementError::FetchSecretFailed)
         .attach_printable("Failed to decrypt HyperSwitch user configuration")?;
 
+    let scheduler =
+        SchedulerConfig::convert_to_raw_secret(conf.scheduler, secret_management_client)
+            .await
+            .change_context(SecretsManagementError::FetchSecretFailed)
+            .attach_printable("Failed to decrypt scheduler configuration")?;
+
     Ok(Config {
         database,
         server: conf.server,
@@ -92,6 +98,7 @@ pub async fn fetch_raw_secrets(
         secrets_management: conf.secrets_management,
         file_storage: conf.file_storage,
         faas: conf.faas,
+        scheduler,
         ingestion_service: conf.ingestion_service,
         reporting_service: conf.reporting_service,
         application_encryption,

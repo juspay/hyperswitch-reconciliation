@@ -11,7 +11,8 @@ use crate::config::{Config, IngestionServiceConfig};
 use crate::openapi::create_openapi;
 use crate::routes::{search_entry_key, search_expectation, search_group};
 use external_services::{
-    faas::FaasHandler, file_storage::FileStorageHandler, ApplicationEncryptionClient,
+    faas::FaasHandler, file_storage::FileStorageHandler, scheduler::SchedulerHandler,
+    ApplicationEncryptionClient,
 };
 use storage_impl::Store;
 
@@ -36,6 +37,7 @@ pub struct AppState {
     pub config: Config<RawSecret>,
     pub file_storage: FileStorageHandler,
     pub faas: FaasHandler,
+    pub scheduler: SchedulerHandler,
     pub ingestion: IngestionState,
     pub recon_processor_status: watch::Sender<ReconProcessorStatus>,
     pub linking_processor_status: watch::Sender<LinkingProcessorStatus>,

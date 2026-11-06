@@ -62,6 +62,17 @@ faas_backend = "aws_lambda"
 region = "us-east-1"
 request_timeout_secs = 30
 
+# Invokr is not deployed for prod yet; switch to "invokr" once it is
+[scheduler]
+scheduler_backend = "noop"
+
+# [scheduler.invokr]
+# base_url = "${INVOKR_BASE_URL}"
+# api_token = "${INVOKR_API_TOKEN}"
+# org_id = "${INVOKR_ORG_ID}"
+# workspace_id = "${INVOKR_WORKSPACE_ID}"
+# request_timeout_secs = 30
+
 [ingestion_service]
 transformation_base_url = "http://localhost:8080"
 
