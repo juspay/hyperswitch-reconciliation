@@ -4,6 +4,25 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.06.1
+
+### Features
+
+- **health:** Add `deep_health` endpoint to check dependencies ([#31](https://github.com/juspay/hyperswitch-reconciliation/pull/31)) ([`196eb93`](https://github.com/juspay/hyperswitch-reconciliation/commit/196eb93101a0d02b4d5f934e26f47d54b3a8c08c))
+
+### Bug Fixes
+
+- **health:** Update health checks for error-stack compatibility ([#40](https://github.com/juspay/hyperswitch-reconciliation/pull/40)) ([`2612746`](https://github.com/juspay/hyperswitch-reconciliation/commit/2612746a4622327613881efafcdfaa10fb1a7851))
+- **ingestion:** Remove adyen webhook secrets from response ([#34](https://github.com/juspay/hyperswitch-reconciliation/pull/34)) ([`9b50bd1`](https://github.com/juspay/hyperswitch-reconciliation/commit/9b50bd185a8eddb958e1e4a244f9f967bd687535))
+
+### Miscellaneous Tasks
+
+- **deps:** Bump vulnerable dependencies to their patched versions ([#32](https://github.com/juspay/hyperswitch-reconciliation/pull/32)) ([`4024329`](https://github.com/juspay/hyperswitch-reconciliation/commit/40243296be574ed4f9d6e9cb3fba66fb5a6904d9))
+
+**Full Changelog:** [`2026.11.06.0...2026.11.06.1`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.06.0...2026.11.06.1)
+
+- - -
+
 ## 2026.11.06.0
 
 ### Bug Fixes
