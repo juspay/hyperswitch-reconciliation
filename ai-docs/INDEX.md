@@ -36,7 +36,8 @@ Look in `domains/[feature]/` and read ALL files present:
 - `transactions/` - Transaction lifecycle, versioning, entries, and profile overview aggregation
   - `OVERVIEW-API.md` - Non-obvious aggregation, status, and time-range semantics
   - `MANUAL-RECONCILIATION.md` - Exception-management reconcile endpoints (v1 and the v2 delta API)
-- `reporting/` - Triggers per-rule transaction/exception reports via the generic FaaS invocation client
+<!-- AI-UPDATED: 2026-11-02 - Linked-entry report endpoint -->
+- `reporting/` - Triggers per-rule transaction/exception/linked-entry reports via the generic FaaS invocation client
   - `AGENT-NOTES.md` - Why validation lives in core, the Lambda `event` contract, and gotchas
 
 ### WHEN IMPLEMENTING FEATURES

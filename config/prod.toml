@@ -82,6 +82,7 @@ force_path_style = true
 [reporting_service]
 transaction_report_function = "recon-transactions-report"
 exception_report_function = "recon-exceptions-report"
+linked_entry_report_function = "recon-linked-entry-report"
 
 [proxy]
 https_url = "http://hyperswitch-outgoing-proxy-1f4d1706e4bc104d.elb.us-east-1.amazonaws.com:80"

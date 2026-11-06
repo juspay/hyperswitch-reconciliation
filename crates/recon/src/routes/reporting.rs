@@ -1,5 +1,7 @@
 use actix_web::{web, HttpRequest, Responder};
-use api_models::reporting::{ExceptionReportFilters, TransactionReportFilters};
+use api_models::reporting::{
+    ExceptionReportFilters, LinkedEntryReportFilters, TransactionReportFilters,
+};
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
@@ -74,6 +76,37 @@ pub async fn trigger_exception_report(
         state,
         |state, auth| async move {
             core::reporting::generate_exception_report(state, auth, req.into_inner()).await
+        },
+    )
+    .await
+}
+
+/// Trigger a linked entry report
+#[utoipa::path(
+    post,
+    path = "/report/linked-entry",
+    tag = "Reports",
+    request_body = LinkedEntryReportFilters,
+    responses(
+        (status = 200, description = "Linked entry report triggered"),
+        (status = 400, description = "Invalid time range"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Recon rule not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    security(("Bearer" = []))
+)]
+pub async fn trigger_linked_entry_report(
+    state: web::Data<AppState>,
+    req: web::Json<LinkedEntryReportFilters>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    api::server_wrap(
+        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        &http_req,
+        state,
+        |state, auth| async move {
+            core::reporting::generate_linked_entry_report(state, auth, req.into_inner()).await
         },
     )
     .await

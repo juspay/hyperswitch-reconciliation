@@ -466,6 +466,10 @@ impl Report {
                 web::resource("/exceptions")
                     .route(web::post().to(reporting::trigger_exception_report)),
             )
+            .service(
+                web::resource("/linked-entry")
+                    .route(web::post().to(reporting::trigger_linked_entry_report)),
+            )
     }
 }
 
