@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.06.0
+
+### Bug Fixes
+
+- **linking:** Make entry linking fields non null ([#39](https://github.com/juspay/hyperswitch-reconciliation/pull/39)) ([`330597d`](https://github.com/juspay/hyperswitch-reconciliation/commit/330597d4a1b03ce626ac2d513a9ee7b340658443))
+
+**Full Changelog:** [`2026.11.05.0...2026.11.06.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.05.0...2026.11.06.0)
+
+- - -
+
 ## 2026.11.05.0
 
 ### Bug Fixes
