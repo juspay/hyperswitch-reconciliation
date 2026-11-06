@@ -1383,3 +1383,26 @@ pub enum Granularity {
     Week,
     Month,
 }
+
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    PartialEq,
+    serde::Deserialize,
+    serde::Serialize,
+    strum::Display,
+    strum::EnumIter,
+    ToSchema,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum HealthComponent {
+    Database,
+    Encryption,
+    UserClient,
+    ReconProcessor,
+    LinkingProcessor,
+}
