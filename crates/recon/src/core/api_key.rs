@@ -73,11 +73,6 @@ pub async fn create_api_key(
     request: CreateApiKeyRequest,
     auth_context: ManagementAuthContext,
 ) -> ApiKeyResult<CreateApiKeyResponse> {
-    let hash_key = state
-        .api_key_hash_key
-        .as_ref()
-        .ok_or_else(|| report!(ApiKeyError::ApiKeysNotEnabled))?;
-
     validate_name(&request.name)?;
     if let Some(description) = &request.description {
         validate_description(description)?;
@@ -98,7 +93,7 @@ pub async fn create_api_key(
             merchant_id: auth_context.merchant_id,
             name: request.name.trim().to_string(),
             description: request.description,
-            hashed_api_key: Secret::new(plaintext_key.hash(hash_key).into()),
+            hashed_api_key: plaintext_key.hash(&state.api_key_hash_key).into(),
             prefix: plaintext_key.display_prefix(),
             created_by: auth_context.user_id,
             created_at: now,

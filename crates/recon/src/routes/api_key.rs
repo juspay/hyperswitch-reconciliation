@@ -22,7 +22,7 @@ use crate::{
     request_body = CreateApiKeyRequest,
     responses(
         (status = 201, description = "API key created. The key is only shown in this response", body = CreateApiKeyResponse),
-        (status = 400, description = "Invalid request, or API keys are not enabled"),
+        (status = 400, description = "Invalid request"),
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
         (status = 500, description = "Internal server error"),
     ),

@@ -13,9 +13,6 @@ pub enum ApiKeyError {
     #[error("API key not found")]
     ApiKeyNotFound,
 
-    #[error("API keys are not enabled")]
-    ApiKeysNotEnabled,
-
     #[error("{message}")]
     InvalidRequest { message: String },
 }
@@ -27,9 +24,7 @@ impl From<ApiKeyError> for ReconAppError {
         match error {
             ApiKeyError::InternalServerError => Self::InternalServerError,
             ApiKeyError::ApiKeyNotFound => Self::ResourceNotFound(error.to_string()),
-            ApiKeyError::ApiKeysNotEnabled | ApiKeyError::InvalidRequest { .. } => {
-                Self::ValidationError(error.to_string())
-            }
+            ApiKeyError::InvalidRequest { .. } => Self::ValidationError(error.to_string()),
         }
     }
 }
@@ -45,9 +40,6 @@ impl ErrorSwitchFrom<ApiKeyError> for ApiErrorPayload {
             )),
             ApiKeyError::ApiKeyNotFound => {
                 Self::NotFound(ApiError::new("RE", 1701, "API key not found", None))
-            }
-            ApiKeyError::ApiKeysNotEnabled => {
-                Self::BadRequest(ApiError::new("RE", 1702, "API keys are not enabled", None))
             }
             ApiKeyError::InvalidRequest { message } => {
                 Self::BadRequest(ApiError::new("RE", 1703, message, None))
