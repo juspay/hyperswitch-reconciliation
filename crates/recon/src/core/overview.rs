@@ -19,7 +19,8 @@ use common_utils::{auth::AuthContext, date_time};
 use diesel_models::staging_entry::StagingEntryOverviewRow;
 use error_stack::{report, ResultExt};
 use storage_impl::{
-    account::AccountInterface, recon_rule::ReconRuleInterface, transaction::TransactionInterface,
+    account::AccountInterface, recon_rule::ReconRuleInterface,
+    transaction::TransactionReadInterface,
 };
 
 use crate::{

@@ -6,6 +6,7 @@ use crate::transaction::{
     TransactionRuleView, TransactionRuleViewPage, TransactionTimeBucketRow,
 };
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::{date_trunc, generics},
     recon_rule::ReconRule,
@@ -16,7 +17,7 @@ use crate::{
     transaction::{
         ExpectedSourceAppendUpdateInternal, Transaction, TransactionNew, TransactionUpdateInternal,
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 use async_bb8_diesel::AsyncRunQueryDsl;
 use bigdecimal::BigDecimal;
@@ -107,29 +108,30 @@ where
 }
 
 impl Transaction {
-    pub async fn find_by_id(conn: &PgPooledConn, id: String) -> StorageResult<Self> {
-        generics::generic_find_one::<transaction::table, _, _>(conn, dsl::id.eq(id)).await
+    pub async fn find_by_id(conn: &impl ReadConnection, id: String) -> StorageResult<Self> {
+        generics::generic_find_one::<transaction::table, _, _>(conn.async_conn(), dsl::id.eq(id))
+            .await
     }
 
     pub async fn find_by_id_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: String,
         profile_id: String,
     ) -> StorageResult<Self> {
         generics::generic_find_one::<transaction::table, _, _>(
-            conn,
+            conn.async_conn(),
             dsl::id.eq(id).and(dsl::profile_id.eq(profile_id)),
         )
         .await
     }
 
     pub async fn find_latest_version_by_logical_id_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<Self>> {
         generics::generic_find_one_optional::<transaction::table, _, _>(
-            conn,
+            conn.async_conn(),
             dsl::transaction_id
                 .eq(transaction_id.to_owned())
                 .and(dsl::profile_id.eq(profile_id.to_owned()))
@@ -144,12 +146,12 @@ impl Transaction {
     }
 
     pub async fn find_by_transaction_id_and_version(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transaction_id: &str,
         version: i32,
     ) -> StorageResult<Self> {
         generics::generic_find_one::<transaction::table, _, _>(
-            conn,
+            conn.async_conn(),
             dsl::transaction_id
                 .eq(transaction_id.to_owned())
                 .and(dsl::version.eq(version)),
@@ -158,7 +160,7 @@ impl Transaction {
     }
 
     pub async fn list_by_transaction_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transaction_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Self>> {
@@ -174,7 +176,7 @@ impl Transaction {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<transaction::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -193,7 +195,7 @@ impl Transaction {
     }
 
     pub async fn list_transactions_by_primary_ids_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         primary_transaction_ids: &[String],
         profile_id: &str,
         limit: Option<i64>,
@@ -211,7 +213,7 @@ impl Transaction {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transaction::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -224,12 +226,12 @@ impl Transaction {
     }
 
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         id: &str,
         transaction_update: TransactionUpdateInternal,
     ) -> StorageResult<Self> {
         generics::generic_update_with_unique_predicate_get_result::<transaction::table, _, _, _>(
-            conn,
+            conn.async_conn(),
             dsl::id.eq(id.to_owned()),
             transaction_update,
         )
@@ -238,7 +240,7 @@ impl Transaction {
     }
 
     pub async fn append_expected_source_entry(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         id: &str,
         update: ExpectedSourceAppendUpdateInternal,
     ) -> StorageResult<Self> {
@@ -260,7 +262,7 @@ impl Transaction {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transaction::table, _, _>(
-            query.get_result_async(conn),
+            query.get_result_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Update,
         )
         .await
@@ -271,7 +273,7 @@ impl Transaction {
     }
 
     pub async fn list_with_accounts_and_entries(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: TransactionAccountFilters,
         limit: Option<i64>,
@@ -349,7 +351,7 @@ impl Transaction {
                     account::all_columns,
                     recon_rule::all_columns,
                 ))
-                .get_results_async(conn),
+                .get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -372,7 +374,7 @@ impl Transaction {
     }
 
     pub async fn aggregate_status_counts_by_rule(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         time_range: TimeRange,
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
@@ -417,7 +419,7 @@ impl Transaction {
 
         let rows: Vec<TransactionOverviewSummaryRowTuple> =
             generics::db_metrics::track_database_call::<transaction::table, _, _>(
-                query.get_results_async(conn),
+                query.get_results_async(conn.async_conn()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -457,7 +459,7 @@ impl Transaction {
     }
 
     pub async fn aggregate_status_counts_by_rule_and_account(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         time_range: TimeRange,
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
@@ -538,7 +540,7 @@ impl Transaction {
 
         let rows: Vec<RuleAccountTransactionOverviewSummaryRowTuple> =
             generics::db_metrics::track_database_call::<entry::table, _, _>(
-                query.get_results_async(conn),
+                query.get_results_async(conn.async_conn()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -586,7 +588,7 @@ impl Transaction {
     }
 
     pub async fn list_v2_paginated(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: TransactionListFiltersV2,
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
@@ -733,7 +735,7 @@ impl Transaction {
 
         let mut page_rows: Vec<(Self, ReconRule)> =
             generics::db_metrics::track_database_call::<transaction::table, _, _>(
-                query.get_results_async(conn),
+                query.get_results_async(conn.async_conn()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -765,7 +767,7 @@ impl Transaction {
     }
 
     pub async fn aggregate_time_series_status_counts_by_rule(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         time_range: DefinedTimeRange,
         granularity: Granularity,
@@ -816,7 +818,7 @@ impl Transaction {
 
         let rows: Vec<TransactionOverviewRowTuple> =
             generics::db_metrics::track_database_call::<transaction::table, _, _>(
-                query.get_results_async(conn),
+                query.get_results_async(conn.async_conn()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -863,7 +865,7 @@ impl Transaction {
 }
 
 impl TransactionNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<Transaction> {
-        generics::generic_insert(conn, self).await
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<Transaction> {
+        generics::generic_insert(conn.async_conn(), self).await
     }
 }

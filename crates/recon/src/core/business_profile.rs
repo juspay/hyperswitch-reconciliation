@@ -8,7 +8,7 @@ use error_stack::ResultExt;
 use futures::future;
 use masking::PeekInterface;
 use recon_domain_models::{behaviour::ReverseConversion, business_profile::DomainBusinessProfile};
-use storage_impl::business_profile::BusinessProfileInterface;
+use storage_impl::business_profile::{BusinessProfileReadInterface, BusinessProfileWriteInterface};
 
 use crate::{
     errors::{

@@ -20,7 +20,7 @@ use thiserror::Error;
 
 use storage_impl::{
     metadata_schema::MetadataSchemaInterface, search_entry_link_key::SearchEntryLinkSearchCriteria,
-    transaction::TransactionInterface, transformation::TransformationConfigInterface,
+    transaction::TransactionReadInterface, transformation::TransformationConfigInterface,
 };
 
 use crate::{

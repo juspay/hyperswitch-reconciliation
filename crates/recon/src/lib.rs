@@ -4,10 +4,7 @@ use actix_web::{
     middleware::ErrorHandlers,
     web, App,
 };
-use async_bb8_diesel::ConnectionManager;
-use bb8::Pool;
 use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
-use diesel::PgConnection;
 use external_services::{faas::FaasHandler, file_storage::FileStorageHandler};
 use http::StatusCode;
 use recon_interfaces::secrets_interface::secret_state::{RawSecret, SecuredSecret};
@@ -96,13 +93,10 @@ pub async fn initialize_server(
             .await
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
 
-    // Create connection pool
-    let manager =
-        ConnectionManager::<PgConnection>::new(config.database.get_inner().get_database_url());
-    let pool = Pool::builder()
-        .build(manager)
+    // Create database store
+    let store = storage_impl::Store::new(config.database.get_inner())
         .await
-        .map_err(|e| format!("Failed to create connection pool: {e}"))?;
+        .map_err(|e| format!("Failed to create database store: {e:?}"))?;
 
     // Create file storage handler
     let file_storage = FileStorageHandler::from_config(&config.file_storage)
@@ -144,7 +138,7 @@ pub async fn initialize_server(
 
     // Create app state
     let state = AppState {
-        store: storage_impl::Store { master_pool: pool },
+        store,
         config: config.clone(),
         file_storage,
         faas,

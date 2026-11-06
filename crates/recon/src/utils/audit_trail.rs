@@ -15,7 +15,7 @@ use common_utils::auth::AuthContext;
 use error_stack::ResultExt;
 use std::ops::Not;
 use storage_impl::{
-    ingestion_history::IngestionHistoryInterface, transaction::TransactionInterface,
+    ingestion_history::IngestionHistoryInterface, transaction::TransactionReadInterface,
 };
 
 use crate::{
