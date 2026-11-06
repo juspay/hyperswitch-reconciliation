@@ -76,7 +76,7 @@ impl HyperswitchClient {
             Err(HyperswitchClientError::Unexpected(
                 response.bytes().await.unwrap_or_default(),
             ))
-            .attach_printable_lazy(|| format!("Hyperswitch health check returned status {status}"))
+            .attach_with(|| format!("Hyperswitch health check returned status {status}"))
         }
     }
 }

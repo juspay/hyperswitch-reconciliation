@@ -3,7 +3,7 @@ use std::time::Duration;
 use api_models::health::ComponentHealth;
 use common_enums::HealthComponent;
 use common_utils::logging;
-use error_stack::{report, ResultExt};
+use error_stack::{Report, ResultExt};
 
 use crate::{errors::health::HealthCheckError, routes::AppState};
 
@@ -33,14 +33,14 @@ pub async fn check(state: &AppState, component: HealthComponent) -> ComponentHea
                 if state.recon_processor_status.receiver_count() > 0 {
                     Ok(())
                 } else {
-                    Err(report!(HealthCheckError::ProcessorNotAlive))
+                    Err(Report::new(HealthCheckError::ProcessorNotAlive))
                 }
             }
             HealthComponent::LinkingProcessor => {
                 if state.linking_processor_status.receiver_count() > 0 {
                     Ok(())
                 } else {
-                    Err(report!(HealthCheckError::ProcessorNotAlive))
+                    Err(Report::new(HealthCheckError::ProcessorNotAlive))
                 }
             }
         }
@@ -48,7 +48,7 @@ pub async fn check(state: &AppState, component: HealthComponent) -> ComponentHea
 
     let result = tokio::time::timeout(CHECK_TIMEOUT, health_check)
         .await
-        .unwrap_or_else(|_| Err(report!(HealthCheckError::TimedOut)));
+        .unwrap_or_else(|_| Err(Report::new(HealthCheckError::TimedOut)));
 
     match result {
         Ok(()) => ComponentHealth::Healthy { component },

@@ -49,9 +49,9 @@ impl Store {
         diesel::select(diesel::dsl::sql::<diesel::sql_types::Integer>("1"))
             .get_result_async::<i32>(&*conn)
             .await
-            .map_err(|error| report!(error))
+            .map_err(|error| error_stack::Report::new(error))
             .change_context(DatabaseError::QueryFailed)
-            .attach_printable("Database health check query failed")?;
+            .attach_with(|| "Database health check query failed".to_string())?;
         Ok(())
     }
 }
