@@ -182,7 +182,10 @@ impl TestClient {
         let response = self
             .client
             .post(format!("{}/auth/bootstrap", self.base_url))
-            .header("api-key", "test_admin_12345678901234567890")
+            .header(
+                "Authorization",
+                "admin-api-key=test_admin_12345678901234567890",
+            )
             .json(&payload)
             .send()
             .await
@@ -285,7 +288,10 @@ impl RequestBuilder {
 
     pub fn with_admin_key(self) -> Self {
         // Use the admin API key from test config
-        self.header("api-key", "test_admin_12345678901234567890")
+        self.header(
+            "Authorization",
+            "admin-api-key=test_admin_12345678901234567890",
+        )
     }
 
     pub fn with_internal_key(self) -> Self {

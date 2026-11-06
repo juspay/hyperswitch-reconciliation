@@ -18,6 +18,9 @@ pub trait ApiKeyInterface {
         api_key_id: &str,
     ) -> StorageResult<ApiKey>;
 
+    /// Authentication lookup. Not scoped by merchant, so the caller must compare `merchant_id`.
+    async fn find_active_api_key_by_hash(&self, hashed_api_key: &str) -> StorageResult<ApiKey>;
+
     async fn update_api_key(
         &self,
         merchant_id: &MerchantId,
@@ -53,6 +56,12 @@ impl ApiKeyInterface for Store {
             api_key_id,
         )
         .await
+    }
+
+    async fn find_active_api_key_by_hash(&self, hashed_api_key: &str) -> StorageResult<ApiKey> {
+        let conn = self.get_connection().await?;
+
+        ApiKey::find_active_by_hashed_api_key(conn.as_async_conn(), hashed_api_key).await
     }
 
     async fn update_api_key(
