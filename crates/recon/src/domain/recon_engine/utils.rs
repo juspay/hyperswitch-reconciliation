@@ -13,7 +13,7 @@ use common_types::{
     units::MinorUnit,
 };
 use common_utils::{crypto::EncryptableValue, id_type::MerchantId};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use masking::{ExposeInterface, Secret};
 use recon_domain_models::{
     behaviour::ReverseConversion,
@@ -66,7 +66,9 @@ pub fn extract_unique_field(
         values
             .into_iter()
             .map(|(field, value)| {
-                value.ok_or_else(|| report!(ProcessingError::MissingUniqueField(field)))
+                value.ok_or_else(|| {
+                    error_stack::Report::new(ProcessingError::MissingUniqueField(field))
+                })
             })
             .collect::<Result<Vec<_>, _>>()?,
         &separator,
@@ -116,7 +118,7 @@ pub async fn resolve_searchable_keys_by_config(
                 .get(&metadata_schema_id)
                 .cloned()
                 .ok_or_else(|| {
-                    report!(ProcessingError::InternalError(format!(
+                    error_stack::Report::new(ProcessingError::InternalError(format!(
                         "metadata schema {metadata_schema_id} not found for transformation config {config_id}"
                     )))
                 })?;
@@ -134,7 +136,7 @@ pub fn searchable_keys_for_entry<'a>(
             .get(config_id)
             .map(Vec::as_slice)
             .ok_or_else(|| {
-                report!(ProcessingError::InternalError(format!(
+                error_stack::Report::new(ProcessingError::InternalError(format!(
                     "searchable keys not resolved for transformation config {config_id}"
                 )))
             }),
@@ -538,9 +540,11 @@ impl EntryDataWithClassificationVecExt for Vec<EntryDataWithClassification> {
         let entry_count = self.len();
 
         if entry_count > MAX_ENTRIES_PER_TRANSACTION {
-            return Err(report!(ProcessingError::InternalError(format!(
+            return Err(error_stack::Report::new(ProcessingError::InternalError(
+                format!(
                 "Transaction entry count {entry_count} exceeds limit {MAX_ENTRIES_PER_TRANSACTION}"
-            ))));
+            ),
+            )));
         }
 
         Ok(())

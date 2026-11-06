@@ -68,7 +68,8 @@ impl SecretsHandler for UserConfig {
     async fn convert_to_raw_secret(
         value: SecretStateContainer<Self, SecuredSecret>,
         secret_management_client: &dyn SecretManagementInterface,
-    ) -> error_stack::Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
+    ) -> Result<SecretStateContainer<Self, RawSecret>, error_stack::Report<SecretsManagementError>>
+    {
         let config = value.get_inner();
 
         match config {

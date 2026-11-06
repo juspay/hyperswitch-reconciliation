@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use common_utils::{
     crypto,
-    errors::CustomResult,
+    errors::{CustomResult, KeyManagerClientError},
     keymanager,
     types::keymanager::{EncryptionCreateRequest, Identifier, KeyManagerState},
 };
@@ -25,6 +25,10 @@ impl KeymanagerServiceEncryption {
     pub fn new(keymanager_state: KeyManagerState) -> Self {
         Self { keymanager_state }
     }
+
+    pub async fn health_check(&self) -> CustomResult<(), KeyManagerClientError> {
+        keymanager::health_check_key_manager(&self.keymanager_state).await
+    }
 }
 
 #[async_trait]
@@ -42,7 +46,7 @@ impl ApplicationEncryptionInterface for KeymanagerServiceEncryption {
         )
         .await
         .change_context(ApplicationEncryptionError::EncryptionFailed)
-        .attach_printable("Failed to create key in KeyManager")?;
+        .attach("Failed to create key in KeyManager")?;
 
         Ok(())
     }

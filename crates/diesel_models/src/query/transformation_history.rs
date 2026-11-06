@@ -2,7 +2,6 @@ use async_bb8_diesel::AsyncRunQueryDsl;
 use common_types::transformation::ListTransformationHistoryFilters;
 use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
-use error_stack::report;
 
 use crate::{
     errors,
@@ -46,10 +45,10 @@ impl TransformationHistory {
             .await
             .map(|(history, config)| TransformationConfigHistoryView { config, history })
             .map_err(|err| match err {
-                DieselError::NotFound => report!(err)
+                DieselError::NotFound => error_stack::Report::new(err)
                     .change_context(errors::DatabaseError::NotFound)
-                    .attach_printable(format!("Transformation history not found for id {id}")),
-                _ => report!(errors::DatabaseError::Others).attach_printable(format!(
+                    .attach(format!("Transformation history not found for id {id}")),
+                _ => error_stack::Report::new(errors::DatabaseError::Others).attach(format!(
                     "Error while fetching transformation history for id {id}: {err}"
                 )),
             })
@@ -90,7 +89,7 @@ impl TransformationHistory {
         )
         .await
         .map_err(|err| {
-            report!(errors::DatabaseError::Others).attach_printable(format!(
+            error_stack::Report::new(errors::DatabaseError::Others).attach(format!(
                 "Error while listing transformation history by transformation_id: {err}"
             ))
         })
@@ -146,7 +145,7 @@ impl TransformationHistory {
                     .collect()
             })
             .map_err(|err| {
-                report!(errors::DatabaseError::Others).attach_printable(format!(
+                error_stack::Report::new(errors::DatabaseError::Others).attach(format!(
                     "Error while listing transformation history for profile_id: {profile_id}: {err}"
                 ))
             })

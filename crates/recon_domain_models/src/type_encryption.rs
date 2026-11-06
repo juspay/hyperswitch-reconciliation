@@ -260,7 +260,7 @@ pub mod encrypt {
             // Extract raw bytes from versioned format if needed
             let raw_bytes = encrypted_data.to_raw_bytes().map_err(|err| {
                 error_stack::Report::new(errors::CryptoError::DecodingFailed)
-                    .attach_printable(format!("Failed to extract raw bytes: {err}"))
+                    .attach(format!("Failed to extract raw bytes: {err}"))
             })?;
 
             let encrypted_secret = Secret::new(raw_bytes);
@@ -324,7 +324,7 @@ pub mod encrypt {
                     // Extract raw bytes from versioned format
                     let raw_bytes = v.to_raw_bytes().map_err(|err| {
                         error_stack::Report::new(errors::CryptoError::DecodingFailed)
-                            .attach_printable(format!("Failed to extract raw bytes: {err}"))
+                            .attach(format!("Failed to extract raw bytes: {err}"))
                     })?;
 
                     let encrypted_secret = Secret::new(raw_bytes);
@@ -419,7 +419,7 @@ pub mod encrypt {
             // Extract raw bytes from versioned format
             let raw_bytes = encrypted_data.to_raw_bytes().map_err(|err| {
                 error_stack::Report::new(errors::CryptoError::DecodingFailed)
-                    .attach_printable(format!("Failed to extract raw bytes: {err}"))
+                    .attach(format!("Failed to extract raw bytes: {err}"))
             })?;
 
             let encrypted_secret = Secret::new(raw_bytes);
@@ -483,7 +483,7 @@ pub mod encrypt {
                     // Extract raw bytes from versioned format
                     let raw_bytes = v.to_raw_bytes().map_err(|err| {
                         error_stack::Report::new(errors::CryptoError::DecodingFailed)
-                            .attach_printable(format!("Failed to extract raw bytes: {err}"))
+                            .attach(format!("Failed to extract raw bytes: {err}"))
                     })?;
 
                     let encrypted_secret = Secret::new(raw_bytes);
@@ -504,7 +504,7 @@ pub mod encrypt {
         fn serialize_json_bytes(&self) -> CustomResult<Secret<Vec<u8>>, errors::CryptoError> {
             common_utils::ext_traits::Encode::encode_to_vec(self.inner())
                 .change_context(errors::CryptoError::EncodingFailed)
-                .attach_printable("Failed to JSON serialize data before encryption")
+                .attach("Failed to JSON serialize data before encryption")
                 .map(Secret::new)
         }
 
@@ -519,7 +519,7 @@ pub mod encrypt {
                 .as_slice()
                 .parse_struct::<T>(std::any::type_name::<T>())
                 .map(|result| Secret::new(Self::from(result)))
-                .attach_printable("Failed to JSON deserialize data after decryption")
+                .attach("Failed to JSON deserialize data after decryption")
         }
     }
 
@@ -625,9 +625,7 @@ pub mod encrypt {
                     let original_value = masked_data
                         .get(&key)
                         .ok_or(errors::CryptoError::EncodingFailed)
-                        .attach_printable_lazy(|| {
-                            format!("Failed to find {key} in input hashmap")
-                        })?;
+                        .attach_with(|| format!("Failed to find {key} in input hashmap"))?;
                     map.insert(
                         key,
                         Self::new(original_value.clone(), value.into_encrypted()),
@@ -694,9 +692,7 @@ pub mod encrypt {
                     let original_value = masked_data
                         .get(&key)
                         .ok_or(errors::CryptoError::EncodingFailed)
-                        .attach_printable_lazy(|| {
-                            format!("Failed to find {key} in input hashmap")
-                        })?;
+                        .attach_with(|| format!("Failed to find {key} in input hashmap"))?;
                     map.insert(
                         key,
                         Self::new(original_value.clone(), value.into_encrypted()),
@@ -811,7 +807,7 @@ pub mod encrypt {
             // Extract raw bytes from versioned format if needed
             let raw_bytes = encrypted_data.to_raw_bytes().map_err(|err| {
                 error_stack::Report::new(errors::CryptoError::DecodingFailed)
-                    .attach_printable(format!("Failed to extract raw bytes: {err}"))
+                    .attach(format!("Failed to extract raw bytes: {err}"))
             })?;
 
             let encrypted_secret = Secret::new(raw_bytes);
@@ -870,7 +866,7 @@ pub mod encrypt {
                     // Extract raw bytes from versioned format
                     let raw_bytes = v.to_raw_bytes().map_err(|err| {
                         error_stack::Report::new(errors::CryptoError::DecodingFailed)
-                            .attach_printable(format!("Failed to extract raw bytes: {err}"))
+                            .attach(format!("Failed to extract raw bytes: {err}"))
                     })?;
 
                     let encrypted_secret = Secret::new(raw_bytes);

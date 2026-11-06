@@ -21,7 +21,7 @@ let account = state
 // Add context to any error
 let result = some_operation()
     .change_context(AccountError::InternalServerError)
-    .attach_printable("Failed during account validation")?;
+    .attach("Failed during account validation")?;
 ```
 
 ## Full Implementation
@@ -102,7 +102,7 @@ pub async fn create_account(
         .insert_account(account_new)
         .await
         .to_duplicate_response(|| AccountError::AccountAlreadyExists)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Attempted to create duplicate account: {account_id}")
         })?;
     
@@ -122,7 +122,7 @@ pub async fn transfer_between_accounts(
         .find_account_by_id(from_id)
         .await
         .to_not_found_response(|| AccountError::AccountNotFound)
-        .attach_printable_lazy(|| format!("Source account not found: {from_id}"))?;
+        .attach_with(|| format!("Source account not found: {from_id}"))?;
     
     // Get destination account
     let to_account = state
@@ -130,7 +130,7 @@ pub async fn transfer_between_accounts(
         .find_account_by_id(to_id)
         .await
         .to_not_found_response(|| AccountError::AccountNotFound)
-        .attach_printable_lazy(|| format!("Destination account not found: {to_id}"))?;
+        .attach_with(|| format!("Destination account not found: {to_id}"))?;
     
     // Validate currencies match
     if from_account.currency != amount.currency() {
@@ -151,7 +151,7 @@ pub async fn transfer_between_accounts(
         .transfer_funds(from_id, to_id, amount)
         .await
         .change_context(AccountError::InternalServerError)
-        .attach_printable("Database transaction failed during transfer")?;
+        .attach("Database transaction failed during transfer")?;
     
     Ok(TransferResponse::from(transfer))
 }
@@ -218,7 +218,7 @@ pub async fn handle_transfer(
 - **Module-specific errors** - Each module has its own error enum
 - **StorageErrorExt trait** - Converts DB errors appropriately
 - **change_context** - Transform errors between types
-- **attach_printable** - Add debugging context
+- **attach** - Add debugging context
 - **Error codes** - Machine-readable codes for clients
 - **server_wrap** - Handles error to HTTP response conversion
 
@@ -240,5 +240,5 @@ pub async fn handle_transfer(
 - to_not_found_response for GET operations
 - to_duplicate_response for CREATE operations
 - change_context loses original error type (but keeps message)
-- attach_printable adds context without changing error type
+- attach adds context without changing error type
 - server_wrap converts any error to HTTP response

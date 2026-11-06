@@ -20,7 +20,7 @@ use diesel_models::{
     staging_entry::StagingEntryOverviewRow,
     transaction::{RuleAccountTransactionOverviewRow, TransactionOverviewRow},
 };
-use error_stack::{report, Report, ResultExt};
+use error_stack::{Report, ResultExt};
 use strum::IntoEnumIterator;
 use time::{Date, Duration, PrimitiveDateTime, Time};
 
@@ -62,7 +62,7 @@ impl GranularityExt for Granularity {
         match self {
             Self::Hour => Ok(value.replace_time(
                 Time::from_hms(value.hour(), 0, 0)
-                    .map_err(|_| report!(OverviewError::InternalServerError))?,
+                    .map_err(|_| Report::new(OverviewError::InternalServerError))?,
             )),
             Self::Day => Ok(value.replace_time(Time::MIDNIGHT)),
             Self::Week => {
@@ -70,12 +70,12 @@ impl GranularityExt for Granularity {
                 let date = value
                     .date()
                     .checked_sub(Duration::days(days_since_monday))
-                    .ok_or_else(|| report!(OverviewError::InternalServerError))?;
+                    .ok_or_else(|| Report::new(OverviewError::InternalServerError))?;
                 Ok(PrimitiveDateTime::new(date, Time::MIDNIGHT))
             }
             Self::Month => {
                 let date = Date::from_calendar_date(value.year(), value.month(), 1)
-                    .map_err(|_| report!(OverviewError::InternalServerError))?;
+                    .map_err(|_| Report::new(OverviewError::InternalServerError))?;
                 Ok(PrimitiveDateTime::new(date, Time::MIDNIGHT))
             }
         }
@@ -88,27 +88,27 @@ impl GranularityExt for Granularity {
         match self {
             Self::Hour => bucket_start
                 .checked_add(Duration::HOUR)
-                .ok_or_else(|| report!(OverviewError::InternalServerError)),
+                .ok_or_else(|| Report::new(OverviewError::InternalServerError)),
             Self::Day => bucket_start
                 .checked_add(Duration::DAY)
-                .ok_or_else(|| report!(OverviewError::InternalServerError)),
+                .ok_or_else(|| Report::new(OverviewError::InternalServerError)),
             Self::Week => bucket_start
                 .checked_add(Duration::WEEK)
-                .ok_or_else(|| report!(OverviewError::InternalServerError)),
+                .ok_or_else(|| Report::new(OverviewError::InternalServerError)),
             Self::Month => {
                 let date = bucket_start.date();
                 let (year, month) = if date.month() == time::Month::December {
                     (
                         date.year()
                             .checked_add(1)
-                            .ok_or_else(|| report!(OverviewError::InternalServerError))?,
+                            .ok_or_else(|| Report::new(OverviewError::InternalServerError))?,
                         time::Month::January,
                     )
                 } else {
                     (date.year(), date.month().next())
                 };
                 let next_date = Date::from_calendar_date(year, month, 1)
-                    .map_err(|_| report!(OverviewError::InternalServerError))?;
+                    .map_err(|_| Report::new(OverviewError::InternalServerError))?;
                 Ok(PrimitiveDateTime::new(next_date, Time::MIDNIGHT))
             }
         }
@@ -125,7 +125,7 @@ impl GranularityExt for Granularity {
 
         while bucket_start < end_time {
             if ranges.len() >= max_buckets {
-                return Err(report!(OverviewError::TooManyBucketsError));
+                return Err(Report::new(OverviewError::TooManyBucketsError));
             }
 
             let aligned_bucket_start = self.truncate_to_bucket(bucket_start)?;

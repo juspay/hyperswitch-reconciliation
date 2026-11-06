@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use actix_web::http::header::HeaderMap;
-use error_stack::{report, ResultExt};
+use common_utils::id_type::MerchantId;
+use error_stack::ResultExt;
 use masking::{PeekInterface, Secret};
 use recon_domain_models::ingestion::sftp_internal::SftpInternalIngestionConfig;
 
@@ -17,11 +18,13 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct SftpInternalFileDownloadContext {
     pub file_path: PathBuf,
+    pub merchant_id: MerchantId,
 }
 
 #[derive(Clone, Debug)]
 pub struct SftpInternalIngestionContext {
     pub config: SftpInternalIngestionConfig,
+    pub merchant_id: MerchantId,
     pub headers: HeaderMap,
     pub internal_api_key: Secret<String>,
 }
@@ -35,7 +38,7 @@ pub fn authenticate_sftp_internal(context: &SftpInternalIngestionContext) -> Par
         get_internal_api_key(&context.headers).change_context(invalid_authentication())?;
 
     if request_internal_api_key != context.internal_api_key.peek() {
-        return Err(report!(invalid_authentication()));
+        return Err(error_stack::Report::new(invalid_authentication()));
     }
 
     Ok(())
@@ -46,16 +49,19 @@ pub async fn download_sftp_internal_file(
     context: &SftpInternalFileDownloadContext,
     state: &IngestionState,
 ) -> DownloadStageResult<FileDownloadResult> {
-    // Convert PathBuf to string for S3 key
-    let file_key = context
+    let relative_path = context
         .file_path
         .to_str()
         .ok_or(DownloadStageError::InternalServerError)?;
+    let file_key = format!(
+        "sftp/{}/{relative_path}",
+        context.merchant_id.get_string_repr()
+    );
 
     // Retrieve file from S3 using the SFTP-specific file storage handler
     let file_content = state
         .sftp_file_storage
-        .retrieve_file(file_key)
+        .retrieve_file(&file_key)
         .await
         .change_context(DownloadStageError::ExternalServiceError {
             message: format!("Failed to retrieve file from S3: {file_key}"),
@@ -67,10 +73,10 @@ pub async fn download_sftp_internal_file(
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| {
-            report!(DownloadStageError::InvalidUrl {
+            error_stack::Report::new(DownloadStageError::InvalidUrl {
                 url: file_key.to_string(),
             })
-            .attach_printable("Could not extract filename from path")
+            .attach("Could not extract filename from path")
         })?
         .to_string();
 

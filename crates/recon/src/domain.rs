@@ -1,6 +1,7 @@
 pub mod audit_trail;
 pub mod entry;
 pub mod exception_management;
+pub mod health;
 pub mod ingestion;
 pub mod linking_processor;
 pub mod metadata_schema;

@@ -1,7 +1,7 @@
 use actix_web::{http::header::HeaderMap, HttpRequest};
 use common_types::permissions::Permission;
 use common_utils::{auth::AuthContext, errors::ReportSwitchExt, id_type::MerchantId};
-use error_stack::{report, Result, ResultExt};
+use error_stack::ResultExt;
 use external_services::user::{
     interfaces::UserInterface, types::request::AuthorizeUserTokenRequest,
 };
@@ -19,6 +19,8 @@ use crate::{
     errors::{conversions::StorageErrorExt, ReconAppError},
     routes::AppState,
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 pub mod auth_headers {
     pub const X_INTERNAL_API_KEY: &str = "x-internal-api-key";
@@ -83,7 +85,7 @@ impl AuthValidator for AdminApiAuth {
         let admin_api_key = &state.config.auth.get_inner().admin_api_key;
 
         if request_admin_api_key != admin_api_key.peek() {
-            Err(report!(ReconAppError::Unauthorized).attach_printable("Admin Auth Failure"))?;
+            Err(error_stack::Report::new(ReconAppError::Unauthorized).attach("Admin Auth Failure"))?;
         }
 
         Ok(())
@@ -106,8 +108,8 @@ impl AuthValidator for InternalApiKeyAuth {
         let internal_api_key = &state.config.auth.get_inner().internal_api_key;
 
         if request_internal_api_key != internal_api_key.peek() {
-            Err(report!(ReconAppError::Unauthorized)
-                .attach_printable("Internal API key auth failure"))?;
+            Err(error_stack::Report::new(ReconAppError::Unauthorized)
+                .attach("Internal API key auth failure"))?;
         }
 
         Ok(())
@@ -176,8 +178,8 @@ impl AuthValidator for JwtAuth {
         req: &HttpRequest,
         state: AppState,
     ) -> Result<Self::AuthData, ReconAppError> {
-        let token =
-            extract_token_from_header(req).ok_or_else(|| report!(ReconAppError::Unauthorized))?;
+        let token = extract_token_from_header(req)
+            .ok_or_else(|| error_stack::Report::new(ReconAppError::Unauthorized))?;
 
         let decoding_key =
             DecodingKey::from_secret(state.config.auth.get_inner().jwt_secret.peek().as_ref());
@@ -190,19 +192,19 @@ impl AuthValidator for JwtAuth {
         let profile_id = claims.profile_id;
 
         if user_id.is_empty() {
-            return Err(report!(ReconAppError::Unauthorized)
-                .attach_printable("Missing user_id in JWT claims"));
+            return Err(error_stack::Report::new(ReconAppError::Unauthorized)
+                .attach("Missing user_id in JWT claims"));
         }
 
         if let Some(expected_merchant_id) = &self.merchant_id {
             if merchant_id != *expected_merchant_id {
-                return Err(report!(ReconAppError::Unauthorized));
+                return Err(error_stack::Report::new(ReconAppError::Unauthorized));
             }
         }
 
         if let Some(expected_profile_id) = &self.profile_id {
             if profile_id != *expected_profile_id {
-                return Err(report!(ReconAppError::Unauthorized));
+                return Err(error_stack::Report::new(ReconAppError::Unauthorized));
             }
         }
 
@@ -219,7 +221,7 @@ impl AuthValidator for JwtAuth {
             .to_not_found_response(|| ReconAppError::Unauthorized)?;
 
         if business_profile.merchant_id != merchant_id {
-            return Err(report!(ReconAppError::Unauthorized));
+            return Err(error_stack::Report::new(ReconAppError::Unauthorized));
         }
 
         if let Some(permission) = self.permission {
@@ -271,7 +273,7 @@ pub fn get_header_value_by_key(
             source_str
                 .to_str()
                 .change_context(ReconAppError::InternalServerError)
-                .attach_printable(format!(
+                .attach(format!(
                     "Failed to convert header value to string for header key: {key}"
                 ))
         })

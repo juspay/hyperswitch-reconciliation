@@ -289,7 +289,7 @@ impl Config<SecuredSecret> {
             .change_context(ReconAppError::ValidationError("Configuration error".into()))?;
 
         serde_path_to_error::deserialize(config)
-            .attach_printable("Unable to deserialize application configuration")
+            .attach("Unable to deserialize application configuration")
             .change_context(ReconAppError::ValidationError("Configuration error".into()))
     }
 
