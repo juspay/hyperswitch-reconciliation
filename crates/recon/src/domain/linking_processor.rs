@@ -177,6 +177,14 @@ pub async fn process_entry_linking_core(
     Ok(LinkingTriggerResponse::Success)
 }
 
+pub fn failed_linking_data(error: LinkingProcessingError) -> EntryLinkingData {
+    EntryLinkingData::V1(EntryLinkingDataV1::Failed(LinkingFailureData::V1(
+        LinkingFailureDataV1 {
+            error_type: error.into(),
+        },
+    )))
+}
+
 pub async fn process_linking_error_context(
     state: &AppState,
     error: Report<LinkingProcessingError>,

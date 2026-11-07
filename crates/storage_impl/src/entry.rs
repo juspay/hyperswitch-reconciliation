@@ -1,6 +1,8 @@
 use async_trait::async_trait;
+use common_enums::EntryStatus;
 use common_types::{
     entry::{EntryListFilters, EntryListSortField, ListEntriesFilters},
+    entry_linking::EntryLinkingData,
     pagination::PaginationQuery,
 };
 use diesel_models::{
@@ -50,6 +52,14 @@ pub trait EntryInterface {
     ) -> StorageResult<EntryPage>;
 
     async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>>;
+
+    async fn update_null_entry_linking(
+        &self,
+        entry_statuses: Vec<EntryStatus>,
+        cursor: Option<String>,
+        linking_data: EntryLinkingData,
+        limit: u16,
+    ) -> StorageResult<Vec<String>>;
 }
 
 #[async_trait]
@@ -140,5 +150,23 @@ impl EntryInterface for Store {
     async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>> {
         let conn = self.get_connection().await?;
         Entry::list_linking_pending(&conn, limit).await
+    }
+
+    async fn update_null_entry_linking(
+        &self,
+        entry_statuses: Vec<EntryStatus>,
+        cursor: Option<String>,
+        linking_data: EntryLinkingData,
+        limit: u16,
+    ) -> StorageResult<Vec<String>> {
+        let conn = self.get_connection().await?;
+        Entry::update_null_linking(
+            &conn,
+            entry_statuses,
+            cursor,
+            EntryUpdate::LinkingUpdate { data: linking_data }.into(),
+            limit,
+        )
+        .await
     }
 }

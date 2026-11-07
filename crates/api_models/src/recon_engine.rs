@@ -1,6 +1,6 @@
 use common_enums::ReconProcessorStatus;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::transaction::GetTransactionResponse;
 
@@ -18,5 +18,25 @@ pub struct ProcessorStatusResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ProcessorStatusRequest {
-    pub status: ReconProcessorStatus,
+    pub status: Option<ReconProcessorStatus>,
+    pub linking_status_context: Option<LinkingStatusContext>,
+    pub cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ProcessorStatusUpdateResponse {
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, IntoParams)]
+pub struct ProcessorStatusUpdateQuery {
+    #[param(example = 5000)]
+    pub limit: Option<u16>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LinkingStatusContext {
+    Expected,
+    NonExpected,
 }
