@@ -54,11 +54,11 @@ pub struct ApiKeyUpdateInternal {
 /// `expires_at` is deliberately not updatable.
 #[derive(Debug, Clone)]
 pub enum ApiKeyUpdate {
-    Update {
+    DetailsUpdate {
         name: Option<String>,
         description: Option<String>,
+        status: Option<ApiKeyStatus>,
     },
-    Revoke,
 }
 
 impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
@@ -66,16 +66,14 @@ impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
         let last_modified_at = date_time::now();
 
         match api_key_update {
-            ApiKeyUpdate::Update { name, description } => Self {
+            ApiKeyUpdate::DetailsUpdate {
                 name,
                 description,
-                status: None,
-                last_modified_at,
-            },
-            ApiKeyUpdate::Revoke => Self {
-                name: None,
-                description: None,
-                status: Some(ApiKeyStatus::Revoked),
+                status,
+            } => Self {
+                name,
+                description,
+                status,
                 last_modified_at,
             },
         }

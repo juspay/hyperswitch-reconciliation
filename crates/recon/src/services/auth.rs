@@ -22,7 +22,6 @@ use crate::{
 
 pub mod auth_headers {
     pub const X_INTERNAL_API_KEY: &str = "x-internal-api-key";
-    pub const X_MERCHANT_ID: &str = "x-merchant-id";
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -243,89 +242,6 @@ impl AuthValidator for JwtAuth {
             merchant_id,
             profile_id,
         })
-    }
-}
-
-#[derive(Debug)]
-pub struct ManagementAuthContext {
-    pub merchant_id: MerchantId,
-    pub user_id: Option<String>,
-}
-
-/// Admin API key plus mandatory `x-merchant-id`. No permission is checked.
-#[derive(Debug, Default)]
-pub struct AdminApiAuthWithMerchantIdFromHeader;
-
-impl AuthValidator for AdminApiAuthWithMerchantIdFromHeader {
-    type AuthData = MerchantId;
-
-    async fn validate(
-        &self,
-        req: &HttpRequest,
-        state: AppState,
-    ) -> Result<Self::AuthData, ReconAppError> {
-        AdminApiAuth.validate(req, state.clone()).await?;
-
-        let merchant_id =
-            get_header_value_by_key(auth_headers::X_MERCHANT_ID.into(), req.headers())?
-                .get_required_value(auth_headers::X_MERCHANT_ID)
-                .change_context(ReconAppError::Unauthorized)?;
-        let merchant_id = MerchantId::wrap(merchant_id.to_string())
-            .change_context(ReconAppError::Unauthorized)?;
-
-        state
-            .store
-            .find_merchant_account_by_id(&merchant_id)
-            .await
-            .to_not_found_response(|| ReconAppError::Unauthorized)?;
-
-        Ok(merchant_id)
-    }
-}
-
-pub struct JwtOrAdminApiAuth {
-    jwt: JwtAuth,
-}
-
-impl JwtOrAdminApiAuth {
-    pub fn new(permission: Permission) -> Self {
-        Self {
-            jwt: JwtAuth::basic(permission),
-        }
-    }
-}
-
-impl AuthValidator for JwtOrAdminApiAuth {
-    type AuthData = ManagementAuthContext;
-
-    async fn validate(
-        &self,
-        req: &HttpRequest,
-        state: AppState,
-    ) -> Result<Self::AuthData, ReconAppError> {
-        let has_jwt = req.headers().contains_key(header::AUTHORIZATION);
-        let has_admin_key = req.headers().contains_key("api-key");
-
-        match (has_jwt, has_admin_key) {
-            (true, false) => {
-                let auth = self.jwt.validate(req, state).await?;
-                Ok(ManagementAuthContext {
-                    merchant_id: auth.merchant_id,
-                    user_id: Some(auth.user_id),
-                })
-            }
-            (false, true) => {
-                let merchant_id = AdminApiAuthWithMerchantIdFromHeader
-                    .validate(req, state)
-                    .await?;
-                Ok(ManagementAuthContext {
-                    merchant_id,
-                    user_id: None,
-                })
-            }
-            _ => Err(report!(ReconAppError::Unauthorized)
-                .attach_printable("Expected exactly one of a bearer token or api-key")),
-        }
     }
 }
 

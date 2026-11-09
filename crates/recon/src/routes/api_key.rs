@@ -9,16 +9,13 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtOrAdminApiAuth},
+    services::{api, auth::JwtAuth},
 };
 
 #[utoipa::path(
     post,
     path = "/api_keys",
     tag = "API Keys",
-    params(
-        ("x-merchant-id" = Option<String>, Header, description = "Required with the admin API key; names the merchant")
-    ),
     request_body = CreateApiKeyRequest,
     responses(
         (status = 201, description = "API key created. The key is only shown in this response", body = CreateApiKeyResponse),
@@ -26,7 +23,7 @@ use crate::{
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("Bearer" = []), ("ApiKey" = []))
+    security(("Bearer" = []))
 )]
 pub async fn create_api_key(
     state: web::Data<AppState>,
@@ -34,7 +31,7 @@ pub async fn create_api_key(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtOrAdminApiAuth::new(Permission::MerchantReconApiKeyWrite),
+        JwtAuth::basic(Permission::MerchantReconApiKeyWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -53,11 +50,11 @@ pub async fn create_api_key(
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("Bearer" = []), ("ApiKey" = []))
+    security(("Bearer" = []))
 )]
 pub async fn list_api_keys(state: web::Data<AppState>, http_req: HttpRequest) -> impl Responder {
     api::server_wrap(
-        JwtOrAdminApiAuth::new(Permission::MerchantReconApiKeyRead),
+        JwtAuth::basic(Permission::MerchantReconApiKeyRead),
         &http_req,
         state,
         |state, auth| async move { core::api_key::list_api_keys(state, auth).await },
@@ -78,7 +75,7 @@ pub async fn list_api_keys(state: web::Data<AppState>, http_req: HttpRequest) ->
         (status = 404, description = "API key not found, revoked, or belongs to another merchant"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("Bearer" = []), ("ApiKey" = []))
+    security(("Bearer" = []))
 )]
 pub async fn get_api_key(
     state: web::Data<AppState>,
@@ -87,7 +84,7 @@ pub async fn get_api_key(
 ) -> impl Responder {
     let api_key_id = path.into_inner();
     api::server_wrap(
-        JwtOrAdminApiAuth::new(Permission::MerchantReconApiKeyRead),
+        JwtAuth::basic(Permission::MerchantReconApiKeyRead),
         &http_req,
         state,
         |state, auth| async move { core::api_key::get_api_key(state, &api_key_id, auth).await },
@@ -104,13 +101,13 @@ pub async fn get_api_key(
     ),
     request_body = UpdateApiKeyRequest,
     responses(
-        (status = 200, description = "API key updated", body = ApiKeyResponse),
+        (status = 200, description = "API key updated. Setting status to revoked revokes the key; it stops working on the next request and cannot be restored", body = ApiKeyResponse),
         (status = 400, description = "Invalid request"),
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
         (status = 404, description = "API key not found, revoked, or belongs to another merchant"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("Bearer" = []), ("ApiKey" = []))
+    security(("Bearer" = []))
 )]
 pub async fn update_api_key(
     state: web::Data<AppState>,
@@ -120,42 +117,12 @@ pub async fn update_api_key(
 ) -> impl Responder {
     let api_key_id = path.into_inner();
     api::server_wrap(
-        JwtOrAdminApiAuth::new(Permission::MerchantReconApiKeyWrite),
+        JwtAuth::basic(Permission::MerchantReconApiKeyWrite),
         &http_req,
         state,
         |state, auth| async move {
             core::api_key::update_api_key(state, &api_key_id, req.into_inner(), auth).await
         },
-    )
-    .await
-}
-
-#[utoipa::path(
-    delete,
-    path = "/api_keys/{api_key_id}",
-    tag = "API Keys",
-    params(
-        ("api_key_id" = String, Path, description = "API key ID")
-    ),
-    responses(
-        (status = 200, description = "API key revoked. It stops working on the next request", body = ApiKeyResponse),
-        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
-        (status = 404, description = "API key not found, already revoked, or belongs to another merchant"),
-        (status = 500, description = "Internal server error"),
-    ),
-    security(("Bearer" = []), ("ApiKey" = []))
-)]
-pub async fn revoke_api_key(
-    state: web::Data<AppState>,
-    path: web::Path<String>,
-    http_req: HttpRequest,
-) -> impl Responder {
-    let api_key_id = path.into_inner();
-    api::server_wrap(
-        JwtOrAdminApiAuth::new(Permission::MerchantReconApiKeyWrite),
-        &http_req,
-        state,
-        |state, auth| async move { core::api_key::revoke_api_key(state, &api_key_id, auth).await },
     )
     .await
 }
@@ -166,8 +133,7 @@ pub async fn revoke_api_key(
         create_api_key,
         list_api_keys,
         get_api_key,
-        update_api_key,
-        revoke_api_key
+        update_api_key
     ),
     components(schemas(
         CreateApiKeyRequest,

@@ -25,6 +25,8 @@ pub struct UpdateApiKeyRequest {
     pub name: Option<String>,
     #[schema(example = "Used by the nightly reporting job")]
     pub description: Option<String>,
+    #[schema(example = "revoked")]
+    pub status: Option<ApiKeyStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

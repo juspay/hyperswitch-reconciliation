@@ -88,6 +88,14 @@ async fn create_returns_plaintext_once() {
     assert!(list_body.contains(&id));
 }
 
+async fn error_code(response: reqwest::Response) -> String {
+    let body: Value = response.json().await.unwrap();
+    body["error"]["code"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no error code in {body}"))
+        .to_string()
+}
+
 #[tokio::test]
 async fn create_rejects_invalid_expiry_and_name() {
     let app = TestApp::new().await;
@@ -96,14 +104,33 @@ async fn create_rejects_invalid_expiry_and_name() {
         .bootstrap("ak_invalid_merchant", "ak_invalid_profile")
         .await;
 
+    // Each validation failure has its own error code.
+    let mut long_description = create_body("description", 30);
+    long_description["description"] = json!("d".repeat(257));
+
+    for (body, code) in [
+        (create_body("past", -1), "RE_1705"),
+        (create_body("too long", 366), "RE_1706"),
+        (create_body("   ", 30), "RE_1702"),
+        (create_body(&"n".repeat(65), 30), "RE_1703"),
+        (long_description, "RE_1704"),
+    ] {
+        let response = client
+            .post("/api_keys")
+            .with_auth(&token)
+            .json(&body)
+            .send()
+            .await;
+        assert_eq!(response.status(), 400, "{body}");
+        assert_eq!(error_code(response).await, code, "{body}");
+    }
+
+    // Unparseable, "never", null and missing expiry are all rejected: expiry is mandatory.
     for body in [
-        create_body("past", -1),
         json!({ "name": "bad", "expires_at": "forever" }),
         json!({ "name": "bad", "expires_at": "never" }),
         json!({ "name": "bad", "expires_at": null }),
-        create_body("too long", 366),
-        create_body("   ", 30),
-        create_body(&"n".repeat(65), 30),
+        json!({ "name": "no expiry" }),
     ] {
         let response = client
             .post("/api_keys")
@@ -113,15 +140,6 @@ async fn create_rejects_invalid_expiry_and_name() {
             .await;
         assert_eq!(response.status(), 400, "{body}");
     }
-
-    // Expiry is mandatory.
-    let response = client
-        .post("/api_keys")
-        .with_auth(&token)
-        .json(&json!({ "name": "no expiry" }))
-        .send()
-        .await;
-    assert_eq!(response.status(), 400);
 }
 
 #[tokio::test]
@@ -158,133 +176,56 @@ async fn expiry_is_capped_at_one_year() {
 }
 
 #[tokio::test]
-async fn management_requires_a_credential() {
+async fn management_requires_a_jwt() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (merchant_id, _, token) = client
+    let (merchant_id, _, _) = client
         .bootstrap("ak_cred_merchant", "ak_cred_profile")
         .await;
 
     let response = client.get("/api_keys").send().await;
     assert_eq!(response.status(), 401);
 
-    // Wrong admin key.
+    // The admin API key is not accepted on these endpoints, with or without a merchant header.
+    let response = client.get("/api_keys").with_admin_key().send().await;
+    assert_eq!(response.status(), 401);
+
     let response = client
-        .get("/api_keys")
-        .header("api-key", "wrong")
+        .post("/api_keys")
+        .with_admin_key()
         .header("x-merchant-id", merchant_id.get_string_repr())
+        .json(&create_body("by admin", 30))
         .send()
         .await;
     assert_eq!(response.status(), 401);
 
-    // Both credentials at once.
-    let response = client
-        .get("/api_keys")
-        .with_auth(&token)
-        .with_admin_key()
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
+    // Invalid bearer token.
+    let response = client.get("/api_keys").with_auth("not-a-jwt").send().await;
     assert_eq!(response.status(), 401);
 }
 
 #[tokio::test]
-async fn admin_key_manages_keys_for_the_merchant_in_the_header() {
+async fn name_is_stored_as_given() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (merchant_a, _, token_a) = client
-        .bootstrap("ak_admin_merchant_a", "ak_admin_profile_a")
+    let (_, _, token) = client
+        .bootstrap("ak_trim_merchant", "ak_trim_profile")
         .await;
-    let (merchant_b, _, token_b) = client
-        .bootstrap("ak_admin_merchant_b", "ak_admin_profile_b")
-        .await;
-    let a = merchant_a.get_string_repr().to_string();
 
-    // The merchant header is mandatory.
-    let response = client
-        .post("/api_keys")
-        .with_admin_key()
-        .json(&create_body("no header", 30))
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    // Unknown merchant.
-    let response = client
-        .post("/api_keys")
-        .with_admin_key()
-        .header("x-merchant-id", "no_such_merchant")
-        .json(&create_body("unknown", 30))
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
+    // Trimming is only used to reject blank names, not applied to what is stored.
+    let created = create_key(&client, &token, "  padded  ")
+        .await
+        .api_key_details;
+    assert_eq!(created.name, "  padded  ");
 
     let response = client
-        .post("/api_keys")
-        .with_admin_key()
-        .header("x-merchant-id", &a)
-        .json(&create_body("by admin", 30))
-        .send()
-        .await;
-    assert_eq!(response.status(), 201);
-    let created: CreateApiKeyResponse = response.json().await.unwrap();
-    assert_eq!(created.api_key_details.merchant_id, merchant_a);
-    assert_eq!(created.api_key_details.created_by, None);
-    let id = created.api_key_details.id;
-
-    // Visible to the merchant's own JWT, not to another merchant.
-    let response = client
-        .get(&format!("/api_keys/{id}"))
-        .with_auth(&token_a)
-        .send()
-        .await;
-    assert_eq!(response.status(), 200);
-    let response = client
-        .get(&format!("/api_keys/{id}"))
-        .with_auth(&token_b)
-        .send()
-        .await;
-    assert_eq!(response.status(), 404);
-
-    // The header scopes the admin key too: merchant B's header can't reach A's key.
-    let response = client
-        .delete(&format!("/api_keys/{id}"))
-        .with_admin_key()
-        .header("x-merchant-id", merchant_b.get_string_repr())
-        .send()
-        .await;
-    assert_eq!(response.status(), 404);
-
-    let response = client
-        .put(&format!("/api_keys/{id}"))
-        .with_admin_key()
-        .header("x-merchant-id", &a)
-        .json(&json!({ "name": "renamed" }))
+        .put(&format!("/api_keys/{}", created.id))
+        .with_auth(&token)
+        .json(&json!({ "name": " renamed " }))
         .send()
         .await;
     let updated: ApiKeyResponse = client.expect_success(response).await;
-    assert_eq!(updated.name, "renamed");
-
-    let list: ListApiKeysResponse = client
-        .expect_success(
-            client
-                .get("/api_keys")
-                .with_admin_key()
-                .header("x-merchant-id", &a)
-                .send()
-                .await,
-        )
-        .await;
-    assert_eq!(list.api_keys.len(), 1);
-
-    let response = client
-        .delete(&format!("/api_keys/{id}"))
-        .with_admin_key()
-        .header("x-merchant-id", &a)
-        .send()
-        .await;
-    let revoked: ApiKeyResponse = client.expect_success(response).await;
-    assert_eq!(revoked.status, ApiKeyStatus::Revoked);
+    assert_eq!(updated.name, " renamed ");
 }
 
 #[tokio::test]
@@ -305,8 +246,20 @@ async fn update_changes_name_and_description_only() {
     let updated: ApiKeyResponse = client.expect_success(response).await;
     assert_eq!(updated.name, "after");
     assert_eq!(updated.description, created.description);
+    assert_eq!(updated.status, ApiKeyStatus::Active);
     assert_eq!(updated.expires_at, created.expires_at);
     assert!(updated.last_modified_at >= created.last_modified_at);
+
+    // Description-only update leaves the name alone.
+    let response = client
+        .put(&format!("/api_keys/{}", created.id))
+        .with_auth(&token)
+        .json(&json!({ "description": "new description" }))
+        .send()
+        .await;
+    let updated: ApiKeyResponse = client.expect_success(response).await;
+    assert_eq!(updated.name, "after");
+    assert_eq!(updated.description.as_deref(), Some("new description"));
 
     // `expires_at` can't be sent: extending a key's life is a new key.
     let response = client
@@ -316,10 +269,36 @@ async fn update_changes_name_and_description_only() {
         .send()
         .await;
     assert_eq!(response.status(), 400);
+
+    // An empty update is rejected.
+    let response = client
+        .put(&format!("/api_keys/{}", created.id))
+        .with_auth(&token)
+        .json(&json!({}))
+        .send()
+        .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(error_code(response).await, "RE_1708");
+
+    // Invalid name and description.
+    for (body, code) in [
+        (json!({ "name": "  " }), "RE_1702"),
+        (json!({ "name": "n".repeat(65) }), "RE_1703"),
+        (json!({ "description": "d".repeat(257) }), "RE_1704"),
+    ] {
+        let response = client
+            .put(&format!("/api_keys/{}", created.id))
+            .with_auth(&token)
+            .json(&body)
+            .send()
+            .await;
+        assert_eq!(response.status(), 400, "{body}");
+        assert_eq!(error_code(response).await, code, "{body}");
+    }
 }
 
 #[tokio::test]
-async fn revoke_removes_key_and_cannot_repeat() {
+async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
     let app = TestApp::new().await;
     let client = app.api_client();
     let (_, _, token) = client
@@ -330,13 +309,26 @@ async fn revoke_removes_key_and_cannot_repeat() {
         .api_key_details
         .id;
 
+    // Reactivation is not a thing: only `revoked` is accepted.
     let response = client
-        .delete(&format!("/api_keys/{id}"))
+        .put(&format!("/api_keys/{id}"))
         .with_auth(&token)
+        .json(&json!({ "status": "active" }))
+        .send()
+        .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(error_code(response).await, "RE_1707");
+
+    let response = client
+        .put(&format!("/api_keys/{id}"))
+        .with_auth(&token)
+        .json(&json!({ "status": "revoked" }))
         .send()
         .await;
     let revoked: ApiKeyResponse = client.expect_success(response).await;
     assert_eq!(revoked.status, ApiKeyStatus::Revoked);
+    assert_eq!(revoked.name, "to revoke");
+    assert!(revoked.last_modified_at >= revoked.created_at);
 
     let response = client
         .get(&format!("/api_keys/{id}"))
@@ -350,21 +342,72 @@ async fn revoke_removes_key_and_cannot_repeat() {
         .await;
     assert!(list.api_keys.iter().all(|key| key.id != id));
 
-    for response in [
-        client
-            .delete(&format!("/api_keys/{id}"))
-            .with_auth(&token)
-            .send()
-            .await,
-        client
+    // A revoked key can't be revoked again, revived, or renamed.
+    for body in [
+        json!({ "status": "revoked" }),
+        json!({ "status": "active" }),
+        json!({ "name": "revive" }),
+    ] {
+        let response = client
             .put(&format!("/api_keys/{id}"))
             .with_auth(&token)
-            .json(&json!({ "name": "revive" }))
+            .json(&body)
             .send()
-            .await,
-    ] {
-        assert_eq!(response.status(), 404);
+            .await;
+        // `active` is rejected up front, everything else matches no active key.
+        let expected = if body["status"] == "active" { 400 } else { 404 };
+        assert_eq!(response.status(), expected, "{body}");
     }
+}
+
+#[tokio::test]
+async fn update_can_rename_and_revoke_in_one_call() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, _, token) = client
+        .bootstrap("ak_both_merchant", "ak_both_profile")
+        .await;
+    let id = create_key(&client, &token, "before")
+        .await
+        .api_key_details
+        .id;
+
+    let response = client
+        .put(&format!("/api_keys/{id}"))
+        .with_auth(&token)
+        .json(&json!({ "name": "final name", "status": "revoked" }))
+        .send()
+        .await;
+    let revoked: ApiKeyResponse = client.expect_success(response).await;
+    assert_eq!(revoked.name, "final name");
+    assert_eq!(revoked.status, ApiKeyStatus::Revoked);
+}
+
+#[tokio::test]
+async fn delete_is_not_supported() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, _, token) = client
+        .bootstrap("ak_delete_merchant", "ak_delete_profile")
+        .await;
+    let id = create_key(&client, &token, "keep").await.api_key_details.id;
+
+    let response = client
+        .delete(&format!("/api_keys/{id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert!(response.status().is_client_error());
+    assert_ne!(response.status(), 200);
+
+    // The key is untouched.
+    let response = client
+        .get(&format!("/api_keys/{id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    let fetched: ApiKeyResponse = client.expect_success(response).await;
+    assert_eq!(fetched.status, ApiKeyStatus::Active);
 }
 
 #[tokio::test]
@@ -398,8 +441,9 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
     assert_eq!(response.status(), 404);
 
     let response = client
-        .delete(&format!("/api_keys/{id}"))
+        .put(&format!("/api_keys/{id}"))
         .with_auth(&token_b)
+        .json(&json!({ "status": "revoked" }))
         .send()
         .await;
     assert_eq!(response.status(), 404);
@@ -415,5 +459,6 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
         .with_auth(&token_a)
         .send()
         .await;
-    assert_eq!(response.status(), 200);
+    let fetched: ApiKeyResponse = client.expect_success(response).await;
+    assert_eq!(fetched.status, ApiKeyStatus::Active);
 }

@@ -1,0 +1,2 @@
+ALTER TABLE api_key
+    ALTER COLUMN expires_at DROP NOT NULL;

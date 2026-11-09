@@ -504,8 +504,7 @@ impl ApiKey {
             .service(
                 web::resource("/{api_key_id}")
                     .route(web::get().to(api_key::get_api_key))
-                    .route(web::put().to(api_key::update_api_key))
-                    .route(web::delete().to(api_key::revoke_api_key)),
+                    .route(web::put().to(api_key::update_api_key)),
             )
     }
 }
