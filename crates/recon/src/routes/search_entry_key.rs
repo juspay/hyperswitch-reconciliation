@@ -6,7 +6,10 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{AuthType, ProfileAuth},
+    },
 };
 
 #[utoipa::path(
@@ -27,7 +30,7 @@ pub async fn list_search_entry_keys_by_entry_ids(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {

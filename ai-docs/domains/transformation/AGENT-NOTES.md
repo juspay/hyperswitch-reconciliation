@@ -513,7 +513,7 @@ The pipeline is **per-row**, not per-collection. `DefaultTransformationEngine::t
     through the scoped method, so omitting the profile is a compile error, not a disclosure
   - `download_transformation_report`'s post-fetch `view.history.profile_id != auth_profile_id` check
     was removed as redundant once the predicate moved into SQL — do not re-add it
-  - `JwtAuth::basic(Permission::…)` is class-level only; it never sees the `{id}`, so it cannot be
+  - `ProfileAuth::new().add_auth(AuthType::Jwt(Permission::…))` is class-level only; it never sees the `{id}`, so it cannot be
     relied on for object-level authorization
   - Wrong profile → same `TransformationHistoryNotFound` 404 as a missing row, never 403 (a 403 turns
     the endpoint into an oracle for enumerating other tenants' record IDs)

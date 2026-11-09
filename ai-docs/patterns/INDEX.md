@@ -10,7 +10,7 @@ Quick reference for implementation patterns. Read the full pattern file when imp
 
 - **ADD-AUTH.md** - Add JWT authentication to endpoints  
   - When: Endpoint needs merchant/profile validation
-  - Key: JwtAuth levels, path parameter matching
+  - Key: `ProfileAuth`/`MerchantAuth`, accepted methods, path id matching
 
 - **API-DOCUMENTATION.md** - Document endpoints with OpenAPI
   - When: Any new or updated endpoint

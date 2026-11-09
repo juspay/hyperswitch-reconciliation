@@ -22,7 +22,10 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{AuthType, ProfileAuth},
+    },
 };
 
 #[derive(OpenApi)]
@@ -85,7 +88,7 @@ pub async fn create_transaction(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -114,7 +117,7 @@ pub async fn list_transactions(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -143,7 +146,7 @@ pub async fn list_transactions_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -173,7 +176,7 @@ pub async fn execute_transaction_bulk_operations(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -208,7 +211,7 @@ pub async fn get_transaction(
     let id = path.into_inner();
 
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move { core::transaction::get_transaction(&state, auth, id).await },
@@ -243,7 +246,7 @@ pub async fn void_transaction(
     let id = path.into_inner();
 
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
         &http_req,
         state,
         |state, auth| async move {

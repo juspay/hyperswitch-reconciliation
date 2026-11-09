@@ -6,7 +6,10 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{AuthType, ProfileAuth},
+    },
 };
 
 #[utoipa::path(
@@ -31,7 +34,7 @@ pub async fn list_search_expectations_by_primary_transaction_id(
 ) -> impl Responder {
     let primary_transaction_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {

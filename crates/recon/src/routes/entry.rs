@@ -13,7 +13,10 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{AuthType, ProfileAuth},
+    },
 };
 
 /// OpenAPI documentation for entry endpoints
@@ -72,7 +75,7 @@ pub async fn get_entry_by_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -105,7 +108,7 @@ pub async fn list_linked_entries(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -138,7 +141,7 @@ pub async fn list_entries_by_account_id(
     filters: web::Query<ListEntriesFilters>,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -170,7 +173,7 @@ pub async fn list_entries_by_transaction_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -202,7 +205,7 @@ pub async fn list_entries(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move { core::entry::list_entries(state, req.into_inner(), auth).await },

@@ -218,6 +218,8 @@ pub async fn force_reconcile_transaction(
         .await
         .change_context(TransactionError::InternalServerError)?;
 
+    let modified_by = auth.user_id();
+
     let reconciled_transaction = conn
         .transaction_async(|conn| async move {
             // Step 1: Archive old data using the centralized function
@@ -277,7 +279,7 @@ pub async fn force_reconcile_transaction(
             };
 
             let force_reconciled_transaction_new =
-                TransactionNew::new_versioned(transaction, update, Some(auth.user_id));
+                TransactionNew::new_versioned(transaction, update, modified_by);
 
             // Step 4: Insert the force reconciled transaction
             let db_transaction = force_reconciled_transaction_new
@@ -630,7 +632,7 @@ pub async fn manual_transaction_reconciliation(
                     StagingEntryVersionUpdate::ProcessedUpdate {
                         data: StagingEntryData::V2(StagingEntryDataV2::Processed),
                     },
-                    Some(auth_context.user_id.clone()),
+                    auth_context.user_id(),
                 );
 
                 // Create search duplicate
@@ -823,6 +825,8 @@ pub async fn manual_transaction_reconciliation(
         .await
         .change_context(TransactionError::InternalServerError)?;
 
+    let modified_by = auth_context.user_id();
+
     let final_transaction = conn
         .transaction_async(|conn| async move {
             // Archive old transaction, entries, and expectations
@@ -888,7 +892,7 @@ pub async fn manual_transaction_reconciliation(
                     new_entries: inserted_entries,
                     data: transaction_data,
                 },
-                Some(auth_context.user_id),
+                modified_by,
             )
             .insert(&conn)
             .await
@@ -1094,7 +1098,7 @@ pub async fn manual_transaction_reconciliation_v2(
         .await
         .change_context(TransactionError::InternalServerError)?;
 
-    let user_id = auth_context.user_id.clone();
+    let user_id = auth_context.user_id();
 
     let transaction = conn
         .transaction_async(|conn| async move {
@@ -1135,7 +1139,7 @@ pub async fn manual_transaction_reconciliation_v2(
                     new_entries: inserted_entries,
                     data: transaction_data,
                 },
-                Some(user_id),
+                user_id,
             )
             .insert(&conn)
             .await

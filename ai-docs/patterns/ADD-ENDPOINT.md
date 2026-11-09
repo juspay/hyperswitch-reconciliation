@@ -76,18 +76,14 @@ pub async fn create_thing(
     req: web::Json<CreateThingRequest>,
     http_req: HttpRequest, // if auth needed
 ) -> impl actix_web::Responder {
-    // For authenticated endpoints:
-    let auth = JwtAuth::with_merchant(merchant_id);
-    let auth_context = auth
-        .validate(&http_req, state.as_ref().clone())
-        .await
-        .map_err(|_| HttpResponse::Unauthorized().finish())?;
-    
-    core::thing::create_thing(
-        state.as_ref(), 
-        req.into_inner(),
-        &auth_context.profile_id, // if needed
+    // For authenticated endpoints (see ADD-AUTH.md):
+    api::server_wrap(
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::X)),
+        &http_req,
+        state,
+        |state, auth| async move { core::thing::create_thing(&state, req.into_inner(), auth).await },
     )
+    .await
     .await
     .server_wrap()
     .await
@@ -233,7 +229,7 @@ pub struct ApiDoc;
 3. **Response Types**: Always use ApplicationResponse, never raw DB models
 4. **ID Generation**: Server-side with format "type_nanoid(10)"
 5. **Validation**: In Core layer, not route or DB
-6. **Authentication**: Add JwtAuth when endpoint needs auth
+6. **Authentication**: `ProfileAuth` / `MerchantAuth` (see ADD-AUTH.md)
 7. **Route Naming**: Always use snake_case for routes (e.g., `/staging_entries`, `/recon_engine`)
 
 ## Common Variations
@@ -284,7 +280,7 @@ pub async fn list_things(
 When adding endpoints that operate on profile-specific data:
 
 ```rust
-// Use JwtAuth::with_profile for path-based profile validation
+// Use ProfileAuth::require_profile_id for path-based profile validation
 pub async fn list_things_by_profile_path(
     state: web::Data<AppState>,
     path: web::Path<String>, // profile_id
@@ -292,7 +288,9 @@ pub async fn list_things_by_profile_path(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::with_profile(profile_id.clone()),
+        ProfileAuth::new()
+            .add_auth(AuthType::Jwt(Permission::X))
+            .require_profile_id(profile_id.clone()),
         &http_req,
         state,
         |state, _auth| async move {
@@ -305,8 +303,8 @@ pub async fn list_things_by_profile_path(
 
 **Key Points:**
 <!-- AI-UPDATED: 2024-06-24 - Added profile-scoped endpoint pattern -->
-- Use `JwtAuth::with_profile(profile_id)` to ensure user can only access their own profile's data
-- Returns 401 if JWT profile_id doesn't match the path profile_id
+- Use `.require_profile_id(profile_id)` to ensure the caller can only access their own profile's data
+- Returns 401 if the authenticated profile_id doesn't match the path profile_id
 - Register under business_profiles scope: `/business_profiles/{profile_id}/things`
 - Provides alternative access pattern to JWT-scoped endpoints
 
@@ -315,6 +313,6 @@ pub async fn list_things_by_profile_path(
 - Always validate in Core, not DB layer
 - Use proper error conversion with to_not_found_response()
 - Remember to export new modules and register endpoints
-- For profile-scoped paths, always use `JwtAuth::with_profile()` for security
+- For profile-scoped paths, always use `.require_profile_id()` for security
 - NoAuth endpoints are publicly accessible - use only for system-level operations
 - Service-to-service calls use `InternalApiKeyAuth`, not `NoAuth`

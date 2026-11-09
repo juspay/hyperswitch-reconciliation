@@ -78,10 +78,13 @@ pub fn create_openapi() -> OpenApi {
                     )
                 )
                 .security_scheme(
-                    "ApiKey",
+                    "AdminApiKey",
                     utoipa::openapi::security::SecurityScheme::ApiKey(
                         utoipa::openapi::security::ApiKey::Header(
-                            utoipa::openapi::security::ApiKeyValue::new("api-key")
+                            utoipa::openapi::security::ApiKeyValue::with_description(
+                                "Authorization",
+                                "Admin key, sent as `Authorization: admin-api-key=<key>`."
+                            )
                         )
                     )
                 )

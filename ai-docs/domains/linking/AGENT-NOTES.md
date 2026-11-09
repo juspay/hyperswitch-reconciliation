@@ -114,7 +114,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 - Server initialization spawns a separate linking processor, initially `Stopped`. Starting the recon processor does not start linking.
 - Admin endpoints: `GET /linking_processor/status` returns `{"status":"stopped"}` or `{"status":"running"}`; `POST` to the same path accepts that shape and returns HTTP 200.
-- Status-control authentication is `AdminApiAuth` with the `api-key` header. Status lives in an in-process watch channel, is not persisted, and controls that application instance. Enqueue uses JWT authentication instead (see below).
+- Status-control authentication is `AdminApiAuth` (`Authorization: admin-api-key=<key>`). Status lives in an in-process watch channel, is not persisted, and controls that application instance. Enqueue uses JWT authentication instead (see below).
 - Current processing fetches one pending entry at a time, ordered by `(created_at ASC, id ASC)`. It sleeps five seconds on an empty queue or a failed queue query.
 - **Future concurrency must partition by account.** No two workers may process entries belonging to the same account concurrently; processing within an account remains serialized. Since a link config is scoped to one account, this keeps both sides of a match under one worker.
 - Account ownership must remain exclusive across application instances and worker handoffs. This partitioning is planned, not implemented by the current global pending query. `BATCH_SIZE = 1` is only local serialization.
@@ -122,7 +122,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 ## Inline Processing
 
-- `POST /linking_processor/{entry_id}/process` accepts a physical entry ID with no body and uses `AdminApiAuth` (`api-key`), not a profile JWT. It has no JWT profile ownership check; a JWT alone cannot authorize it.
+- `POST /linking_processor/{entry_id}/process` accepts a physical entry ID with no body and uses `AdminApiAuth` (`Authorization: admin-api-key=<key>`), not a profile JWT. It has no JWT profile ownership check; a JWT alone cannot authorize it.
 - Only `entry.linking_status = Pending` is eligible. Any Failed reason and Processed return 400 `LP_802`; an unknown entry returns 404 `LP_801`. To retry a Failed entry, fix the cause and use JWT enqueue before processing.
 - The request runs the same core pipeline inline, even when the background processor is Stopped, and does not change processor status. HTTP 200 can contain JSON `"success"` or `{"failure":"<reason>"}`: recorded processing failures are successful HTTP responses. Success can mean a searchable key was created without a counterpart.
 - Direct infrastructure/data-integrity errors still propagate as HTTP 500 and can leave the entry Pending; see [failure policy](#failure-policy). The entry response does not expose linking state, and an empty linked-entry list alone cannot distinguish pending, failed, or processed-without-match entries.
@@ -137,7 +137,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 ## Explicit Enqueue and Retry
 
-- `POST /linking_processor/{entry_id}/enqueue` takes a physical `entry.id`, with no request body. It uses `JwtAuth::basic(Permission::ProfileReconTransactionWrite)` and returns HTTP 200 after resetting `linking_status` and `linking_data` to Pending. It does not run linking inline or start the processor.
+- `POST /linking_processor/{entry_id}/enqueue` takes a physical `entry.id`, with no request body. It uses `ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite))` and returns HTTP 200 after resetting `linking_status` and `linking_data` to Pending. It does not run linking inline or start the processor.
 - Ownership is checked through `find_account_by_profile_id_and_account_id` against the JWT profile before checking status. A missing entry or an account outside that profile returns 404 `LP_801`; storage failures map to 500 `LP_800`.
 <!-- AI-UPDATED: 2026-11-04 - Enqueue eligibility uses an exhaustive predicate -->
 - **Only Failed linking statuses can be enqueued.** `DomainEntryLinkingStatus::is_enqueuable()` is an exhaustive match, so a new top-level status must opt in or out. New failure reasons are enqueueable through `Failed(_)` without a separate decision. The error's expected statuses are `DomainEntryLinkingStatus::iter()` filtered by that predicate. `iter()` goes through the flat Diesel enum, since deriving `EnumIter` on the domain enum would yield a single `Failed` value. Convert the Diesel status to domain before checking eligibility. Pending and Processed return HTTP 400 `LP_802` (`InvalidEntryLinkingStatus`), with the current and expected statuses in the error message. Eligibility uses `entry.linking_status`, independently of reconciliation `entry.status`.

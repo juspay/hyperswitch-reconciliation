@@ -8,7 +8,10 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{AuthType, ProfileAuth},
+    },
 };
 
 #[derive(OpenApi)]
@@ -40,7 +43,7 @@ pub async fn get_link_config_by_id(
 ) -> impl Responder {
     let link_config_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconRuleRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -68,7 +71,7 @@ pub async fn list_link_configs_by_profile_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleRead),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconRuleRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -99,7 +102,7 @@ pub async fn create_link_config(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleWrite),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconRuleWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -134,7 +137,7 @@ pub async fn update_link_config(
 ) -> impl Responder {
     let link_config_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleWrite),
+        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconRuleWrite)),
         &http_req,
         state,
         |state, auth| async move {

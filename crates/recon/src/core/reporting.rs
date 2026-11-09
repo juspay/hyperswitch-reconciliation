@@ -34,21 +34,18 @@ pub async fn generate_transaction_report(
         })?;
     let missing_before = rule.aging_config.missing_before(date_time::now());
 
-    let primary_email = state
-        .user_client
-        .get_user_by_id(
-            auth.merchant_id.clone(),
-            auth.profile_id.clone(),
-            auth.user_id.clone(),
-        )
-        .await
-        .change_context(ReportError::InternalServerError)?
-        .email;
-    let emails: HashSet<String> = filters
-        .emails
-        .into_iter()
-        .chain(vec![primary_email])
-        .collect();
+    let primary_email = match auth.user_id() {
+        Some(user_id) => Some(
+            state
+                .user_client
+                .get_user_by_id(auth.merchant_id.clone(), auth.profile_id.clone(), user_id)
+                .await
+                .change_context(ReportError::InternalServerError)?
+                .email,
+        ),
+        None => None,
+    };
+    let emails: HashSet<String> = filters.emails.into_iter().chain(primary_email).collect();
 
     let payload = TransactionReportLambdaPayload {
         profile_id: auth.profile_id,
@@ -94,21 +91,18 @@ pub async fn generate_exception_report(
         })?;
     let missing_before = rule.aging_config.missing_before(date_time::now());
 
-    let primary_email = state
-        .user_client
-        .get_user_by_id(
-            auth.merchant_id.clone(),
-            auth.profile_id.clone(),
-            auth.user_id.clone(),
-        )
-        .await
-        .change_context(ReportError::InternalServerError)?
-        .email;
-    let emails: HashSet<String> = filters
-        .emails
-        .into_iter()
-        .chain(vec![primary_email])
-        .collect();
+    let primary_email = match auth.user_id() {
+        Some(user_id) => Some(
+            state
+                .user_client
+                .get_user_by_id(auth.merchant_id.clone(), auth.profile_id.clone(), user_id)
+                .await
+                .change_context(ReportError::InternalServerError)?
+                .email,
+        ),
+        None => None,
+    };
+    let emails: HashSet<String> = filters.emails.into_iter().chain(primary_email).collect();
 
     let payload = ExceptionReportLambdaPayload {
         profile_id: auth.profile_id,

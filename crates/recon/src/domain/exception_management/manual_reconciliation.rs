@@ -176,7 +176,7 @@ pub async fn prepare_staging_links(
                     StagingEntryVersionUpdate::ProcessedUpdate {
                         data: StagingEntryData::V2(StagingEntryDataV2::Processed),
                     },
-                    Some(auth_context.user_id.clone()),
+                    auth_context.user_id(),
                 );
                 let search_duplicate = build_search_duplicate(
                     &domain_staging_entry,
