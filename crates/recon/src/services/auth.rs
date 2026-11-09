@@ -349,10 +349,7 @@ impl ApiKeyAuth {
             .to_not_found_response(|| ReconAppError::Unauthorized)?;
         let key_id = &api_key.id;
 
-        if api_key
-            .expires_at
-            .is_some_and(|expires_at| expires_at <= date_time::now())
-        {
+        if api_key.expires_at <= date_time::now() {
             return Err(Report::new(ReconAppError::Unauthorized)
                 .attach(format!("API key {key_id} has expired")));
         }
