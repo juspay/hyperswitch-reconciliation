@@ -125,7 +125,7 @@ async fn create_rejects_invalid_expiry_and_name() {
         assert_eq!(error_code(response).await, code, "{body}");
     }
 
-    // Unparseable, "never", null and missing expiry are all rejected: expiry is mandatory.
+    // Unparsable, "never", null and missing expiry are all rejected: expiry is mandatory.
     for body in [
         json!({ "name": "bad", "expires_at": "forever" }),
         json!({ "name": "bad", "expires_at": "never" }),
