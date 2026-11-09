@@ -19,6 +19,7 @@ fn create_body(name: &str, days: i64) -> Value {
         "name": name,
         "description": "used by tests",
         "expires_at": expires_in_days(days),
+        "scopes": ["ProfileReconTransactionRead"],
     })
 }
 
@@ -122,6 +123,62 @@ async fn create_rejects_invalid_expiry_and_name() {
         .send()
         .await;
     assert_eq!(response.status(), 400);
+}
+
+#[tokio::test]
+async fn create_validates_scopes() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, _, token) = client
+        .bootstrap("ak_scopes_merchant", "ak_scopes_profile")
+        .await;
+
+    let read = "ProfileReconTransactionRead";
+    for scopes in [
+        json!([]),
+        json!([read, read]),
+        json!(["NotAPermission"]),
+        // Real permissions that are not in the allowlist.
+        json!(["ProfileReconTransactionWrite"]),
+        json!(["ProfileReconIngestionRead"]),
+        // Keys can't mint keys.
+        json!(["MerchantReconApiKeyWrite"]),
+        json!(["MerchantReconApiKeyRead"]),
+    ] {
+        let mut body = create_body("scoped", 30);
+        body["scopes"] = scopes.clone();
+        let response = client
+            .post("/api_keys")
+            .with_auth(&token)
+            .json(&body)
+            .send()
+            .await;
+        assert_eq!(response.status(), 400, "{scopes}");
+    }
+
+    // Scopes are required.
+    let mut body = create_body("no scopes", 30);
+    body.as_object_mut().unwrap().remove("scopes");
+    let response = client
+        .post("/api_keys")
+        .with_auth(&token)
+        .json(&body)
+        .send()
+        .await;
+    assert_eq!(response.status(), 400);
+
+    // A valid scope is stored and returned by create and get.
+    let created = create_key(&client, &token, "valid").await;
+    assert_eq!(created.api_key_details.scopes, vec![read.to_string()]);
+    let fetched: ApiKeyResponse = client
+        .get(&format!("/api_keys/{}", created.api_key_details.id))
+        .with_auth(&token)
+        .send()
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(fetched.scopes, vec![read.to_string()]);
 }
 
 #[tokio::test]

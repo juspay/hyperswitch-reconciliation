@@ -52,6 +52,7 @@ diesel::table! {
         last_modified_at -> Timestamp,
         #[max_length = 64]
         status -> Varchar,
+        scopes -> Array<Nullable<Text>>,
     }
 }
 

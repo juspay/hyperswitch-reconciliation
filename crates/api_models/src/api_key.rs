@@ -16,6 +16,8 @@ pub struct CreateApiKeyRequest {
     #[schema(example = "2027-01-01T00:00:00.000Z")]
     #[serde(with = "common_utils::custom_serde::iso8601")]
     pub expires_at: PrimitiveDateTime,
+    #[schema(value_type = Vec<String>, example = json!(["ProfileReconTransactionRead"]))]
+    pub scopes: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -50,6 +52,8 @@ pub struct ApiKeyResponse {
     #[schema(example = "2026-01-01T00:00:00.000Z")]
     #[serde(with = "common_utils::custom_serde::iso8601")]
     pub last_modified_at: PrimitiveDateTime,
+    #[schema(example = json!(["ProfileReconTransactionRead"]))]
+    pub scopes: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

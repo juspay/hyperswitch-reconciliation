@@ -1,13 +1,20 @@
+use std::{collections::HashSet, str::FromStr};
+
 use api_models::api_key::{
     ApiKeyResponse, CreateApiKeyRequest, CreateApiKeyResponse, ListApiKeysResponse,
     UpdateApiKeyRequest,
 };
 use common_enums::ApiKeyStatus;
+use common_types::permissions::Permission;
 use common_utils::{
     api_key::PlaintextApiKey, date_time, id_generation::generate_id_with_default_len,
 };
 use diesel_models::api_key::{ApiKey, ApiKeyNew, ApiKeyUpdate};
 use error_stack::{report, ResultExt};
+use external_services::user::{
+    interfaces::UserInterface,
+    types::{error::UserClientError, request::AuthorizeUserTokenRequest},
+};
 use masking::Secret;
 use storage_impl::api_key::ApiKeyInterface;
 use time::Duration;
@@ -19,7 +26,7 @@ use crate::{
         conversions::StorageErrorExt,
     },
     routes::AppState,
-    services::auth::ManagementAuthContext,
+    services::auth::{ManagementAuthContext, API_KEY_PERMISSIONS},
     types::ApplicationResponse,
 };
 
@@ -54,6 +61,65 @@ fn validate_description(description: &str) -> Result<(), error_stack::Report<Api
     Ok(())
 }
 
+fn validate_scopes(scopes: &[String]) -> Result<Vec<Permission>, error_stack::Report<ApiKeyError>> {
+    if scopes.is_empty() {
+        return invalid_request("scopes must not be empty");
+    }
+
+    let mut seen = HashSet::new();
+    let mut permissions = Vec::with_capacity(scopes.len());
+    for scope in scopes {
+        if !seen.insert(scope.as_str()) {
+            return invalid_request(&format!("duplicate scope {scope}"));
+        }
+        let Ok(permission) = Permission::from_str(scope) else {
+            return invalid_request(&format!("unknown scope {scope}"));
+        };
+        if !API_KEY_PERMISSIONS.contains(&permission) {
+            return invalid_request(&format!("scope {scope} cannot be granted to an API key"));
+        }
+        if matches!(
+            permission,
+            Permission::MerchantReconApiKeyRead | Permission::MerchantReconApiKeyWrite
+        ) {
+            return invalid_request("an API key cannot manage API keys");
+        }
+        permissions.push(permission);
+    }
+    Ok(permissions)
+}
+
+async fn authorize_creator(
+    state: &AppState,
+    auth_context: &ManagementAuthContext,
+    permissions: &[Permission],
+) -> Result<(), error_stack::Report<ApiKeyError>> {
+    let Some(creator) = &auth_context.jwt_creator else {
+        return Ok(());
+    };
+
+    for permission in permissions {
+        state
+            .user_client
+            .authorize_user_token(
+                auth_context.merchant_id.clone(),
+                creator.profile_id.clone(),
+                AuthorizeUserTokenRequest {
+                    token: creator.token.clone(),
+                    permission: *permission,
+                },
+            )
+            .await
+            .map_err(|error| match error.current_context() {
+                UserClientError::Forbidden => error.change_context(ApiKeyError::Forbidden {
+                    scope: permission.to_string(),
+                }),
+                _ => error.change_context(ApiKeyError::InternalServerError),
+            })?;
+    }
+    Ok(())
+}
+
 fn to_response(api_key: ApiKey) -> ApiKeyResponse {
     ApiKeyResponse {
         id: api_key.id,
@@ -66,6 +132,7 @@ fn to_response(api_key: ApiKey) -> ApiKeyResponse {
         created_at: api_key.created_at,
         expires_at: api_key.expires_at,
         last_modified_at: api_key.last_modified_at,
+        scopes: api_key.scopes,
     }
 }
 
@@ -78,6 +145,9 @@ pub async fn create_api_key(
     if let Some(description) = &request.description {
         validate_description(description)?;
     }
+
+    let permissions = validate_scopes(&request.scopes)?;
+    authorize_creator(&state, &auth_context, &permissions).await?;
 
     let now = date_time::now();
     let expires_at = request.expires_at;
@@ -104,6 +174,7 @@ pub async fn create_api_key(
             expires_at,
             last_modified_at: now,
             status: ApiKeyStatus::Active,
+            scopes: request.scopes,
         })
         .await
         .change_context(ApiKeyError::InternalServerError)?;

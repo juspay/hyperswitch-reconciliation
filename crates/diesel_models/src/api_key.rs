@@ -5,7 +5,7 @@ use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
 use masking::Secret;
 use time::PrimitiveDateTime;
 
-use crate::schema::api_key;
+use crate::{diesel_impl, schema::api_key};
 
 /// A merchant-level API key. Only a keyed hash of the key is stored, never the plaintext.
 ///
@@ -24,6 +24,8 @@ pub struct ApiKey {
     pub expires_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
     pub status: ApiKeyStatus,
+    #[diesel(deserialize_as = diesel_impl::DieselArray<String>)]
+    pub scopes: Vec<String>,
 }
 
 #[derive(Clone, Debug, Insertable)]
@@ -40,6 +42,7 @@ pub struct ApiKeyNew {
     pub expires_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
     pub status: ApiKeyStatus,
+    pub scopes: Vec<String>,
 }
 
 #[derive(Debug, AsChangeset)]

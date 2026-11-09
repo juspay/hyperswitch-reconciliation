@@ -1,6 +1,6 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; the auth validators (`ApiKeyAuth`, `JwtOrApiKey`) exist but no route uses them yet.
+Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; the auth validators (`ApiKeyAuth`, `JwtOrApiKey`) exist and enforce per-key scopes, but no route uses them yet.
 
 ## Data Model
 
@@ -46,3 +46,11 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 - **The old `api-key` header is gone**: no client used it, so it was removed rather than kept for compatibility. Sending it is a 401 (no credential). Admin routes (`AdminApiAuth`) now need `Authorization: admin-api-key=<secret>` too.
 - **`ApiKeyAuth`** flow: hash, `find_active_api_key_by_hash`, not expired, mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
 - **`AuthContext.auth_method`** is `Jwt` or `ApiKey`. For keys `user_id` is `apikey:<id>`, which is not a Hyperswitch user: code that resolves `user_id` through Hyperswitch (`get_modified_by`) must branch on `auth_method` and omit `modified_by` for keys (no user lookup). That branch lands with the first route that enables keys.
+
+## Scopes (`api_key.scopes`, `TEXT[] NOT NULL`)
+- A scope is a `Permission` name. Scopes are immutable (like `expires_at`); the update DTO has no field for them.
+- `API_KEY_PERMISSIONS` (`services/auth.rs`) is a ceiling, not a grant. Create (`core/api_key.rs`) rejects, with 400, empty/duplicate/unparseable/non-allowlisted scopes and any `MerchantReconApiKey*`. A JWT creator must also pass `authorize_user_token` for each scope (403); `ManagementAuthContext.jwt_creator` carries the token and profile for that. Admin-key creators skip only that check. The mock user client allows everything, so the 403 path is untested in CI.
+- `ApiKeyAuth::new(permission)` is built by `JwtOrApiKey::new`, so routes still only declare a permission. It is 401 if the permission is not in the allowlist (error log) or not in the key's scopes. Stored scopes that no longer parse are dropped (fail closed).
+- The migration adds `scopes TEXT[] NOT NULL` with no backfill or default: no keys existed when it shipped (the feature was off), so it would fail on a database that already has rows.
+- **Gotcha**: `diesel migration run` regenerates the column as `Array<Nullable<Text>>`; the model needs `deserialize_as = DieselArray<String>` (as `transaction.entry_ids`) or it won't compile.
+- **Known limitation**: the creator check runs in the profile of the creator's own JWT, but a key works across all profiles. Equivalent for a merchant admin; revisit if a lower role is ever allowed to mint keys.

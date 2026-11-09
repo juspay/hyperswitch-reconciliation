@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use actix_web::{http::header::HeaderMap, HttpRequest};
 use common_types::permissions::Permission;
 use common_utils::{
@@ -6,6 +8,7 @@ use common_utils::{
     date_time,
     errors::ReportSwitchExt,
     id_type::MerchantId,
+    logging,
 };
 use error_stack::{report, Result, ResultExt};
 use external_services::user::{
@@ -26,6 +29,8 @@ use crate::{
     errors::{conversions::StorageErrorExt, ReconAppError},
     routes::AppState,
 };
+
+pub const API_KEY_PERMISSIONS: &[Permission] = &[Permission::ProfileReconTransactionRead];
 
 pub mod auth_headers {
     pub const X_INTERNAL_API_KEY: &str = "x-internal-api-key";
@@ -328,9 +333,15 @@ async fn validate_merchant_and_profile(
 
 /// Every failure is the same `Unauthorized`. Logged reasons may carry the key `id`, never a header
 /// value.
-pub struct ApiKeyAuth;
+pub struct ApiKeyAuth {
+    permission: Permission,
+}
 
 impl ApiKeyAuth {
+    pub fn new(permission: Permission) -> Self {
+        Self { permission }
+    }
+
     async fn authenticate(
         &self,
         key: &Secret<String>,
@@ -350,6 +361,24 @@ impl ApiKeyAuth {
         if api_key.expires_at <= date_time::now() {
             return Err(report!(ReconAppError::Unauthorized)
                 .attach_printable(format!("API key {key_id} has expired")));
+        }
+
+        if !API_KEY_PERMISSIONS.contains(&self.permission) {
+            logging::error!(
+                "Route requiring {} accepts API keys but it is not in API_KEY_PERMISSIONS",
+                self.permission
+            );
+            return Err(report!(ReconAppError::Unauthorized));
+        }
+
+        let has_scope = api_key
+            .scopes
+            .iter()
+            .filter_map(|scope| Permission::from_str(scope).ok())
+            .any(|scope| scope == self.permission);
+        if !has_scope {
+            return Err(report!(ReconAppError::Unauthorized)
+                .attach_printable(format!("API key {key_id} lacks scope {}", self.permission)));
         }
 
         let profile_id = get_header_value_by_key(auth_headers::X_PROFILE_ID.into(), req.headers())?
@@ -394,7 +423,7 @@ impl JwtOrApiKey {
     pub fn new(permission: Permission) -> Self {
         Self {
             jwt: JwtAuth::basic(permission),
-            api_key: ApiKeyAuth,
+            api_key: ApiKeyAuth::new(permission),
         }
     }
 }
@@ -420,6 +449,13 @@ impl AuthValidator for JwtOrApiKey {
 pub struct ManagementAuthContext {
     pub merchant_id: MerchantId,
     pub user_id: Option<String>,
+    pub jwt_creator: Option<JwtCreator>,
+}
+
+#[derive(Debug)]
+pub struct JwtCreator {
+    pub token: Secret<String>,
+    pub profile_id: String,
 }
 
 /// Admin API key plus mandatory `x-merchant-id`. No permission is checked.
@@ -476,9 +512,15 @@ impl AuthValidator for JwtOrAdminApiAuth {
         match extract_credential(req.headers())? {
             Credential::Bearer => {
                 let auth = self.jwt.validate(req, state).await?;
+                let token = extract_token_from_header(req)
+                    .ok_or_else(|| report!(ReconAppError::Unauthorized))?;
                 Ok(ManagementAuthContext {
                     merchant_id: auth.merchant_id,
                     user_id: Some(auth.user_id),
+                    jwt_creator: Some(JwtCreator {
+                        token: Secret::new(token),
+                        profile_id: auth.profile_id,
+                    }),
                 })
             }
             Credential::AdminApiKey(_) => {
@@ -488,6 +530,7 @@ impl AuthValidator for JwtOrAdminApiAuth {
                 Ok(ManagementAuthContext {
                     merchant_id,
                     user_id: None,
+                    jwt_creator: None,
                 })
             }
             Credential::ApiKey(_) => Err(report!(ReconAppError::Unauthorized)

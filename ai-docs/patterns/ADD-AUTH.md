@@ -59,7 +59,7 @@ pub async fn admin_endpoint(
 
 ### API Key Authentication
 - **Header:** `Authorization: api-key=<key>` plus a mandatory `x-profile-id`. Exactly one credential per request.
-- `JwtOrApiKey::new(permission)` checks `permission` only for JWT callers. API keys are not checked against any permission yet, so do not put it on a route until key scopes exist.
+- `JwtOrApiKey::new(permission)` checks `permission` for JWT callers via Hyperswitch, and for keys against the key's `scopes`. A key is 401 unless `permission` is in both `API_KEY_PERMISSIONS` (`services/auth.rs`) and its scopes, so enabling a key on a route also means adding its permission to that allowlist. Keep write permissions out until `modified_by` is handled for key callers.
 - `auth_context.auth_method == AuthMethod::ApiKey` means `user_id` is `apikey:<id>`, not a Hyperswitch user.
 - Admin key: `Authorization: admin-api-key=<secret>`. See `domains/api-keys/AGENT-NOTES.md`.
 

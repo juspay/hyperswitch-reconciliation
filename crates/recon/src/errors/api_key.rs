@@ -13,6 +13,9 @@ pub enum ApiKeyError {
     #[error("API key not found")]
     ApiKeyNotFound,
 
+    #[error("You do not have permission to grant scope {scope}")]
+    Forbidden { scope: String },
+
     #[error("{message}")]
     InvalidRequest { message: String },
 }
@@ -24,6 +27,7 @@ impl From<ApiKeyError> for ReconAppError {
         match error {
             ApiKeyError::InternalServerError => Self::InternalServerError,
             ApiKeyError::ApiKeyNotFound => Self::ResourceNotFound(error.to_string()),
+            ApiKeyError::Forbidden { .. } => Self::Forbidden,
             ApiKeyError::InvalidRequest { .. } => Self::ValidationError(error.to_string()),
         }
     }
@@ -41,6 +45,12 @@ impl ErrorSwitchFrom<ApiKeyError> for ApiErrorPayload {
             ApiKeyError::ApiKeyNotFound => {
                 Self::NotFound(ApiError::new("RE", 1701, "API key not found", None))
             }
+            ApiKeyError::Forbidden { .. } => Self::ForbiddenCommonResource(ApiError::new(
+                "RE",
+                1704,
+                "You do not have permission to grant one of the requested scopes",
+                None,
+            )),
             ApiKeyError::InvalidRequest { message } => {
                 Self::BadRequest(ApiError::new("RE", 1703, message, None))
             }
