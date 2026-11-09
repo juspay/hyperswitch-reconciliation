@@ -82,7 +82,7 @@ pub async fn get_transactions_overview(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -111,7 +111,7 @@ pub async fn get_transactions_time_series(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -140,7 +140,7 @@ pub async fn get_transactions_rule_account_breakdown(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -175,7 +175,7 @@ pub async fn get_staging_entries_overview(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
         &http_req,
         state,
         |state, auth| async move {

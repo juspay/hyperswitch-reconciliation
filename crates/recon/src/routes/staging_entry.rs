@@ -96,7 +96,7 @@ pub async fn create_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -127,7 +127,7 @@ pub async fn get_staging_entry_by_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -161,7 +161,7 @@ pub async fn list_staging_entries_by_profile_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -191,7 +191,7 @@ pub async fn list_staging_entries_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -221,7 +221,7 @@ pub async fn execute_staging_entry_bulk_operations(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -260,7 +260,7 @@ pub async fn update_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -295,7 +295,7 @@ pub async fn void_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -327,7 +327,7 @@ pub async fn create_staging_entry_with_validation(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryWrite)),
         &http_req,
         state,
         |state, auth| async move {

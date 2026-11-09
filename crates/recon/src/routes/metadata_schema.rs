@@ -75,7 +75,7 @@ pub async fn create_metadata_schema(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -107,7 +107,7 @@ pub async fn get_metadata_schema_by_id(
 ) -> impl Responder {
     let id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -139,7 +139,7 @@ pub async fn list_metadata_schemas(
 ) -> impl Responder {
     let filters = query.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -174,7 +174,7 @@ pub async fn update_metadata_schema(
 ) -> impl Responder {
     let id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
         &http_req,
         state,
         |state, auth| async move {

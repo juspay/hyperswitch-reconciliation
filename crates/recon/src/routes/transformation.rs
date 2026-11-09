@@ -93,7 +93,7 @@ pub async fn find_transformation_history_with_config_by_id(
     let transformation_history_id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -134,7 +134,7 @@ pub async fn download_transformation_report(
     let (transformation_history_id, report_format) = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -172,7 +172,7 @@ pub async fn list_transformation_history_with_config_by_profile_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -210,7 +210,7 @@ pub async fn list_transformation_configs_by_profile_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -243,7 +243,7 @@ pub async fn create_transformation_config_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -278,7 +278,7 @@ pub async fn get_transformation_config_by_id(
     let transformation_id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -317,7 +317,7 @@ pub async fn update_transformation_config(
     let transformation_id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -358,7 +358,7 @@ pub async fn get_metadata_schema_by_transformation_id(
     let transformation_id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransformationRead)),
         &http_req,
         state,
         |state, auth| async move {

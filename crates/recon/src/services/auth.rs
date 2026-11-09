@@ -226,15 +226,17 @@ impl AuthType {
     }
 }
 
-#[derive(Default)]
 pub struct ProfileAuth {
     auth_types: Vec<AuthType>,
     profile_id: Option<String>,
 }
 
 impl ProfileAuth {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(auth_type: AuthType) -> Self {
+        Self {
+            auth_types: vec![auth_type],
+            profile_id: None,
+        }
     }
 
     pub fn add_auth(mut self, auth_type: AuthType) -> Self {
@@ -272,15 +274,17 @@ impl AuthValidator for ProfileAuth {
     }
 }
 
-#[derive(Default)]
 pub struct MerchantAuth {
     auth_types: Vec<AuthType>,
     merchant_id: Option<MerchantId>,
 }
 
 impl MerchantAuth {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(auth_type: AuthType) -> Self {
+        Self {
+            auth_types: vec![auth_type],
+            merchant_id: None,
+        }
     }
 
     pub fn add_auth(mut self, auth_type: AuthType) -> Self {

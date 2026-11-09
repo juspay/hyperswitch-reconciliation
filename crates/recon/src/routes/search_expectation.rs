@@ -34,7 +34,7 @@ pub async fn list_search_expectations_by_primary_transaction_id(
 ) -> impl Responder {
     let primary_transaction_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {

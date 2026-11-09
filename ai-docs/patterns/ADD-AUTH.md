@@ -11,19 +11,17 @@ Exactly one header; unknown scheme, empty value or a second header → 401. Don'
 credential headers. Only exception: `x-internal-api-key` for service-to-service calls.
 
 ## Validators
-Pick the validator by what the handler needs, then add each accepted auth type with its own
-permission. Never write `JwtOrX` validators.
+Pick the validator by what the handler needs. `new` takes the first accepted auth type (so a route
+can't accept none); add more with `add_auth`. Never write `JwtOrX` validators.
 
 ```rust
 // Profile-scoped -> AuthContext { merchant_id, profile_id, actor }
-ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead))
-ProfileAuth::new()
-    .add_auth(AuthType::Jwt(Permission::ProfileAccountRead))
+ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead))
+ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountRead))
     .require_profile_id(path_profile_id)
 
 // Merchant-scoped -> MerchantAuthContext { merchant_id, actor }
-MerchantAuth::new()
-    .add_auth(AuthType::JwtWithoutPermission)
+MerchantAuth::new(AuthType::JwtWithoutPermission)
     .require_merchant_id(path_merchant_id)
 
 // No context
@@ -35,7 +33,7 @@ NoAuth
 Route usage:
 ```rust
 api::server_wrap(
-    ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+    ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
     &http_req,
     state,
     |state, auth| async move { core::transaction::list_transactions(&state, auth, query).await },

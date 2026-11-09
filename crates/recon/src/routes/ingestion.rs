@@ -107,7 +107,7 @@ pub async fn upload_file_to_ingestion(
     let ingestion_id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconIngestionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconIngestionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -144,7 +144,7 @@ pub async fn list_ingestion_configs(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -179,7 +179,7 @@ pub async fn get_ingestion_config(
 ) -> impl Responder {
     let ingestion_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -246,7 +246,7 @@ pub async fn find_ingestion_config_and_history_by_id(
     let id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -278,7 +278,7 @@ pub async fn list_ingestion_history(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -353,7 +353,7 @@ pub async fn download_ingested_file(
     let history_id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconIngestionRead)),
         &http_req,
         state,
         |state, auth| async move {

@@ -65,7 +65,7 @@ pub async fn list_business_profiles(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        MerchantAuth::new().add_auth(AuthType::JwtWithoutPermission),
+        MerchantAuth::new(AuthType::JwtWithoutPermission),
         &http_req,
         state,
         |state, auth| async move {
@@ -99,7 +99,7 @@ pub async fn create_business_profile(
 ) -> impl Responder {
     let request = req.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileAccountWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -135,8 +135,7 @@ pub async fn get_business_profile(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new()
-            .add_auth(AuthType::Jwt(Permission::ProfileAccountRead))
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountRead))
             .require_profile_id(profile_id.clone()),
         &http_req,
         state,
@@ -175,8 +174,7 @@ pub async fn update_business_profile(
     let profile_id = path.into_inner();
     let request = req.into_inner();
     api::server_wrap(
-        ProfileAuth::new()
-            .add_auth(AuthType::Jwt(Permission::ProfileAccountWrite))
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountWrite))
             .require_profile_id(profile_id.clone()),
         &http_req,
         state,
@@ -216,8 +214,7 @@ pub async fn get_recon_status(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new()
-            .add_auth(AuthType::Jwt(Permission::ProfileReconStagingEntryRead))
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead))
             .require_profile_id(profile_id),
         &http_req,
         state,

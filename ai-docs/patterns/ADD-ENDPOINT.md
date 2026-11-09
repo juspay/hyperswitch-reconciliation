@@ -78,7 +78,7 @@ pub async fn create_thing(
 ) -> impl actix_web::Responder {
     // For authenticated endpoints (see ADD-AUTH.md):
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::X)),
+        ProfileAuth::new(AuthType::Jwt(Permission::X)),
         &http_req,
         state,
         |state, auth| async move { core::thing::create_thing(&state, req.into_inner(), auth).await },
@@ -288,8 +288,7 @@ pub async fn list_things_by_profile_path(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new()
-            .add_auth(AuthType::Jwt(Permission::X))
+        ProfileAuth::new(AuthType::Jwt(Permission::X))
             .require_profile_id(profile_id.clone()),
         &http_req,
         state,

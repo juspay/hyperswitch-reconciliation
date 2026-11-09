@@ -34,7 +34,7 @@ pub async fn get_search_group_by_id(
 ) -> impl Responder {
     let id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move { core::search_group::get_search_group_by_id(state, &id, auth).await },
@@ -64,7 +64,7 @@ pub async fn get_search_group_by_primary_transaction_id(
 ) -> impl Responder {
     let primary_transaction_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {

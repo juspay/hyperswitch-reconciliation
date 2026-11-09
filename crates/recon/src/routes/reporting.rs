@@ -41,7 +41,7 @@ pub async fn trigger_transaction_report(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -72,7 +72,7 @@ pub async fn trigger_exception_report(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move {

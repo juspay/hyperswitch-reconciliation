@@ -91,7 +91,7 @@ pub async fn get_staging_entry_resolutions(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -124,7 +124,7 @@ pub async fn get_transaction_resolutions(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -162,7 +162,7 @@ pub async fn force_reconcile_transaction(
     let id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -201,7 +201,7 @@ pub async fn list_linkable_staging_entries_for_transaction(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -239,7 +239,7 @@ pub async fn list_linkable_staging_entries_for_transaction_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -281,7 +281,7 @@ pub async fn manual_transaction_reconciliation(
     let id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -323,7 +323,7 @@ pub async fn manual_transaction_reconciliation_v2(
     let id = path.into_inner();
 
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -359,7 +359,7 @@ pub async fn validate_raw_entry_data(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move {
@@ -384,7 +384,7 @@ pub async fn validate_raw_entry_data(
 )]
 pub async fn list_assignees(state: web::Data<AppState>, http_req: HttpRequest) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconExceptionRead)),
         &http_req,
         state,
         |state, auth| async move { core::exception_management::list_assignees(&state, auth).await },

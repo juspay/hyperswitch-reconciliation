@@ -93,7 +93,7 @@ pub async fn enqueue_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
         &http_req,
         state,
         |state, auth| async move {

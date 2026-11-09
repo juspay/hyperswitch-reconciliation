@@ -38,7 +38,7 @@ pub async fn get_audit_trail(
 ) -> impl Responder {
     let filters = query.into_inner();
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::JwtWithoutPermission),
+        ProfileAuth::new(AuthType::JwtWithoutPermission),
         &http_req,
         state,
         |state, auth| async move {

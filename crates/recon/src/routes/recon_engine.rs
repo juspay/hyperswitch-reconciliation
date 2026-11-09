@@ -54,7 +54,7 @@ pub async fn process_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
         &http_req,
         state,
         |state, auth| async move {
@@ -86,7 +86,7 @@ pub async fn process_duplicate_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new().add_auth(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
+        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
         &http_req,
         state,
         |state, auth| async move {
