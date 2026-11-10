@@ -33,6 +33,9 @@ pub enum ApiKeyError {
 
     #[error("at least one of name, description or status is required")]
     NothingToUpdate,
+
+    #[error("status cannot be updated together with name or description")]
+    StatusUpdateWithDetails,
 }
 
 pub type ApiKeyResponse<T> = Result<ApplicationResponse<T>, Report<ApiKeyError>>;
@@ -49,42 +52,47 @@ impl From<ApiKeyError> for ReconAppError {
             | ApiKeyError::ExpiryInPast
             | ApiKeyError::ExpiryTooFar { .. }
             | ApiKeyError::InvalidStatusUpdate
-            | ApiKeyError::NothingToUpdate => Self::ValidationError(error.to_string()),
+            | ApiKeyError::NothingToUpdate
+            | ApiKeyError::StatusUpdateWithDetails => Self::ValidationError(error.to_string()),
         }
     }
 }
 
 impl ErrorSwitchFrom<ApiKeyError> for ApiErrorPayload {
     fn switch_from(error: &ApiKeyError) -> Self {
-        let code = match error {
-            ApiKeyError::InternalServerError => 1700,
-            ApiKeyError::ApiKeyNotFound => 1701,
-            ApiKeyError::NameEmpty => 1702,
-            ApiKeyError::NameTooLong { .. } => 1703,
-            ApiKeyError::DescriptionTooLong { .. } => 1704,
-            ApiKeyError::ExpiryInPast => 1705,
-            ApiKeyError::ExpiryTooFar { .. } => 1706,
-            ApiKeyError::InvalidStatusUpdate => 1707,
-            ApiKeyError::NothingToUpdate => 1708,
-        };
         match error {
             ApiKeyError::InternalServerError => Self::InternalServerError(ApiError::new(
                 "RE",
-                code,
+                1700,
                 "An internal error occurred while processing API key request",
                 None,
             )),
             ApiKeyError::ApiKeyNotFound => {
-                Self::NotFound(ApiError::new("RE", code, "API key not found", None))
+                Self::NotFound(ApiError::new("RE", 1701, "API key not found", None))
             }
-            ApiKeyError::NameEmpty
-            | ApiKeyError::NameTooLong { .. }
-            | ApiKeyError::DescriptionTooLong { .. }
-            | ApiKeyError::ExpiryInPast
-            | ApiKeyError::ExpiryTooFar { .. }
-            | ApiKeyError::InvalidStatusUpdate
-            | ApiKeyError::NothingToUpdate => {
-                Self::BadRequest(ApiError::new("RE", code, error.to_string(), None))
+            ApiKeyError::NameEmpty => {
+                Self::BadRequest(ApiError::new("RE", 1702, error.to_string(), None))
+            }
+            ApiKeyError::NameTooLong { .. } => {
+                Self::BadRequest(ApiError::new("RE", 1703, error.to_string(), None))
+            }
+            ApiKeyError::DescriptionTooLong { .. } => {
+                Self::BadRequest(ApiError::new("RE", 1704, error.to_string(), None))
+            }
+            ApiKeyError::ExpiryInPast => {
+                Self::BadRequest(ApiError::new("RE", 1705, error.to_string(), None))
+            }
+            ApiKeyError::ExpiryTooFar { .. } => {
+                Self::BadRequest(ApiError::new("RE", 1706, error.to_string(), None))
+            }
+            ApiKeyError::InvalidStatusUpdate => {
+                Self::BadRequest(ApiError::new("RE", 1707, error.to_string(), None))
+            }
+            ApiKeyError::NothingToUpdate => {
+                Self::BadRequest(ApiError::new("RE", 1708, error.to_string(), None))
+            }
+            ApiKeyError::StatusUpdateWithDetails => {
+                Self::BadRequest(ApiError::new("RE", 1709, error.to_string(), None))
             }
         }
     }

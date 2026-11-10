@@ -57,7 +57,9 @@ pub enum ApiKeyUpdate {
     DetailsUpdate {
         name: Option<String>,
         description: Option<String>,
-        status: Option<ApiKeyStatus>,
+    },
+    StatusUpdate {
+        status: ApiKeyStatus,
     },
 }
 
@@ -66,14 +68,16 @@ impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
         let last_modified_at = date_time::now();
 
         match api_key_update {
-            ApiKeyUpdate::DetailsUpdate {
+            ApiKeyUpdate::DetailsUpdate { name, description } => Self {
                 name,
                 description,
-                status,
-            } => Self {
-                name,
-                description,
-                status,
+                status: None,
+                last_modified_at,
+            },
+            ApiKeyUpdate::StatusUpdate { status } => Self {
+                name: None,
+                description: None,
+                status: Some(status),
                 last_modified_at,
             },
         }

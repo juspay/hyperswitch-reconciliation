@@ -7,14 +7,11 @@ use time::{Duration, PrimitiveDateTime};
 use crate::errors::api_key::{ApiKeyError, ApiKeyResult};
 
 pub trait ApiKeyExt {
-    type ApiModel;
-    fn to_api_response(self) -> Self::ApiModel;
+    fn to_api_response(self) -> ApiKeyResponse;
 }
 
 impl ApiKeyExt for ApiKey {
-    type ApiModel = ApiKeyResponse;
-
-    fn to_api_response(self) -> Self::ApiModel {
+    fn to_api_response(self) -> ApiKeyResponse {
         ApiKeyResponse {
             id: self.id,
             merchant_id: self.merchant_id,
@@ -89,8 +86,13 @@ impl ApiKeyRequestValidator for UpdateApiKeyRequest {
         if let Some(description) = &self.description {
             validate_description(description)?;
         }
-        if let Some(ApiKeyStatus::Active) = self.status {
-            return Err(report!(ApiKeyError::InvalidStatusUpdate));
+        if let Some(status) = self.status {
+            if status != ApiKeyStatus::Revoked {
+                return Err(report!(ApiKeyError::InvalidStatusUpdate));
+            }
+            if self.name.is_some() || self.description.is_some() {
+                return Err(report!(ApiKeyError::StatusUpdateWithDetails));
+            }
         }
         Ok(())
     }
@@ -194,6 +196,25 @@ mod tests {
         ));
         request.status = Some(ApiKeyStatus::Revoked);
         assert!(request.validate(NOW).is_ok());
+    }
+
+    #[test]
+    fn update_rejects_status_together_with_details() {
+        let mut request = update_request();
+        request.status = Some(ApiKeyStatus::Revoked);
+        request.name = Some("new".to_string());
+        assert!(matches!(
+            err_of(request.validate(NOW)),
+            ApiKeyError::StatusUpdateWithDetails
+        ));
+
+        let mut request = update_request();
+        request.status = Some(ApiKeyStatus::Revoked);
+        request.description = Some("new".to_string());
+        assert!(matches!(
+            err_of(request.validate(NOW)),
+            ApiKeyError::StatusUpdateWithDetails
+        ));
     }
 
     #[test]

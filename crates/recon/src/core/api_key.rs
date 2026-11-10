@@ -99,17 +99,17 @@ pub async fn update_api_key(
 ) -> ApiKeyResponse<ApiKeyApiResponse> {
     request.validate(date_time::now())?;
 
+    let update = match request.status {
+        Some(status) => ApiKeyUpdate::StatusUpdate { status },
+        None => ApiKeyUpdate::DetailsUpdate {
+            name: request.name,
+            description: request.description,
+        },
+    };
+
     let api_key = state
         .store
-        .update_api_key(
-            &auth_context.merchant_id,
-            api_key_id,
-            ApiKeyUpdate::DetailsUpdate {
-                name: request.name,
-                description: request.description,
-                status: request.status,
-            },
-        )
+        .update_api_key(&auth_context.merchant_id, api_key_id, update)
         .await
         .to_not_found_response(|| ApiKeyError::ApiKeyNotFound)?;
 

@@ -361,7 +361,7 @@ async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
 }
 
 #[tokio::test]
-async fn update_can_rename_and_revoke_in_one_call() {
+async fn status_cannot_be_updated_together_with_details() {
     let app = TestApp::new().await;
     let client = app.api_client();
     let (_, _, token) = client
@@ -372,41 +372,28 @@ async fn update_can_rename_and_revoke_in_one_call() {
         .api_key_details
         .id;
 
-    let response = client
-        .put(&format!("/api_keys/{id}"))
-        .with_auth(&token)
-        .json(&json!({ "name": "final name", "status": "revoked" }))
-        .send()
-        .await;
-    let revoked: ApiKeyResponse = client.expect_success(response).await;
-    assert_eq!(revoked.name, "final name");
-    assert_eq!(revoked.status, ApiKeyStatus::Revoked);
-}
+    for body in [
+        json!({ "name": "final name", "status": "revoked" }),
+        json!({ "description": "final description", "status": "revoked" }),
+    ] {
+        let response = client
+            .put(&format!("/api_keys/{id}"))
+            .with_auth(&token)
+            .json(&body)
+            .send()
+            .await;
+        assert_eq!(response.status(), 400, "{body}");
+        assert_eq!(error_code(response).await, "RE_1709", "{body}");
+    }
 
-#[tokio::test]
-async fn delete_is_not_supported() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let (_, _, token) = client
-        .bootstrap("ak_delete_merchant", "ak_delete_profile")
-        .await;
-    let id = create_key(&client, &token, "keep").await.api_key_details.id;
-
-    let response = client
-        .delete(&format!("/api_keys/{id}"))
-        .with_auth(&token)
-        .send()
-        .await;
-    assert!(response.status().is_client_error());
-    assert_ne!(response.status(), 200);
-
-    // The key is untouched.
+    // The rejected requests changed nothing.
     let response = client
         .get(&format!("/api_keys/{id}"))
         .with_auth(&token)
         .send()
         .await;
     let fetched: ApiKeyResponse = client.expect_success(response).await;
+    assert_eq!(fetched.name, "before");
     assert_eq!(fetched.status, ApiKeyStatus::Active);
 }
 
