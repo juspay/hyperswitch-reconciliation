@@ -6,6 +6,7 @@ pub mod bulk_operations;
 pub mod business_profile;
 pub mod entry;
 pub mod exception_management;
+pub mod health;
 pub mod ingestion;
 pub mod link_config;
 pub mod linking_processor;

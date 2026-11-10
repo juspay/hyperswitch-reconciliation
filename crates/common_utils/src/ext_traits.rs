@@ -19,7 +19,7 @@ impl ByteSliceExt for [u8] {
     {
         serde_json::from_slice(self)
             .change_context(ParsingError::StructParseFailure(type_name))
-            .attach_printable_lazy(|| format!("Unable to parse {type_name} from &[u8] {:?}", self))
+            .attach_with(|| format!("Unable to parse {type_name} from &[u8] {:?}", self))
     }
 }
 
@@ -94,7 +94,7 @@ where
     {
         serde_json::to_string(&P::try_from(self).change_context(ParsingError::UnknownError)?)
             .change_context(ParsingError::EncodeError("string"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a request"))
+            .attach_with(|| format!("Unable to convert {self:?} to a request"))
     }
 
     fn convert_and_url_encode<P>(&'e self) -> CustomResult<String, ParsingError>
@@ -105,7 +105,7 @@ where
     {
         serde_urlencoded::to_string(&P::try_from(self).change_context(ParsingError::UnknownError)?)
             .change_context(ParsingError::EncodeError("url-encoded"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a request"))
+            .attach_with(|| format!("Unable to convert {self:?} to a request"))
     }
 
     // Check without two functions can we combine this
@@ -115,7 +115,7 @@ where
     {
         serde_urlencoded::to_string(self)
             .change_context(ParsingError::EncodeError("url-encoded"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a request"))
+            .attach_with(|| format!("Unable to convert {self:?} to a request"))
     }
 
     fn encode_to_string_of_json(&'e self) -> CustomResult<String, ParsingError>
@@ -124,7 +124,7 @@ where
     {
         serde_json::to_string(self)
             .change_context(ParsingError::EncodeError("json"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a request"))
+            .attach_with(|| format!("Unable to convert {self:?} to a request"))
     }
 
     fn encode_to_string_of_xml(&'e self) -> CustomResult<String, ParsingError>
@@ -133,7 +133,7 @@ where
     {
         quick_xml::se::to_string(self)
             .change_context(ParsingError::EncodeError("xml"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a request"))
+            .attach_with(|| format!("Unable to convert {self:?} to a request"))
     }
 
     fn encode_to_value(&'e self) -> CustomResult<serde_json::Value, ParsingError>
@@ -142,7 +142,7 @@ where
     {
         serde_json::to_value(self)
             .change_context(ParsingError::EncodeError("json-value"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a value"))
+            .attach_with(|| format!("Unable to convert {self:?} to a value"))
     }
 
     fn encode_to_vec(&'e self) -> CustomResult<Vec<u8>, ParsingError>
@@ -151,6 +151,6 @@ where
     {
         serde_json::to_vec(self)
             .change_context(ParsingError::EncodeError("byte-vec"))
-            .attach_printable_lazy(|| format!("Unable to convert {self:?} to a value"))
+            .attach_with(|| format!("Unable to convert {self:?} to a value"))
     }
 }

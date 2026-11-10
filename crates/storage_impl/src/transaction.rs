@@ -316,7 +316,7 @@ impl TransactionInterface for Store {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable("Failed to create transaction with entries and expectations atomically")
+        .attach("Failed to create transaction with entries and expectations atomically")
     }
 
     async fn discard_transaction_with_entries_and_expectations(
@@ -465,6 +465,6 @@ impl TransactionInterface for Store {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable("Failed to discard transaction with entries and expectations atomically")
+        .attach("Failed to discard transaction with entries and expectations atomically")
     }
 }

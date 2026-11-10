@@ -5,14 +5,15 @@ use crate::domain::linking_processor::LinkingProcessingError;
 impl From<LinkingProcessingError> for LinkingProcessingErrorType {
     fn from(error: LinkingProcessingError) -> Self {
         Self::V1(match error {
+            LinkingProcessingError::Expected => LinkingProcessingErrorTypeV1::Expected,
             LinkingProcessingError::InternalError(message) => {
                 LinkingProcessingErrorTypeV1::InternalError { message }
             }
             LinkingProcessingError::DatabaseError => LinkingProcessingErrorTypeV1::InternalError {
                 message: error.to_string(),
             },
-            LinkingProcessingError::TransformationConfigMissing => {
-                LinkingProcessingErrorTypeV1::TransformationConfigMissing
+            LinkingProcessingError::NoTransformationConfigFound => {
+                LinkingProcessingErrorTypeV1::NoTransformationConfigFound
             }
             LinkingProcessingError::NoLinkConfigFound => {
                 LinkingProcessingErrorTypeV1::NoLinkConfigFound

@@ -1,12 +1,14 @@
 //! OCI Vault KMS secret management.
 
 use async_trait::async_trait;
-use error_stack::{Report, Result, ResultExt};
+use error_stack::{Report, ResultExt};
 use masking::{PeekInterface, Secret};
 pub use oci_kms::OciKmsConfig;
 
 use common_utils::errors::CustomResult;
 use recon_interfaces::secrets_interface::{SecretManagementInterface, SecretsManagementError};
+
+type Result<T, E> = core::result::Result<T, Report<E>>;
 
 /// OCI Vault KMS client.
 #[derive(Clone)]

@@ -27,7 +27,7 @@ use diesel_models::{
         StagingEntryNew, StagingEntryUpdate, StagingEntryVersionUpdate,
     },
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use external_services::user::interfaces::UserInterface;
 use futures::future;
 use masking::ExposeInterface;
@@ -108,11 +108,11 @@ pub async fn create_staging_entry(
         })?;
 
     if transformation_config.account_id != request.account_id {
-        return Err(report!(
+        return Err(error_stack::Report::new(
             StagingEntryError::TransformationConfigAccountMismatch {
                 transformation_id: request.transformation_id,
-                account_id: request.account_id
-            }
+                account_id: request.account_id,
+            },
         ));
     }
 

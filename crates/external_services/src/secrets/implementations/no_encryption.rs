@@ -36,7 +36,7 @@ impl SecretManagementInterface for NoEncryption {
             let env_var = &raw[2..raw.len() - 1];
             let value = std::env::var(env_var)
                 .map_err(|_| SecretsManagementError::FetchSecretFailed)
-                .attach_printable_lazy(|| format!("Failed to read env var: {env_var}"))?;
+                .attach_with(|| format!("Failed to read env var: {env_var}"))?;
             Ok(Secret::new(value))
         } else {
             Ok(input)

@@ -2,7 +2,7 @@ use async_bb8_diesel::AsyncRunQueryDsl;
 use common_utils::id_type::MerchantId;
 use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use crate::{
     business_profile::{BusinessProfile, BusinessProfileNew, BusinessProfileUpdateInternal},
@@ -34,13 +34,14 @@ impl BusinessProfile {
         {
             Ok(value) => Ok(value),
             Err(err) => match err {
-                DieselError::NotFound => {
-                    Err(report!(err)).change_context(errors::DatabaseError::NotFound)
+                DieselError::NotFound => Err(error_stack::Report::new(err))
+                    .change_context(errors::DatabaseError::NotFound),
+                _ => {
+                    Err(error_stack::Report::new(err)).change_context(errors::DatabaseError::Others)
                 }
-                _ => Err(report!(err)).change_context(errors::DatabaseError::Others),
             },
         }
-        .attach_printable_lazy(move || {
+        .attach_with(move || {
             format!(
                 "Error while listing business profiles for merchant_id: {}",
                 merchant_id.get_string_repr()
