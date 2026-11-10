@@ -5,10 +5,7 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{
-        api,
-        auth::{AuthType, ProfileAuth},
-    },
+    services::{api, auth::UserAuth},
 };
 
 /// OpenAPI documentation for audit trail endpoints
@@ -38,7 +35,7 @@ pub async fn get_audit_trail(
 ) -> impl Responder {
     let filters = query.into_inner();
     api::server_wrap(
-        ProfileAuth::new(AuthType::JwtWithoutPermission),
+        UserAuth::jwt_without_permission(),
         &http_req,
         state,
         |state, auth| async move {

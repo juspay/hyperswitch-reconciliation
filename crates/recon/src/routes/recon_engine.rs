@@ -10,7 +10,7 @@ use crate::{
     core,
     services::{
         api,
-        auth::{AdminApiAuth, AuthType, ProfileAuth},
+        auth::{AdminApiAuth, UserAuth},
     },
 };
 
@@ -54,7 +54,7 @@ pub async fn process_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
+        UserAuth::jwt(Permission::ProfileReconTransactionWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -86,7 +86,7 @@ pub async fn process_duplicate_staging_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
+        UserAuth::jwt(Permission::ProfileReconTransactionWrite),
         &http_req,
         state,
         |state, auth| async move {

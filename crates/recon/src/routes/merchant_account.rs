@@ -8,7 +8,7 @@ use crate::{
     core,
     services::{
         api,
-        auth::{AdminApiAuth, AuthType, MerchantAuth},
+        auth::{AdminApiAuth, UserAuth},
     },
 };
 
@@ -86,7 +86,7 @@ pub async fn get_merchant_account(
     let merchant_id = MerchantId::wrap(merchant_id.into_inner())
         .map_err(|_| actix_web::error::ErrorBadRequest("Invalid merchant_id format"))?;
     Ok(api::server_wrap(
-        MerchantAuth::new(AuthType::JwtWithoutPermission).require_merchant_id(merchant_id.clone()),
+        UserAuth::jwt_without_permission().require_merchant_id(merchant_id.clone()),
         &http_req,
         state,
         move |state, auth| async move {

@@ -9,7 +9,7 @@ use crate::{
     core,
     services::{
         api,
-        auth::{AdminApiAuth, AuthType, ProfileAuth},
+        auth::{AdminApiAuth, UserAuth},
     },
 };
 
@@ -93,7 +93,7 @@ pub async fn enqueue_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionWrite)),
+        UserAuth::jwt(Permission::ProfileReconTransactionWrite),
         &http_req,
         state,
         |state, auth| async move {

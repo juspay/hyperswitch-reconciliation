@@ -78,7 +78,7 @@ pub async fn create_thing(
 ) -> impl actix_web::Responder {
     // For authenticated endpoints (see ADD-AUTH.md):
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::X)),
+        UserAuth::jwt(Permission::X),
         &http_req,
         state,
         |state, auth| async move { core::thing::create_thing(&state, req.into_inner(), auth).await },
@@ -229,7 +229,7 @@ pub struct ApiDoc;
 3. **Response Types**: Always use ApplicationResponse, never raw DB models
 4. **ID Generation**: Server-side with format "type_nanoid(10)"
 5. **Validation**: In Core layer, not route or DB
-6. **Authentication**: `ProfileAuth` / `MerchantAuth` (see ADD-AUTH.md)
+6. **Authentication**: `UserAuth` (see ADD-AUTH.md)
 7. **Route Naming**: Always use snake_case for routes (e.g., `/staging_entries`, `/recon_engine`)
 
 ## Common Variations
@@ -280,7 +280,7 @@ pub async fn list_things(
 When adding endpoints that operate on profile-specific data:
 
 ```rust
-// Use ProfileAuth::require_profile_id for path-based profile validation
+// Use UserAuth::require_profile_id for path-based profile validation
 pub async fn list_things_by_profile_path(
     state: web::Data<AppState>,
     path: web::Path<String>, // profile_id
@@ -288,7 +288,7 @@ pub async fn list_things_by_profile_path(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::X))
+        UserAuth::jwt(Permission::X)
             .require_profile_id(profile_id.clone()),
         &http_req,
         state,

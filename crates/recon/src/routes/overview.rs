@@ -16,10 +16,7 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{
-        api,
-        auth::{AuthType, ProfileAuth},
-    },
+    services::{api, auth::UserAuth},
 };
 
 /// OpenAPI documentation for overview endpoints
@@ -82,7 +79,7 @@ pub async fn get_transactions_overview(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        UserAuth::jwt(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -111,7 +108,7 @@ pub async fn get_transactions_time_series(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        UserAuth::jwt(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -140,7 +137,7 @@ pub async fn get_transactions_rule_account_breakdown(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+        UserAuth::jwt(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -175,7 +172,7 @@ pub async fn get_staging_entries_overview(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead)),
+        UserAuth::jwt(Permission::ProfileReconStagingEntryRead),
         &http_req,
         state,
         |state, auth| async move {

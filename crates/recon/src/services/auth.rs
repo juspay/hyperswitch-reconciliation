@@ -1,7 +1,7 @@
 use actix_web::{http::header::HeaderMap, HttpRequest};
 use common_types::permissions::Permission;
 use common_utils::{
-    auth::{Actor, AuthContext, MerchantAuthContext},
+    auth::{Actor, AuthContext},
     errors::ReportSwitchExt,
     id_type::MerchantId,
 };
@@ -142,27 +142,50 @@ impl AuthValidator for InternalApiKeyAuth {
 }
 
 #[derive(Debug)]
-pub enum AuthType {
-    Jwt(Permission),
-    JwtWithoutPermission,
+enum JwtRule {
+    Permission(Permission),
+    WithoutPermission,
 }
 
-impl AuthType {
-    async fn authenticate(
-        &self,
-        credential: &Credential,
-        required_merchant_id: Option<&MerchantId>,
-        required_profile_id: Option<&str>,
-        state: &AppState,
-    ) -> Result<Option<AuthContext>, ReconAppError> {
-        let (token, permission) = match (self, credential) {
-            (Self::Jwt(permission), Credential::Jwt(token)) => (token, Some(*permission)),
-            (Self::JwtWithoutPermission, Credential::Jwt(token)) => (token, None),
-            (Self::Jwt(_) | Self::JwtWithoutPermission, Credential::AdminApiKey(_)) => {
-                return Ok(None);
-            }
-        };
+#[derive(Debug)]
+pub struct UserAuth {
+    jwt: JwtRule,
+    required_merchant_id: Option<MerchantId>,
+    required_profile_id: Option<String>,
+}
 
+impl UserAuth {
+    pub fn jwt(permission: Permission) -> Self {
+        Self::with_jwt_rule(JwtRule::Permission(permission))
+    }
+
+    pub fn jwt_without_permission() -> Self {
+        Self::with_jwt_rule(JwtRule::WithoutPermission)
+    }
+
+    fn with_jwt_rule(jwt: JwtRule) -> Self {
+        Self {
+            jwt,
+            required_merchant_id: None,
+            required_profile_id: None,
+        }
+    }
+
+    pub fn require_merchant_id(mut self, merchant_id: MerchantId) -> Self {
+        self.required_merchant_id = Some(merchant_id);
+        self
+    }
+
+    pub fn require_profile_id(mut self, profile_id: String) -> Self {
+        self.required_profile_id = Some(profile_id);
+        self
+    }
+
+    async fn authenticate_jwt(
+        &self,
+        token: &Secret<String>,
+        state: &AppState,
+    ) -> Result<AuthContext, ReconAppError> {
         let decoding_key =
             DecodingKey::from_secret(state.config.auth.get_inner().jwt_secret.peek().as_ref());
         let claims = decode::<Claims>(token.peek(), &decoding_key, &Validation::default())
@@ -174,12 +197,20 @@ impl AuthType {
                 .attach("Missing user_id in JWT claims"));
         }
 
-        if required_merchant_id.is_some_and(|merchant_id| *merchant_id != claims.merchant_id) {
+        if self
+            .required_merchant_id
+            .as_ref()
+            .is_some_and(|merchant_id| *merchant_id != claims.merchant_id)
+        {
             return Err(error_stack::Report::new(ReconAppError::Unauthorized)
                 .attach("Merchant does not match the route"));
         }
 
-        if required_profile_id.is_some_and(|profile_id| profile_id != claims.profile_id) {
+        if self
+            .required_profile_id
+            .as_deref()
+            .is_some_and(|profile_id| profile_id != claims.profile_id)
+        {
             return Err(error_stack::Report::new(ReconAppError::Unauthorized)
                 .attach("Profile does not match the route"));
         }
@@ -201,7 +232,7 @@ impl AuthType {
                 .attach("Profile does not belong to merchant"));
         }
 
-        if let Some(permission) = permission {
+        if let JwtRule::Permission(permission) = self.jwt {
             state
                 .user_client
                 .authorize_user_token(
@@ -216,41 +247,17 @@ impl AuthType {
                 .switch()?;
         }
 
-        Ok(Some(AuthContext {
+        Ok(AuthContext {
             merchant_id: claims.merchant_id,
             profile_id: claims.profile_id,
             actor: Actor::User {
                 user_id: claims.user_id,
             },
-        }))
+        })
     }
 }
 
-pub struct ProfileAuth {
-    auth_types: Vec<AuthType>,
-    profile_id: Option<String>,
-}
-
-impl ProfileAuth {
-    pub fn new(auth_type: AuthType) -> Self {
-        Self {
-            auth_types: vec![auth_type],
-            profile_id: None,
-        }
-    }
-
-    pub fn add_auth(mut self, auth_type: AuthType) -> Self {
-        self.auth_types.push(auth_type);
-        self
-    }
-
-    pub fn require_profile_id(mut self, profile_id: String) -> Self {
-        self.profile_id = Some(profile_id);
-        self
-    }
-}
-
-impl AuthValidator for ProfileAuth {
+impl AuthValidator for UserAuth {
     type AuthData = AuthContext;
 
     async fn validate(
@@ -258,70 +265,13 @@ impl AuthValidator for ProfileAuth {
         req: &HttpRequest,
         state: AppState,
     ) -> Result<Self::AuthData, ReconAppError> {
-        let credential = Credential::from_headers(req.headers())?;
-
-        for auth_type in &self.auth_types {
-            if let Some(auth) = auth_type
-                .authenticate(&credential, None, self.profile_id.as_deref(), &state)
-                .await?
-            {
-                return Ok(auth);
+        match Credential::from_headers(req.headers())? {
+            Credential::Jwt(token) => self.authenticate_jwt(&token, &state).await,
+            Credential::AdminApiKey(_) => {
+                Err(error_stack::Report::new(ReconAppError::Unauthorized)
+                    .attach("Admin API key is not accepted on this route"))
             }
         }
-
-        Err(error_stack::Report::new(ReconAppError::Unauthorized)
-            .attach("Credential is not accepted on this route"))
-    }
-}
-
-pub struct MerchantAuth {
-    auth_types: Vec<AuthType>,
-    merchant_id: Option<MerchantId>,
-}
-
-impl MerchantAuth {
-    pub fn new(auth_type: AuthType) -> Self {
-        Self {
-            auth_types: vec![auth_type],
-            merchant_id: None,
-        }
-    }
-
-    pub fn add_auth(mut self, auth_type: AuthType) -> Self {
-        self.auth_types.push(auth_type);
-        self
-    }
-
-    pub fn require_merchant_id(mut self, merchant_id: MerchantId) -> Self {
-        self.merchant_id = Some(merchant_id);
-        self
-    }
-}
-
-impl AuthValidator for MerchantAuth {
-    type AuthData = MerchantAuthContext;
-
-    async fn validate(
-        &self,
-        req: &HttpRequest,
-        state: AppState,
-    ) -> Result<Self::AuthData, ReconAppError> {
-        let credential = Credential::from_headers(req.headers())?;
-
-        for auth_type in &self.auth_types {
-            if let Some(auth) = auth_type
-                .authenticate(&credential, self.merchant_id.as_ref(), None, &state)
-                .await?
-            {
-                return Ok(MerchantAuthContext {
-                    merchant_id: auth.merchant_id,
-                    actor: auth.actor,
-                });
-            }
-        }
-
-        Err(error_stack::Report::new(ReconAppError::Unauthorized)
-            .attach("Credential is not accepted on this route"))
     }
 }
 

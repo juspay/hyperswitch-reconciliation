@@ -11,17 +11,15 @@ Exactly one header; unknown scheme, empty value or a second header → 401. Don'
 credential headers. Only exception: `x-internal-api-key` for service-to-service calls.
 
 ## Validators
-Pick the validator by what the handler needs. `new` takes the first accepted auth type (so a route
-can't accept none); add more with `add_auth`. Never write `JwtOrX` validators.
+User-facing routes use one builder, `UserAuth`. It returns
+`AuthContext { merchant_id, profile_id, actor }`: what the credential proved, not what the route needs. Don't add per-route context types or
+`JwtOrX` validators; a merchant-level route ignores `profile_id`.
 
 ```rust
-// Profile-scoped -> AuthContext { merchant_id, profile_id, actor }
-ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead))
-ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountRead))
-    .require_profile_id(path_profile_id)
-
-// Merchant-scoped -> MerchantAuthContext { merchant_id, actor }
-MerchantAuth::new(AuthType::JwtWithoutPermission)
+UserAuth::jwt(Permission::ProfileReconTransactionRead)  // JWT + permission check
+UserAuth::jwt(Permission::ProfileAccountRead)
+    .require_profile_id(path_profile_id)                // path id must match the JWT
+UserAuth::jwt_without_permission()                      // any user of the JWT's merchant/profile
     .require_merchant_id(path_merchant_id)
 
 // No context
@@ -33,7 +31,7 @@ NoAuth
 Route usage:
 ```rust
 api::server_wrap(
-    ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconTransactionRead)),
+    UserAuth::jwt(Permission::ProfileReconTransactionRead),
     &http_req,
     state,
     |state, auth| async move { core::transaction::list_transactions(&state, auth, query).await },
@@ -41,18 +39,22 @@ api::server_wrap(
 .await
 ```
 
-- A credential whose auth type wasn't added → 401.
+- `UserAuth::validate` matches on the credential that arrived. A credential the route doesn't accept
+  (e.g. an admin key on a `UserAuth` route) → 401.
 - `require_profile_id` / `require_merchant_id`: the path id must equal the authenticated one, else 401.
-- `Jwt(P)` checks `P` via Hyperswitch `authorize_user_token`; `JwtWithoutPermission` skips it.
+- `jwt(P)` checks `P` via Hyperswitch `authorize_user_token`; `jwt_without_permission()` skips it.
+- There is no separate profile/merchant validator: the permission already says its level
+  (`entities` in `generate_permissions!`), and both levels authenticate the same way.
 
 ## Actor
 `auth.actor` is `Actor::User { user_id }`. For `modified_by`/`created_by` use `auth.user_id()`
 (`Option`): those columns are resolved back to Hyperswitch users, so a non-user id there makes
 transaction listing fail.
 
-## Adding an auth type
-Add a `Credential` + `AuthType` variant and a match arm in each validator. Match arms are explicit
-(no `_`), so the compiler lists every place to update.
+## Adding a credential kind
+Add a `Credential` variant and an `Actor` variant. `UserAuth::validate` matches on `Credential` without
+`_`, so the compiler stops at it until the new kind's handling is decided; give `UserAuth` one optional
+rule field for it (at most one rule per credential kind) and a builder method to set it.
 
 ## OpenAPI
 `Bearer` = JWT, `AdminApiKey` = admin key, `InternalApiKey` = internal key.
@@ -65,7 +67,7 @@ A route accepting several auth types lists each: `security(("Bearer" = []), ("Ad
   (see `authenticate_sftp_internal`) and reject an empty configured key.
 
 ## Common mistakes
-- Using `AdminApiAuth` for user-scoped operations (use `ProfileAuth`/`MerchantAuth`).
+- Using `AdminApiAuth` for user-scoped operations (use `UserAuth`).
 - Reusing the admin key for service-to-service calls.
 - Leaving a system-triggered route on `NoAuth` when the caller can send the internal key.
 - Writing a non-user id into `modified_by`.

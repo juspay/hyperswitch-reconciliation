@@ -25,9 +25,3 @@ impl AuthContext {
         self.actor.user_id().map(str::to_owned)
     }
 }
-
-#[derive(Debug)]
-pub struct MerchantAuthContext {
-    pub merchant_id: MerchantId,
-    pub actor: Actor,
-}

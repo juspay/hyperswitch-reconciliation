@@ -107,7 +107,7 @@ This helps humans reviewing PRs understand:
 ## When Working Here
 <!-- AI-UPDATED: 2024-01-20 - Auth failures -->
 - JWT merchant_id must match the merchant_id in the URL path
-- This is validated by `MerchantAuth::require_merchant_id()`
+- This is validated by `UserAuth::require_merchant_id()`
 ```
 
 ### File Size Management

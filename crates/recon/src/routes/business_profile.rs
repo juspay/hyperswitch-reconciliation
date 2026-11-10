@@ -9,10 +9,7 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{
-        api,
-        auth::{AuthType, MerchantAuth, ProfileAuth},
-    },
+    services::{api, auth::UserAuth},
 };
 
 /// OpenAPI documentation for business profile endpoints
@@ -65,7 +62,7 @@ pub async fn list_business_profiles(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        MerchantAuth::new(AuthType::JwtWithoutPermission),
+        UserAuth::jwt_without_permission(),
         &http_req,
         state,
         |state, auth| async move {
@@ -99,7 +96,7 @@ pub async fn create_business_profile(
 ) -> impl Responder {
     let request = req.into_inner();
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountWrite)),
+        UserAuth::jwt(Permission::ProfileAccountWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -135,8 +132,7 @@ pub async fn get_business_profile(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountRead))
-            .require_profile_id(profile_id.clone()),
+        UserAuth::jwt(Permission::ProfileAccountRead).require_profile_id(profile_id.clone()),
         &http_req,
         state,
         |state, _auth| async move {
@@ -174,8 +170,7 @@ pub async fn update_business_profile(
     let profile_id = path.into_inner();
     let request = req.into_inner();
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileAccountWrite))
-            .require_profile_id(profile_id.clone()),
+        UserAuth::jwt(Permission::ProfileAccountWrite).require_profile_id(profile_id.clone()),
         &http_req,
         state,
         |state, auth| async move {
@@ -214,8 +209,7 @@ pub async fn get_recon_status(
 ) -> impl Responder {
     let profile_id = path.into_inner();
     api::server_wrap(
-        ProfileAuth::new(AuthType::Jwt(Permission::ProfileReconStagingEntryRead))
-            .require_profile_id(profile_id),
+        UserAuth::jwt(Permission::ProfileReconStagingEntryRead).require_profile_id(profile_id),
         &http_req,
         state,
         |state, auth| async move { core::business_profile::get_recon_status(state, auth).await },
