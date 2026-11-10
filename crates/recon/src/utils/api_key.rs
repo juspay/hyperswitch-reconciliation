@@ -1,7 +1,7 @@
 use api_models::api_key::{ApiKeyResponse, CreateApiKeyRequest, UpdateApiKeyRequest};
 use common_enums::ApiKeyStatus;
 use diesel_models::api_key::ApiKey;
-use error_stack::report;
+use error_stack::Report;
 use time::{Duration, PrimitiveDateTime};
 
 use crate::errors::api_key::{ApiKeyError, ApiKeyResult};
@@ -38,11 +38,11 @@ pub trait ApiKeyRequestValidator {
 
 fn validate_name(name: &str) -> ApiKeyResult<()> {
     if name.trim().is_empty() {
-        return Err(report!(ApiKeyError::NameEmpty));
+        return Err(Report::new(ApiKeyError::NameEmpty));
     }
     if name.chars().count() > MAX_NAME_LENGTH {
-        return Err(report!(ApiKeyError::NameTooLong {
-            max_length: MAX_NAME_LENGTH
+        return Err(Report::new(ApiKeyError::NameTooLong {
+            max_length: MAX_NAME_LENGTH,
         }));
     }
     Ok(())
@@ -50,8 +50,8 @@ fn validate_name(name: &str) -> ApiKeyResult<()> {
 
 fn validate_description(description: &str) -> ApiKeyResult<()> {
     if description.chars().count() > MAX_DESCRIPTION_LENGTH {
-        return Err(report!(ApiKeyError::DescriptionTooLong {
-            max_length: MAX_DESCRIPTION_LENGTH
+        return Err(Report::new(ApiKeyError::DescriptionTooLong {
+            max_length: MAX_DESCRIPTION_LENGTH,
         }));
     }
     Ok(())
@@ -64,11 +64,11 @@ impl ApiKeyRequestValidator for CreateApiKeyRequest {
             validate_description(description)?;
         }
         if self.expires_at <= now {
-            return Err(report!(ApiKeyError::ExpiryInPast));
+            return Err(Report::new(ApiKeyError::ExpiryInPast));
         }
         if self.expires_at > now + Duration::days(MAX_EXPIRY_DAYS) {
-            return Err(report!(ApiKeyError::ExpiryTooFar {
-                max_days: MAX_EXPIRY_DAYS
+            return Err(Report::new(ApiKeyError::ExpiryTooFar {
+                max_days: MAX_EXPIRY_DAYS,
             }));
         }
         Ok(())
@@ -78,7 +78,7 @@ impl ApiKeyRequestValidator for CreateApiKeyRequest {
 impl ApiKeyRequestValidator for UpdateApiKeyRequest {
     fn validate(&self, _now: PrimitiveDateTime) -> ApiKeyResult<()> {
         if self.name.is_none() && self.description.is_none() && self.status.is_none() {
-            return Err(report!(ApiKeyError::NothingToUpdate));
+            return Err(Report::new(ApiKeyError::NothingToUpdate));
         }
         if let Some(name) = &self.name {
             validate_name(name)?;
@@ -88,10 +88,10 @@ impl ApiKeyRequestValidator for UpdateApiKeyRequest {
         }
         if let Some(status) = self.status {
             if status != ApiKeyStatus::Revoked {
-                return Err(report!(ApiKeyError::InvalidStatusUpdate));
+                return Err(Report::new(ApiKeyError::InvalidStatusUpdate));
             }
             if self.name.is_some() || self.description.is_some() {
-                return Err(report!(ApiKeyError::StatusUpdateWithDetails));
+                return Err(Report::new(ApiKeyError::StatusUpdateWithDetails));
             }
         }
         Ok(())

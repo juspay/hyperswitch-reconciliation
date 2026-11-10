@@ -49,7 +49,7 @@ impl ApiKey {
             update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error updating API key: id={api_key_id}"))
+        .attach_with(|| format!("Error updating API key: id={api_key_id}"))
     }
 
     pub async fn list_active_by_merchant_id(
