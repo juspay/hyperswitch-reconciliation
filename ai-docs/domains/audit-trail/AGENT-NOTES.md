@@ -11,6 +11,11 @@ The audit trail system provides a chronological, profile-scoped view of system a
 - `domain/audit_trail.rs:8` - Domain models and grouping logic
 - `api_models/audit_trail.rs:34` - AuditEvent enum (API response)
 
+## Authorization
+<!-- AI-UPDATED: 2026-10-28 - Audit spans multiple recon domains and needs an independent permission -->
+- Audit trail reads require `ProfileReconAuditRead`, not transaction-read permission: the response also exposes ingestion and staging activity. There is no audit-write permission.
+- The authorization service must support this permission before enabling the check; explicitly grant audit access to existing custom roles that need it. JWT profile scoping remains unchanged.
+
 ## Critical Gotchas
 
 ### Three Distinct Grouping Strategies

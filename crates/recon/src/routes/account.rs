@@ -4,6 +4,7 @@ use api_models::{
     entry::GetEntryResponse,
     staging_entry::GetStagingEntryResponse,
 };
+use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
 use super::AppState;
@@ -65,7 +66,7 @@ pub async fn create_account(
 ) -> impl Responder {
     let req = req.into_inner();
     api::server_wrap(
-        JwtAuth::basic_without_permission(),
+        JwtAuth::basic(Permission::ProfileReconAccountWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -100,7 +101,7 @@ pub async fn get_account(
 ) -> impl Responder {
     let account_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic_without_permission(),
+        JwtAuth::basic(Permission::ProfileReconAccountRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -138,7 +139,7 @@ pub async fn update_account(
     let account_id = path.into_inner();
     let req = req.into_inner();
     api::server_wrap(
-        JwtAuth::basic_without_permission(),
+        JwtAuth::basic(Permission::ProfileReconAccountWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -166,7 +167,7 @@ pub async fn list_accounts_by_profile_id(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic_without_permission(),
+        JwtAuth::basic(Permission::ProfileReconAccountRead),
         &http_req,
         state,
         |state, auth| async move {
