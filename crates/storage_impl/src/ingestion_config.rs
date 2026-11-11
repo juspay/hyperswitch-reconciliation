@@ -8,6 +8,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait IngestionConfigInterface {
@@ -46,7 +47,7 @@ impl IngestionConfigInterface for Store {
         &self,
         ingestion_config: IngestionConfigNew,
     ) -> StorageResult<IngestionConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         IngestionConfig::insert(&conn, ingestion_config).await
     }
 
@@ -54,7 +55,7 @@ impl IngestionConfigInterface for Store {
         &self,
         ingestion_id: &str,
     ) -> StorageResult<IngestionConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         IngestionConfig::find_by_ingestion_id(&conn, ingestion_id).await
     }
 
@@ -63,7 +64,7 @@ impl IngestionConfigInterface for Store {
         profile_id: &str,
         ingestion_id: &str,
     ) -> StorageResult<IngestionConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         IngestionConfig::find_by_profile_id_and_ingestion_id(&conn, profile_id, ingestion_id).await
     }
 
@@ -72,7 +73,7 @@ impl IngestionConfigInterface for Store {
         profile_id: &str,
         filters: ListIngestionConfigsFilters,
     ) -> StorageResult<Vec<IngestionConfig>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         IngestionConfig::list_by_profile_id(&conn, profile_id, filters).await
     }
 
@@ -81,7 +82,7 @@ impl IngestionConfigInterface for Store {
         ingestion_id: &str,
         ingestion_config_update: IngestionConfigUpdate,
     ) -> StorageResult<IngestionConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let update_internal = IngestionConfigUpdateInternal::from(ingestion_config_update);
 
         IngestionConfig::update_by_ingestion_id(&conn, ingestion_id, update_internal).await

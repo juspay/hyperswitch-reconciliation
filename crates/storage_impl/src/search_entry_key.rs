@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use diesel_models::{search_entry_key::SearchEntryKey, StorageResult};
 
 use super::Store;
+use crate::database::connection::DatabaseRead;
 
 #[async_trait]
 pub trait SearchEntryKeyInterface {
@@ -21,7 +22,7 @@ impl SearchEntryKeyInterface for Store {
         profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<SearchEntryKey>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchEntryKey::list_by_entry_ids_and_profile_id(&conn, entry_ids, profile_id, limit).await
     }
 }

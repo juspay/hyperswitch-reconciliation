@@ -19,6 +19,7 @@ use error_stack::{Report, ResultExt};
 use recon_domain_models::{
     behaviour::ReverseConversion, staging_entry::DomainStagingEntry, transaction::DomainTransaction,
 };
+use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::{
     metadata_schema::MetadataSchemaInterface, transformation::TransformationConfigInterface,
 };
@@ -284,7 +285,7 @@ pub async fn process_error_context(
 
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(ReconEngineError::InternalServerError)?;
 

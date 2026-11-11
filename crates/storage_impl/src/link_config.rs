@@ -6,6 +6,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait LinkConfigInterface {
@@ -46,7 +47,7 @@ impl LinkConfigInterface for Store {
         profile_id: &str,
         filter: LinkConfigListFilter,
     ) -> StorageResult<Vec<LinkConfig>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         LinkConfig::list_by_profile_id(&conn, profile_id, filter).await
     }
 
@@ -55,7 +56,7 @@ impl LinkConfigInterface for Store {
         profile_id: &str,
         link_config_id: &str,
     ) -> StorageResult<LinkConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         LinkConfig::find_by_profile_id_and_link_config_id(&conn, profile_id, link_config_id).await
     }
 
@@ -65,7 +66,7 @@ impl LinkConfigInterface for Store {
         link_config_id: &str,
         update: LinkConfigUpdate,
     ) -> StorageResult<LinkConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         LinkConfig::update_by_profile_id_and_link_config_id(
             &conn,
             profile_id,
@@ -76,7 +77,7 @@ impl LinkConfigInterface for Store {
     }
 
     async fn insert_link_config(&self, link_config: LinkConfigNew) -> StorageResult<LinkConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         link_config.insert(&conn).await
     }
 
@@ -87,7 +88,7 @@ impl LinkConfigInterface for Store {
         profile_id: &str,
         link_side: &EntryLinkSide,
     ) -> StorageResult<Vec<LinkConfig>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         LinkConfig::list_active_by_acc_rule_profile(
             &conn, account_id, rule_id, profile_id, link_side,
         )

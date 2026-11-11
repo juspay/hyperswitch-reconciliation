@@ -1,5 +1,6 @@
 use diesel_models::connection::WriteConnection;
 use std::collections::HashSet;
+use storage_impl::database::connection::DatabaseWrite;
 
 use api_models::{
     account::AccountData,
@@ -596,7 +597,7 @@ pub async fn void_staging_entry_core(
     // Execute versioning logic atomically
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(StagingEntryError::InternalServerError)?;
 
@@ -735,7 +736,7 @@ pub async fn update_staging_entry(
     // 9. Atomic Transaction: Archive old + Create new version
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(StagingEntryError::InternalServerError)?;
 

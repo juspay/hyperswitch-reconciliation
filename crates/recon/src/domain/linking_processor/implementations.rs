@@ -12,6 +12,7 @@ use diesel_models::{
 use error_stack::ResultExt;
 use masking::Secret;
 use recon_domain_models::entry::DomainEntry;
+use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::search_entry_link_key::{
     SearchEntryLinkKeyInterface, SearchEntryLinkSearchCriteria,
 };
@@ -203,7 +204,7 @@ impl LinkingProcessor for LinkConfig {
         state: &AppState,
         context: EntryLinkContext,
     ) -> LinkProcessingResult<SearchEntryLinkKey> {
-        let conn = state.store.get_connection().await.change_context(
+        let conn = state.store.write_conn().await.change_context(
             LinkingProcessingError::InternalError("Failed to get database connection".to_string()),
         )?;
 

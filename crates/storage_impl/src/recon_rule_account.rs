@@ -6,6 +6,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait ReconRuleAccountInterface {
@@ -27,7 +28,7 @@ impl ReconRuleAccountInterface for Store {
         &self,
         recon_rule_account: ReconRuleAccountNew,
     ) -> StorageResult<ReconRuleAccount> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         recon_rule_account.insert(&conn).await
     }
 
@@ -36,7 +37,7 @@ impl ReconRuleAccountInterface for Store {
         account_id: &str,
         account_type: ReconRuleAccountType,
     ) -> StorageResult<Vec<ReconRuleAccount>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         ReconRuleAccount::list_by_account_id_and_account_type(&conn, account_id, account_type).await
     }
 }

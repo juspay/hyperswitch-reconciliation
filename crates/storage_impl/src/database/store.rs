@@ -2,7 +2,6 @@ use diesel::PgConnection;
 use diesel_models::{errors::DatabaseError, StorageResult};
 use error_stack::{report, ResultExt};
 
-use super::connection::{DatabaseWrite, WriteConn};
 use crate::config::Database;
 
 pub type PgPool = bb8::Pool<async_bb8_diesel::ConnectionManager<PgConnection>>;
@@ -25,11 +24,6 @@ impl Store {
 
     pub(crate) fn get_master_pool(&self) -> &PgPool {
         &self.master_pool
-    }
-
-    /// Get a write connection from the pool. Prefer `read_conn()` / `write_conn()` in new code.
-    pub async fn get_connection(&self) -> StorageResult<WriteConn<'_>> {
-        self.write_conn().await
     }
 }
 
