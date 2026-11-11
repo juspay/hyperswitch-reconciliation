@@ -1,5 +1,5 @@
 use storage_impl::{
-    account::AccountInterface, business_profile::BusinessProfileInterface,
+    account::AccountInterface, business_profile::BusinessProfileReadInterface,
     ingestion_config::IngestionConfigInterface, ingestion_history::IngestionHistoryInterface,
 };
 

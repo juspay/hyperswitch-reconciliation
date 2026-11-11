@@ -1,7 +1,7 @@
-use async_bb8_diesel::AsyncConnection;
 use common_enums::{EntryLinkKeyStatus, EntryLinkSide, EntryLinkStatus};
 use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
 use common_utils::{encryption::Encryption, logging};
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     entry::{Entry, EntryUpdate},
     entry_link::EntryLinkNew,
@@ -12,6 +12,7 @@ use diesel_models::{
 use error_stack::ResultExt;
 use masking::Secret;
 use recon_domain_models::entry::DomainEntry;
+use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::search_entry_link_key::{
     SearchEntryLinkKeyInterface, SearchEntryLinkSearchCriteria,
 };
@@ -203,11 +204,11 @@ impl LinkingProcessor for LinkConfig {
         state: &AppState,
         context: EntryLinkContext,
     ) -> LinkProcessingResult<SearchEntryLinkKey> {
-        let conn = state.store.get_connection().await.change_context(
+        let conn = state.store.write_conn().await.change_context(
             LinkingProcessingError::InternalError("Failed to get database connection".to_string()),
         )?;
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let entry_link_key_new = match context {
                 EntryLinkContext::UnLinked { entry_link_key_new } => entry_link_key_new,
                 EntryLinkContext::Linked {

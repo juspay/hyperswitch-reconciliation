@@ -1,14 +1,15 @@
-use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
+use async_bb8_diesel::AsyncRunQueryDsl;
 use common_utils::{chunking::chunked, logging};
 use diesel::{debug_query, pg::Pg, ExpressionMethods, QueryDsl};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors::DatabaseError,
     query::generics,
     schema::search_entry_key,
     search_entry_key::{SearchEntryKey, SearchEntryKeyNew},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 const SEARCH_ENTRY_KEY_BATCH_CHUNK_SIZE: usize = 5000;
@@ -16,7 +17,7 @@ const SEARCH_ENTRY_KEY_BATCH_CHUNK_SIZE: usize = 5000;
 impl SearchEntryKeyNew {
     pub async fn batch_insert(
         rows: Vec<Self>,
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
     ) -> StorageResult<Vec<SearchEntryKey>> {
         if rows.is_empty() {
             return Ok(Vec::new());
@@ -24,7 +25,7 @@ impl SearchEntryKeyNew {
 
         let row_count = rows.len();
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let mut inserted: Vec<SearchEntryKey> = Vec::with_capacity(row_count);
 
             for (chunk_idx, chunk) in chunked(rows, SEARCH_ENTRY_KEY_BATCH_CHUNK_SIZE).enumerate() {
@@ -34,7 +35,7 @@ impl SearchEntryKeyNew {
 
                 let chunk_rows: Vec<SearchEntryKey> =
                     generics::db_metrics::track_database_call::<search_entry_key::table, _, _>(
-                        query.get_results_async(&conn),
+                        query.get_results_async(conn.async_conn()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await
@@ -61,7 +62,7 @@ impl SearchEntryKeyNew {
 
 impl SearchEntryKey {
     pub async fn list_by_entry_ids_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         entry_ids: Vec<String>,
         profile_id: &str,
         limit: Option<i64>,
@@ -81,7 +82,7 @@ impl SearchEntryKey {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_entry_key::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

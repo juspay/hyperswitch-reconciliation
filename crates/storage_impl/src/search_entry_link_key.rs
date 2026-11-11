@@ -8,6 +8,7 @@ use diesel_models::{
 use masking::{PeekInterface, Secret};
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[derive(Clone, Debug)]
 pub struct SearchEntryLinkSearchCriteria {
@@ -39,7 +40,7 @@ impl SearchEntryLinkKeyInterface for Store {
         ids: Vec<String>,
         search_entry_link_key_update: SearchEntryLinkKeyUpdate,
     ) -> StorageResult<Vec<SearchEntryLinkKey>> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         SearchEntryLinkKey::bulk_update_by_ids(&conn, ids, search_entry_link_key_update.into())
             .await
     }
@@ -48,7 +49,7 @@ impl SearchEntryLinkKeyInterface for Store {
         &self,
         search_criteria: &SearchEntryLinkSearchCriteria,
     ) -> StorageResult<Vec<SearchEntryLinkKey>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchEntryLinkKey::list_for_linking(
             &conn,
             &search_criteria.link_config_id,

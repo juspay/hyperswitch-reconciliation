@@ -5,16 +5,17 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     metadata_schema::{MetadataSchema, MetadataSchemaNew, MetadataSchemaUpdateInternal},
     query::generics,
     schema::metadata_schema::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl MetadataSchema {
     pub async fn find_by_id_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<Self> {
@@ -32,7 +33,7 @@ impl MetadataSchema {
     }
 
     pub async fn list_by_ids_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         ids: Vec<String>,
         profile_id: &str,
     ) -> StorageResult<Vec<Self>> {
@@ -43,7 +44,7 @@ impl MetadataSchema {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<metadata_schema::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -56,7 +57,7 @@ impl MetadataSchema {
     }
 
     pub async fn list_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: ListMetadataSchemasFilters,
     ) -> StorageResult<Vec<Self>> {
@@ -89,7 +90,7 @@ impl MetadataSchema {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<metadata_schema::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -101,14 +102,14 @@ impl MetadataSchema {
 }
 
 impl MetadataSchemaNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<MetadataSchema> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<MetadataSchema> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl MetadataSchema {
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         id: &str,
         update: MetadataSchemaUpdateInternal,
     ) -> StorageResult<Self> {

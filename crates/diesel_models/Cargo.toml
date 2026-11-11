@@ -15,6 +15,7 @@ common_enums = { path = "../common_enums", version = "0.1.0" }
 common_types = { path = "../common_types", version = "0.1.0" }
 common_utils = { path = "../common_utils", version = "0.1.0" }
 async-bb8-diesel = "0.2.1"
+async-trait = "0.1.92"
 error-stack = "0.8.0"
 thiserror = "2.0.12"
 futures = "0.3"

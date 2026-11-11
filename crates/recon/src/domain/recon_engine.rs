@@ -1,5 +1,4 @@
 use api_models::recon_engine::ReconTriggerResponse;
-use async_bb8_diesel::AsyncConnection;
 use common_enums::{BalanceDirection, Currency};
 use common_types::{
     entry::FieldMismatchDetail,
@@ -8,6 +7,7 @@ use common_types::{
     units::MinorUnit,
 };
 use common_utils::logging;
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     errors::DatabaseError,
     staging_entry::{
@@ -19,6 +19,7 @@ use error_stack::{Report, ResultExt};
 use recon_domain_models::{
     behaviour::ReverseConversion, staging_entry::DomainStagingEntry, transaction::DomainTransaction,
 };
+use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::{
     metadata_schema::MetadataSchemaInterface, transformation::TransformationConfigInterface,
 };
@@ -284,11 +285,11 @@ pub async fn process_error_context(
 
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(ReconEngineError::InternalServerError)?;
 
-    conn.transaction_async(|conn| async move {
+    conn.transaction(|conn| async move {
         // Step 1: Archive the existing staging entry
         let archive_update = StagingEntryUpdate::DiscardUpdate {
             original_data: staging_entry.data.clone(),

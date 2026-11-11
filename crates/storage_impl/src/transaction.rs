@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_enums::{ExpectationStatus, Granularity, SearchDuplicateStatus};
 use common_types::{
@@ -10,6 +9,7 @@ use common_types::{
 };
 use common_utils::logging;
 use diesel_models::{
+    connection::{TransactionConnection, WriteConnection},
     entry::{Entry, EntryNew, EntryUpdate},
     errors::DatabaseError,
     search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},
@@ -21,16 +21,19 @@ use diesel_models::{
         TransactionOverviewRow, TransactionRuleViewPage, TransactionTimeBucketRow,
         TransactionUpdate,
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 use error_stack::ResultExt;
 use futures::future;
 use time::PrimitiveDateTime;
 
-use super::Store;
+use crate::database::{
+    connection::{DatabaseRead, DatabaseWrite},
+    store::Store,
+};
 
 #[async_trait]
-pub trait TransactionInterface {
+pub trait TransactionReadInterface {
     async fn find_by_id_and_profile(
         &self,
         id: &str,
@@ -101,7 +104,10 @@ pub trait TransactionInterface {
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
         rule_ids: Option<Vec<String>>,
     ) -> StorageResult<Vec<TransactionTimeBucketRow>>;
+}
 
+#[async_trait]
+pub trait TransactionWriteInterface {
     async fn insert_transaction(&self, transaction: TransactionNew) -> StorageResult<Transaction>;
 
     async fn create_transaction_with_entries_and_expectations(
@@ -112,9 +118,11 @@ pub trait TransactionInterface {
         search_entry_keys: Vec<SearchEntryKeyNew>,
     ) -> StorageResult<(Transaction, Vec<Entry>, Vec<SearchExpectation>)>;
 
+    /// Archives a transaction and everything linked to it. Must be called inside a database
+    /// transaction, so the archive commits or rolls back with the caller's other writes.
     async fn discard_transaction_with_entries_and_expectations(
         &self,
-        conn: &PgPooledConn,
+        conn: &TransactionConnection,
         transaction: Transaction,
     ) -> StorageResult<(
         Transaction,
@@ -124,14 +132,15 @@ pub trait TransactionInterface {
     )>;
 }
 
+/// Any store that can hand out read connections can read transactions.
 #[async_trait]
-impl TransactionInterface for Store {
+impl<T: DatabaseRead> TransactionReadInterface for T {
     async fn find_by_id_and_profile(
         &self,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<Transaction> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::find_by_id_and_profile(&conn, id.to_string(), profile_id.to_string()).await
     }
 
@@ -140,7 +149,7 @@ impl TransactionInterface for Store {
         transaction_id: &str,
         version: i32,
     ) -> StorageResult<Transaction> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::find_by_transaction_id_and_version(&conn, transaction_id, version).await
     }
 
@@ -149,7 +158,7 @@ impl TransactionInterface for Store {
         transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<Transaction>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::find_latest_version_by_logical_id_and_profile_id(
             &conn,
             transaction_id,
@@ -163,7 +172,7 @@ impl TransactionInterface for Store {
         transaction_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Transaction>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::list_by_transaction_id(&conn, transaction_id, limit).await
     }
 
@@ -173,7 +182,7 @@ impl TransactionInterface for Store {
         profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Transaction>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::list_transactions_by_primary_ids_and_profile(
             &conn,
             primary_transaction_ids,
@@ -189,7 +198,7 @@ impl TransactionInterface for Store {
         filters: TransactionAccountFilters,
         limit: Option<i64>,
     ) -> StorageResult<Vec<TransactionAccountView>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::list_with_accounts_and_entries(&conn, profile_id, filters, limit).await
     }
 
@@ -200,7 +209,7 @@ impl TransactionInterface for Store {
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
         rule_ids: Option<Vec<String>>,
     ) -> StorageResult<Vec<TransactionOverviewRow>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::aggregate_status_counts_by_rule(
             &conn,
             profile_id,
@@ -218,7 +227,7 @@ impl TransactionInterface for Store {
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
         rule_ids: Option<Vec<String>>,
     ) -> StorageResult<Vec<RuleAccountTransactionOverviewRow>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::aggregate_status_counts_by_rule_and_account(
             &conn,
             profile_id,
@@ -236,7 +245,7 @@ impl TransactionInterface for Store {
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
         pagination: PaginationQuery<TransactionListSortField>,
     ) -> StorageResult<TransactionRuleViewPage> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::list_v2_paginated(
             &conn,
             profile_id,
@@ -255,7 +264,7 @@ impl TransactionInterface for Store {
         rule_missing_threshold_map: HashMap<String, Option<PrimitiveDateTime>>,
         rule_ids: Option<Vec<String>>,
     ) -> StorageResult<Vec<TransactionTimeBucketRow>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Transaction::aggregate_time_series_status_counts_by_rule(
             &conn,
             profile_id,
@@ -266,9 +275,12 @@ impl TransactionInterface for Store {
         )
         .await
     }
+}
 
+#[async_trait]
+impl TransactionWriteInterface for Store {
     async fn insert_transaction(&self, transaction: TransactionNew) -> StorageResult<Transaction> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         transaction.insert(&conn).await
     }
 
@@ -279,9 +291,9 @@ impl TransactionInterface for Store {
         search_expectations: Vec<SearchExpectationNew>,
         search_entry_keys: Vec<SearchEntryKeyNew>,
     ) -> StorageResult<(Transaction, Vec<Entry>, Vec<SearchExpectation>)> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
 
-        conn.transaction_async(|connection_pool| async move {
+        conn.transaction(|connection_pool| async move {
             // Insert all entries first
             let mut created_entries = Vec::new();
             for entry in entries {
@@ -321,7 +333,7 @@ impl TransactionInterface for Store {
 
     async fn discard_transaction_with_entries_and_expectations(
         &self,
-        conn: &PgPooledConn,
+        conn: &TransactionConnection,
         transaction: Transaction,
     ) -> StorageResult<(
         Transaction,
@@ -329,7 +341,8 @@ impl TransactionInterface for Store {
         Vec<SearchExpectation>,
         Option<SearchGroup>,
     )> {
-        conn.transaction_async(|connection_pool| async move {
+        // Nested inside the caller's transaction, so this becomes a savepoint.
+        conn.transaction(|connection_pool| async move {
             // First, archive the existing transaction
             let archive_update = TransactionUpdate::DiscardUpdate {
                 original_data: transaction.data.clone(),

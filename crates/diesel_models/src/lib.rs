@@ -1,6 +1,7 @@
 pub mod account;
 pub mod api_key;
 pub mod business_profile;
+pub mod connection;
 pub mod entry;
 pub mod entry_link;
 pub mod errors;

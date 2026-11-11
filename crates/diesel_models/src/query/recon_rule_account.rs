@@ -5,22 +5,23 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     recon_rule_account::{ReconRuleAccount, ReconRuleAccountNew},
     schema::recon_rule_account::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl ReconRuleAccountNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<ReconRuleAccount> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<ReconRuleAccount> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl ReconRuleAccount {
     pub async fn list_by_account_id_and_account_type(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         account_id: &str,
         account_type: ReconRuleAccountType,
     ) -> StorageResult<Vec<Self>> {
@@ -31,7 +32,7 @@ impl ReconRuleAccount {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<recon_rule_account::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

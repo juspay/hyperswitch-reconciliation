@@ -7,6 +7,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait SearchDuplicateInterface {
@@ -38,12 +39,12 @@ impl SearchDuplicateInterface for Store {
         &self,
         search_duplicate: SearchDuplicateNew,
     ) -> StorageResult<SearchDuplicate> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         search_duplicate.insert(&conn).await
     }
 
     async fn find_by_id(&self, search_duplicate_id: String) -> StorageResult<SearchDuplicate> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchDuplicate::find_by_id(&conn, search_duplicate_id).await
     }
 
@@ -52,7 +53,7 @@ impl SearchDuplicateInterface for Store {
         staging_entry_id: &str,
         status: Option<SearchDuplicateStatus>,
     ) -> StorageResult<Vec<SearchDuplicate>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchDuplicate::list_by_staging_entry_id(&conn, staging_entry_id, status).await
     }
 
@@ -63,7 +64,7 @@ impl SearchDuplicateInterface for Store {
         hashed_field_value: &str,
         status: Option<SearchDuplicateStatus>,
     ) -> StorageResult<Vec<SearchDuplicate>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchDuplicate::list_by_transformation_id_field_path_hashed_field_value(
             &conn,
             transformation_id,

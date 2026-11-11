@@ -5,6 +5,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait AccountInterface {
@@ -31,12 +32,12 @@ pub trait AccountInterface {
 #[async_trait]
 impl AccountInterface for Store {
     async fn insert_account(&self, account: AccountNew) -> StorageResult<Account> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         account.insert(&conn).await
     }
 
     async fn find_account_by_id(&self, account_id: &str) -> StorageResult<Account> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Account::find_by_account_id(&conn, account_id).await
     }
 
@@ -45,11 +46,11 @@ impl AccountInterface for Store {
         profile_id: &str,
         account_id: &str,
     ) -> StorageResult<Account> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Account::find_by_profile_id_and_account_id(&conn, profile_id, account_id).await
     }
     async fn list_accounts_by_profile_id(&self, profile_id: &str) -> StorageResult<Vec<Account>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Account::list_by_profile_id(&conn, profile_id).await
     }
 
@@ -58,7 +59,7 @@ impl AccountInterface for Store {
         profile_id: &str,
         account_ids: &[String],
     ) -> StorageResult<Vec<Account>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         Account::find_by_profile_id_and_account_ids(&conn, profile_id, account_ids).await
     }
 
@@ -67,7 +68,7 @@ impl AccountInterface for Store {
         account_id: &str,
         account_update: AccountUpdate,
     ) -> StorageResult<Account> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let account_update_internal = account_update.into();
         Account::update_by_account_id(&conn, account_id, account_update_internal).await
     }

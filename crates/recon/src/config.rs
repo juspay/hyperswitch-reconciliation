@@ -53,17 +53,6 @@ impl Default for DatabaseConfig {
 }
 
 impl DatabaseConfig {
-    pub fn get_database_url(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.peek(),
-            self.host,
-            self.port,
-            self.dbname
-        )
-    }
-
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.username.is_empty() {
             return Err(error_stack::Report::from(ReconAppError::ValidationError(
@@ -86,6 +75,18 @@ impl DatabaseConfig {
             )));
         }
         Ok(())
+    }
+}
+
+impl From<DatabaseConfig> for storage_impl::config::Database {
+    fn from(database: DatabaseConfig) -> Self {
+        Self {
+            username: database.username,
+            password: database.password,
+            host: database.host,
+            port: database.port,
+            dbname: database.dbname,
+        }
     }
 }
 

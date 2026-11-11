@@ -4,20 +4,21 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors::DatabaseError,
     query::generics,
     recon_rule::{ReconRule, ReconRuleNew, ReconRuleUpdateInternal},
     schema::recon_rule::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl ReconRule {
-    pub async fn find_by_rule_id(conn: &PgPooledConn, rule_id: &str) -> StorageResult<Self> {
+    pub async fn find_by_rule_id(conn: &impl ReadConnection, rule_id: &str) -> StorageResult<Self> {
         generics::generic_find_by_id::<recon_rule::table, _, _>(conn, rule_id.to_owned()).await
     }
 
     pub async fn find_by_profile_id_and_rule_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         rule_id: &str,
     ) -> StorageResult<Self> {
@@ -35,7 +36,7 @@ impl ReconRule {
     }
 
     pub async fn list_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         is_active: Option<bool>,
     ) -> StorageResult<Vec<Self>> {
@@ -52,7 +53,7 @@ impl ReconRule {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<recon_rule::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -61,7 +62,7 @@ impl ReconRule {
     }
 
     pub async fn list_by_rule_ids(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         rule_ids: Vec<String>,
     ) -> StorageResult<Vec<Self>> {
@@ -72,7 +73,7 @@ impl ReconRule {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<recon_rule::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -85,7 +86,7 @@ impl ReconRule {
     }
 
     pub async fn update_by_rule_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         rule_id: &str,
         recon_rule_update: ReconRuleUpdateInternal,
     ) -> StorageResult<Self> {
@@ -100,7 +101,7 @@ impl ReconRule {
 }
 
 impl ReconRuleNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<ReconRule> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<ReconRule> {
         generics::generic_insert(conn, self).await
     }
 }

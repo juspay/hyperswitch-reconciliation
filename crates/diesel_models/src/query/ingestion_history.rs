@@ -4,6 +4,7 @@ use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     ingestion_config::IngestionConfig,
     ingestion_history::{
@@ -15,12 +16,12 @@ use crate::{
         ingestion_config,
         ingestion_history::{self, dsl},
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl IngestionHistory {
     pub async fn find_by_id_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<Self> {
@@ -34,7 +35,7 @@ impl IngestionHistory {
     }
 
     pub async fn find_config_and_history_by_id_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<IngestionConfigHistoryView> {
@@ -48,7 +49,7 @@ impl IngestionHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_result_async::<(Self, IngestionConfig)>(conn)
+            .get_result_async::<(Self, IngestionConfig)>(conn.async_conn())
             .await
             .map(|(history, config)| IngestionConfigHistoryView { config, history })
             .map_err(|err| match err {
@@ -60,7 +61,7 @@ impl IngestionHistory {
     }
 
     pub async fn list_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         auth_profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Self>> {
@@ -76,7 +77,7 @@ impl IngestionHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<ingestion_history::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -87,7 +88,7 @@ impl IngestionHistory {
     }
 
     pub async fn list_by_ingestion_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         ingestion_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Self>> {
@@ -104,7 +105,7 @@ impl IngestionHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<ingestion_history::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -116,7 +117,7 @@ impl IngestionHistory {
     }
 
     pub async fn list_config_and_history_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         auth_profile_id: &str,
         filters: ListIngestionHistoryFilters,
     ) -> StorageResult<Vec<IngestionConfigHistoryView>> {
@@ -156,7 +157,7 @@ impl IngestionHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_results_async::<(Self, IngestionConfig)>(conn)
+            .get_results_async::<(Self, IngestionConfig)>(conn.async_conn())
             .await
             .map(|results| {
                 results
@@ -170,12 +171,15 @@ impl IngestionHistory {
             })
     }
 
-    pub async fn insert(conn: &PgPooledConn, new: IngestionHistoryNew) -> StorageResult<Self> {
+    pub async fn insert(
+        conn: &impl WriteConnection,
+        new: IngestionHistoryNew,
+    ) -> StorageResult<Self> {
         generics::generic_insert::<ingestion_history::table, _, _>(conn, new).await
     }
 
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         id: &str,
         update: IngestionHistoryUpdateInternal,
     ) -> StorageResult<Self> {
@@ -189,7 +193,7 @@ impl IngestionHistory {
 }
 
 impl IngestionHistoryNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<IngestionHistory> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<IngestionHistory> {
         generics::generic_insert(conn, self).await
     }
 }

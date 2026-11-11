@@ -1,10 +1,11 @@
-use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
+use async_bb8_diesel::AsyncRunQueryDsl;
 use common_utils::{chunking::chunked, date_time, logging};
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 use futures::future;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     entry::{Entry, EntryNew, EntryPage, EntryUpdateInternal, ExpectedEntryUpdateInternal},
     errors::DatabaseError,
     query::generics,
@@ -13,7 +14,7 @@ use crate::{
         entry::{self, dsl},
     },
     search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 use common_enums::{
@@ -235,7 +236,7 @@ pub fn calculate_balance_deltas(
 
 /// Unified function to update account balance based on the specified effect
 async fn update_account_balance(
-    conn: &PgPooledConn,
+    conn: &impl WriteConnection,
     account_id: &str,
     effect: BalanceEffect,
 ) -> StorageResult<()> {
@@ -285,7 +286,7 @@ async fn update_account_balance(
                     .eq(account::dsl::matched_debits + deltas.matched_debits),
                 account::dsl::last_modified_at.eq(date_time::now()),
             ))
-            .execute_async(conn),
+            .execute_async(conn.async_conn()),
         generics::db_metrics::DatabaseOperation::Update,
     )
     .await
@@ -296,13 +297,13 @@ async fn update_account_balance(
 }
 
 impl EntryNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<Entry> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<Entry> {
         let account_id = self.account_id.clone();
         let amount = self.amount;
         let entry_type = self.balance_direction;
         let status = self.status;
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             // First, insert the entry
             let inserted_entry: Entry =
                 generics::generic_insert(&conn, self).await.map_err(|e| {
@@ -359,7 +360,7 @@ impl EntryNew {
     }
 
     pub async fn batch_insert_chunked(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         entries: Vec<Self>,
     ) -> StorageResult<Vec<Entry>> {
         if entries.is_empty() {
@@ -368,7 +369,7 @@ impl EntryNew {
 
         let entry_count = entries.len();
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let mut inserted_entries: Vec<Entry> = Vec::with_capacity(entry_count);
 
             for (chunk_idx, chunk) in chunked(entries.clone(), ENTRY_BATCH_CHUNK_SIZE).enumerate() {
@@ -379,7 +380,7 @@ impl EntryNew {
                 let rows: Vec<Entry> =
                     generics::db_metrics::track_database_call::<entry::table, _, _>(
                         query
-                            .get_results_async(&conn),
+                            .get_results_async(conn.async_conn()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await
@@ -453,7 +454,7 @@ impl EntryNew {
 
 impl Entry {
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         entry_id: &str,
         entry_update: EntryUpdateInternal,
     ) -> StorageResult<Self> {
@@ -466,12 +467,15 @@ impl Entry {
         .attach_with(|| format!("Error while updating entry for entry_id: {entry_id}"))
     }
 
-    pub async fn find_by_entry_id(conn: &PgPooledConn, entry_id: String) -> StorageResult<Self> {
+    pub async fn find_by_entry_id(
+        conn: &impl ReadConnection,
+        entry_id: String,
+    ) -> StorageResult<Self> {
         generics::generic_find_by_id::<entry::table, _, _>(conn, entry_id).await
     }
 
     pub async fn list_by_account_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         account_id: &str,
         filters: ListEntriesFilters,
     ) -> StorageResult<Vec<Self>> {
@@ -498,7 +502,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -515,7 +519,7 @@ impl Entry {
     }
 
     pub async fn list_by_transaction_id_and_version(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transaction_id: &str,
         version: Option<i32>,
     ) -> StorageResult<Vec<Self>> {
@@ -530,7 +534,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -547,7 +551,7 @@ impl Entry {
     }
 
     pub async fn list_paginated(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         filters: EntryListFilters,
         pagination: PaginationQuery<EntryListSortField>,
     ) -> StorageResult<EntryPage> {
@@ -647,7 +651,7 @@ impl Entry {
 
         let mut entries: Vec<Self> =
             generics::db_metrics::track_database_call::<entry::table, _, _>(
-                query.get_results_async(conn),
+                query.get_results_async(conn.async_conn()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -672,7 +676,7 @@ impl Entry {
     }
 
     pub async fn list_expected_by_transaction_id_version_and_account(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transaction_id: &str,
         version: i32,
         account_id: &str,
@@ -686,7 +690,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -699,7 +703,7 @@ impl Entry {
     }
 
     pub async fn find_first_pending_source_by_transaction_id_and_version(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transaction_id: &str,
         version: i32,
         source_account_id: &str,
@@ -715,7 +719,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         let result: Self = generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_result_async(conn),
+            query.get_result_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -730,7 +734,7 @@ impl Entry {
     }
 
     pub async fn update_expected_for_source_append(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         current: &Self,
         update: ExpectedEntryUpdateInternal,
     ) -> StorageResult<Self> {
@@ -776,11 +780,11 @@ impl Entry {
     }
 
     pub async fn discard_entry_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         entry_id: &str,
         entry_update: EntryUpdateInternal,
     ) -> StorageResult<Self> {
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let updated_entry = generics::generic_update_with_unique_predicate_get_result::<
                 entry::table,
                 _,
@@ -834,11 +838,11 @@ impl Entry {
     }
 
     pub async fn batch_discard_entries_by_transaction_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         transaction_id: &str,
         entry_update: EntryUpdateInternal,
     ) -> StorageResult<Vec<Self>> {
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let updated_entries = generics::generic_update_with_results::<entry::table, _, _, Self>(
                 &conn,
                 dsl::logical_transaction_id
@@ -886,7 +890,7 @@ impl Entry {
     }
 
     pub async fn list_entries_by_ids(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         entry_ids: Vec<String>,
     ) -> StorageResult<Vec<Self>> {
         if entry_ids.is_empty() {
@@ -898,7 +902,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -906,12 +910,15 @@ impl Entry {
         .attach_with(|| format!("Error while listing entries by IDs: {entry_ids:?}"))
     }
 
-    pub async fn list_linking_pending(conn: &PgPooledConn, limit: u16) -> StorageResult<Vec<Self>> {
+    pub async fn list_linking_pending(
+        conn: &impl ReadConnection,
+        limit: u16,
+    ) -> StorageResult<Vec<Self>> {
         entry::table
             .filter(entry::linking_status.eq(DieselEntryLinkingStatus::Pending))
             .order((entry::created_at.asc(), entry::id.asc()))
             .limit(i64::from(limit))
-            .load_async(conn)
+            .load_async(conn.async_conn())
             .await
             .change_context(DatabaseError::Others)
     }

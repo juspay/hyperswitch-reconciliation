@@ -5,23 +5,27 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::transformation_config::{self, dsl},
     transformation_config::{
         TransformationConfig, TransformationConfigNew, TransformationConfigUpdateInternal,
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl TransformationConfigNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<TransformationConfig> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<TransformationConfig> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl TransformationConfig {
-    pub async fn find_by_id(conn: &PgPooledConn, transformation_id: &str) -> StorageResult<Self> {
+    pub async fn find_by_id(
+        conn: &impl ReadConnection,
+        transformation_id: &str,
+    ) -> StorageResult<Self> {
         generics::generic_find_by_id::<transformation_config::table, _, _>(
             conn,
             transformation_id.to_owned(),
@@ -30,7 +34,7 @@ impl TransformationConfig {
     }
 
     pub async fn find_by_id_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transformation_id: &str,
         profile_id: &str,
     ) -> StorageResult<Self> {
@@ -46,7 +50,7 @@ impl TransformationConfig {
     }
 
     pub async fn list_by_ids_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         ids: Vec<String>,
         profile_id: &str,
     ) -> StorageResult<Vec<Self>> {
@@ -57,7 +61,7 @@ impl TransformationConfig {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transformation_config::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -68,7 +72,7 @@ impl TransformationConfig {
     }
 
     pub async fn list_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: ListTransformationConfigsFilters,
     ) -> StorageResult<Vec<Self>> {
@@ -101,7 +105,7 @@ impl TransformationConfig {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transformation_config::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -112,7 +116,7 @@ impl TransformationConfig {
     }
 
     pub async fn list_by_ingestion_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         ingestion_id: &str,
         is_active: Option<bool>,
     ) -> StorageResult<Vec<Self>> {
@@ -127,7 +131,7 @@ impl TransformationConfig {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transformation_config::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -138,7 +142,7 @@ impl TransformationConfig {
     }
 
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         transformation_id: &str,
         transformation_config_update: TransformationConfigUpdateInternal,
     ) -> StorageResult<Self> {

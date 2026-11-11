@@ -8,6 +8,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait MetadataSchemaInterface {
@@ -54,7 +55,7 @@ impl MetadataSchemaInterface for Store {
         &self,
         metadata_schema: MetadataSchemaNew,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         metadata_schema.insert(&conn).await
     }
 
@@ -63,7 +64,7 @@ impl MetadataSchemaInterface for Store {
         id: &str,
         profile_id: &str,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         MetadataSchema::find_by_id_and_profile_id(&conn, id, profile_id).await
     }
 
@@ -72,7 +73,7 @@ impl MetadataSchemaInterface for Store {
         ids: Vec<String>,
         profile_id: &str,
     ) -> StorageResult<Vec<MetadataSchema>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         MetadataSchema::list_by_ids_and_profile_id(&conn, ids, profile_id).await
     }
 
@@ -81,7 +82,7 @@ impl MetadataSchemaInterface for Store {
         profile_id: &str,
         filters: ListMetadataSchemasFilters,
     ) -> StorageResult<Vec<MetadataSchema>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         MetadataSchema::list_by_profile_id(&conn, profile_id, filters).await
     }
 
@@ -90,7 +91,7 @@ impl MetadataSchemaInterface for Store {
         previous_version: MetadataSchema,
         version_update: MetadataSchemaVersionUpdate,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let new_version = MetadataSchemaNew::new_versioned(previous_version, version_update);
         new_version.insert(&conn).await
     }
@@ -100,7 +101,7 @@ impl MetadataSchemaInterface for Store {
         id: &str,
         update: MetadataSchemaUpdate,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         MetadataSchema::update_by_id(&conn, id, update.into()).await
     }
 }

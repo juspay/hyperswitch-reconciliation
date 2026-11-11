@@ -1,8 +1,8 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_types::transformation::{
     ListTransformationConfigsFilters, ListTransformationHistoryFilters,
 };
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     errors::DatabaseError,
     metadata_schema::MetadataSchemaNew,
@@ -18,6 +18,7 @@ use diesel_models::{
 use error_stack::ResultExt;
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait TransformationConfigInterface {
@@ -103,7 +104,7 @@ impl TransformationConfigInterface for Store {
         &self,
         transformation_config: TransformationConfigNew,
     ) -> StorageResult<TransformationConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         transformation_config.insert(&conn).await
     }
 
@@ -112,7 +113,7 @@ impl TransformationConfigInterface for Store {
         id: &str,
         profile_id: &str,
     ) -> StorageResult<TransformationConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationConfig::find_by_id_and_profile_id(&conn, id, profile_id).await
     }
 
@@ -121,7 +122,7 @@ impl TransformationConfigInterface for Store {
         ids: Vec<String>,
         profile_id: &str,
     ) -> StorageResult<Vec<TransformationConfig>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationConfig::list_by_ids_and_profile_id(&conn, ids, profile_id).await
     }
 
@@ -130,7 +131,7 @@ impl TransformationConfigInterface for Store {
         profile_id: &str,
         filters: ListTransformationConfigsFilters,
     ) -> StorageResult<Vec<TransformationConfig>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationConfig::list_by_profile_id(&conn, profile_id, filters).await
     }
 
@@ -139,7 +140,7 @@ impl TransformationConfigInterface for Store {
         ingestion_id: &str,
         is_active: Option<bool>,
     ) -> StorageResult<Vec<TransformationConfig>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationConfig::list_by_ingestion_id(&conn, ingestion_id, is_active).await
     }
 
@@ -152,9 +153,9 @@ impl TransformationConfigInterface for Store {
         let transformation_id = transformation_config.id.clone();
         let schema_id = metadata_schema.id.clone();
 
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
 
-        conn.transaction_async(|connection_pool| async move {
+        conn.transaction(|connection_pool| async move {
             // Create the metadata schema first
             metadata_schema
                 .insert(&connection_pool)
@@ -183,7 +184,7 @@ impl TransformationConfigInterface for Store {
         id: &str,
         update: TransformationConfigUpdate,
     ) -> StorageResult<TransformationConfig> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         TransformationConfig::update_by_id(&conn, id, update.into()).await
     }
 }
@@ -194,7 +195,7 @@ impl TransformationHistoryInterface for Store {
         &self,
         transformation_history: TransformationHistoryNew,
     ) -> StorageResult<TransformationHistory> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         transformation_history.insert(&conn).await
     }
 
@@ -203,7 +204,7 @@ impl TransformationHistoryInterface for Store {
         id: &str,
         profile_id: &str,
     ) -> StorageResult<TransformationConfigHistoryView> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationHistory::find_config_and_history_by_id_and_profile(&conn, id, profile_id)
             .await
     }
@@ -213,7 +214,7 @@ impl TransformationHistoryInterface for Store {
         id: &str,
         update: TransformationHistoryUpdate,
     ) -> StorageResult<TransformationHistory> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         TransformationHistory::update_by_id(&conn, id, update.into()).await
     }
 
@@ -222,7 +223,7 @@ impl TransformationHistoryInterface for Store {
         profile_id: &str,
         filters: ListTransformationHistoryFilters,
     ) -> StorageResult<Vec<TransformationConfigHistoryView>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationHistory::list_history_with_config_by_profile_id(&conn, profile_id, filters)
             .await
     }
@@ -232,7 +233,7 @@ impl TransformationHistoryInterface for Store {
         transformation_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<TransformationHistory>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         TransformationHistory::list_by_transformation_id(&conn, transformation_id, limit).await
     }
 }

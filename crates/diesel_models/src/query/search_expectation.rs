@@ -6,23 +6,24 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors::DatabaseError,
     query::generics,
     schema::search_expectation::{self, dsl},
     search_expectation::{
         SearchExpectation, SearchExpectationNew, SearchExpectationUpdateInternal,
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl SearchExpectation {
-    pub async fn find_by_id(conn: &PgPooledConn, id: String) -> StorageResult<Self> {
+    pub async fn find_by_id(conn: &impl ReadConnection, id: String) -> StorageResult<Self> {
         generics::generic_find_by_id::<search_expectation::table, _, _>(conn, id).await
     }
 
     /// List expectations for matching (uses idx_expectation_match index)
     pub async fn list_by_target_account_id_rule_id_target_key_hashed_source_value(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         target_account_id: &str,
         rule_id: &str,
         target_key: &FieldPathKey,
@@ -38,7 +39,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -51,7 +52,7 @@ impl SearchExpectation {
     }
     /// Find expectations for multiple targets in a single query
     pub async fn find_for_multiple_targets(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         target_account_id: &str,
         search_criteria: &[(String, FieldPathKey, String)], // (rule_id, target_key, hashed_source_value)
     ) -> StorageResult<Vec<Self>> {
@@ -79,7 +80,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         let result = generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await;
@@ -97,7 +98,7 @@ impl SearchExpectation {
     }
 
     pub async fn batch_update_status_by_primary_transaction_ids(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         primary_transaction_ids: Vec<String>,
         search_expectation_update: SearchExpectationUpdateInternal,
     ) -> StorageResult<Vec<Self>> {
@@ -113,7 +114,7 @@ impl SearchExpectation {
     }
 
     pub async fn find_expected_expectations_by_primary_transaction_id_and_target_account_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         primary_transaction_id: &str,
         target_account_id: &str,
     ) -> StorageResult<Vec<Self>> {
@@ -127,7 +128,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -138,7 +139,7 @@ impl SearchExpectation {
     }
 
     pub async fn list_expected_by_primary_transaction_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         primary_transaction_id: &str,
     ) -> StorageResult<Vec<Self>> {
         let query = dsl::search_expectation
@@ -148,7 +149,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -160,19 +161,19 @@ impl SearchExpectation {
 }
 
 impl SearchExpectationNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<SearchExpectation> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<SearchExpectation> {
         generics::generic_insert(conn, self).await
     }
 
     pub async fn batch_insert(
         search_expectations: Vec<Self>,
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
     ) -> StorageResult<Vec<SearchExpectation>> {
         let expectation_count = search_expectations.len();
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
             diesel::insert_into(search_expectation::table)
                 .values(search_expectations)
-                .get_results_async(conn),
+                .get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Insert,
         )
         .await

@@ -5,6 +5,7 @@ use diesel_models::{
 };
 
 use super::Store;
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait SearchGroupInterface {
@@ -49,7 +50,7 @@ impl SearchGroupInterface for Store {
         &self,
         search_group: SearchGroupNew,
     ) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         search_group.insert(&conn).await
     }
 
@@ -57,12 +58,12 @@ impl SearchGroupInterface for Store {
         &self,
         search_groups: Vec<SearchGroupNew>,
     ) -> StorageResult<Vec<SearchGroup>> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         SearchGroupNew::batch_insert(search_groups, &conn).await
     }
 
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_id(&conn, id.to_string()).await
     }
 
@@ -71,7 +72,7 @@ impl SearchGroupInterface for Store {
         id: &str,
         profile_id: &str,
     ) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_id_and_profile_id(&conn, id, profile_id).await
     }
 
@@ -80,7 +81,7 @@ impl SearchGroupInterface for Store {
         rule_id: &str,
         hashed_grouping_value: &str,
     ) -> StorageResult<Option<SearchGroup>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_rule_id_and_hashed_group_value(&conn, rule_id, hashed_grouping_value)
             .await
     }
@@ -90,7 +91,7 @@ impl SearchGroupInterface for Store {
         primary_transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<SearchGroup>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_primary_transaction_id_and_profile_id(
             &conn,
             primary_transaction_id,
@@ -104,7 +105,7 @@ impl SearchGroupInterface for Store {
         id: &str,
         update: SearchGroupUpdate,
     ) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let update_internal = update.into();
         SearchGroup::discard_by_id(&conn, id, update_internal).await
     }
