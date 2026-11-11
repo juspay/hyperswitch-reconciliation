@@ -187,7 +187,7 @@ async fn expiry_is_optional_and_not_capped() {
 async fn management_requires_a_jwt() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (merchant_id, _, _) = client
+    let (merchant_id, _, token) = client
         .bootstrap("ak_cred_merchant", "ak_cred_profile")
         .await;
 
@@ -243,7 +243,8 @@ async fn credentials_are_only_read_from_the_authorization_header() {
         .header("x-merchant-id", merchant_id.get_string_repr())
         .send()
         .await;
-    assert_eq!(response.status(), 200);
+    // Management is JWT only, so even a valid admin key is refused.
+    assert_eq!(response.status(), 401);
 
     let response = client
         .get("/api_keys")

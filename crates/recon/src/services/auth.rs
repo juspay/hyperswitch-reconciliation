@@ -27,7 +27,7 @@ use crate::{
     routes::AppState,
 };
 
-type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
+type Result<T, E> = core::result::Result<T, Report<E>>;
 
 pub mod auth_headers {
     pub const X_INTERNAL_API_KEY: &str = "x-internal-api-key";
@@ -86,9 +86,7 @@ fn header_str<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a str>,
 pub fn extract_credential(headers: &HeaderMap) -> Result<Credential, ReconAppError> {
     match header_str(headers, header::AUTHORIZATION.as_str())? {
         Some(authorization) => parse_authorization(authorization),
-        None => {
-            Err(Report::new(ReconAppError::Unauthorized).attach("No credential provided"))
-        }
+        None => Err(Report::new(ReconAppError::Unauthorized).attach("No credential provided")),
     }
 }
 
@@ -148,9 +146,7 @@ impl AuthValidator for AdminApiAuth {
     ) -> Result<Self::AuthData, ReconAppError> {
         let Credential::AdminApiKey(request_admin_api_key) = extract_credential(req.headers())?
         else {
-            return Err(
-                Report::new(ReconAppError::Unauthorized).attach("Expected an admin key")
-            );
+            return Err(Report::new(ReconAppError::Unauthorized).attach("Expected an admin key"));
         };
         let admin_api_key = &state.config.auth.get_inner().admin_api_key;
 
@@ -178,8 +174,7 @@ impl AuthValidator for InternalApiKeyAuth {
         let internal_api_key = &state.config.auth.get_inner().internal_api_key;
 
         if request_internal_api_key != internal_api_key.peek() {
-            Err(Report::new(ReconAppError::Unauthorized)
-                .attach("Internal API key auth failure"))?;
+            Err(Report::new(ReconAppError::Unauthorized).attach("Internal API key auth failure"))?;
         }
 
         Ok(())
@@ -262,8 +257,9 @@ impl AuthValidator for JwtAuth {
         let profile_id = claims.profile_id;
 
         if user_id.is_empty() {
-            return Err(Report::new(ReconAppError::Unauthorized)
-                .attach("Missing user_id in JWT claims"));
+            return Err(
+                Report::new(ReconAppError::Unauthorized).attach("Missing user_id in JWT claims")
+            );
         }
 
         if let Some(expected_merchant_id) = &self.merchant_id {
@@ -492,8 +488,10 @@ impl AuthValidator for JwtOrAdminApiAuth {
                     user_id: None,
                 })
             }
-            Credential::ApiKey(_) => Err(Report::new(ReconAppError::Unauthorized)
-                .attach("An API key can't manage API keys")),
+            Credential::ApiKey(_) => {
+                Err(Report::new(ReconAppError::Unauthorized)
+                    .attach("An API key can't manage API keys"))
+            }
         }
     }
 }
