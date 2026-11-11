@@ -12,10 +12,9 @@ pub struct CreateApiKeyRequest {
     pub name: String,
     #[schema(example = "Used by the nightly reporting job")]
     pub description: Option<String>,
-    /// A future datetime, at most 1 year after the key is created
     #[schema(example = "2027-01-01T00:00:00.000Z")]
-    #[serde(with = "common_utils::custom_serde::iso8601")]
-    pub expires_at: PrimitiveDateTime,
+    #[serde(default, with = "common_utils::custom_serde::iso8601::option")]
+    pub expires_at: Option<PrimitiveDateTime>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -64,8 +63,8 @@ pub struct ApiKeyResponse {
     #[serde(with = "common_utils::custom_serde::iso8601")]
     pub created_at: PrimitiveDateTime,
     #[schema(example = "2027-01-01T00:00:00.000Z")]
-    #[serde(with = "common_utils::custom_serde::iso8601")]
-    pub expires_at: PrimitiveDateTime,
+    #[serde(default, with = "common_utils::custom_serde::iso8601::option")]
+    pub expires_at: Option<PrimitiveDateTime>,
     #[schema(example = "2026-01-01T00:00:00.000Z")]
     #[serde(with = "common_utils::custom_serde::iso8601")]
     pub last_modified_at: PrimitiveDateTime,

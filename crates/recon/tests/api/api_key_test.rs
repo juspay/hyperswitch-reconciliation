@@ -110,7 +110,6 @@ async fn create_rejects_invalid_expiry_and_name() {
 
     for (body, code) in [
         (create_body("past", -1), "RE_1705"),
-        (create_body("too long", 366), "RE_1706"),
         (create_body("   ", 30), "RE_1702"),
         (create_body(&"n".repeat(65), 30), "RE_1703"),
         (long_description, "RE_1704"),
@@ -125,12 +124,10 @@ async fn create_rejects_invalid_expiry_and_name() {
         assert_eq!(error_code(response).await, code, "{body}");
     }
 
-    // Unparsable, "never", null and missing expiry are all rejected: expiry is mandatory.
+    // Unparsable expiry values are rejected (a key that never expires omits the field).
     for body in [
         json!({ "name": "bad", "expires_at": "forever" }),
         json!({ "name": "bad", "expires_at": "never" }),
-        json!({ "name": "bad", "expires_at": null }),
-        json!({ "name": "no expiry" }),
     ] {
         let response = client
             .post("/api_keys")
@@ -143,36 +140,47 @@ async fn create_rejects_invalid_expiry_and_name() {
 }
 
 #[tokio::test]
-async fn expiry_is_capped_at_one_year() {
+async fn expiry_is_optional_and_not_capped() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (_, _, token) = client.bootstrap("ak_cap_merchant", "ak_cap_profile").await;
+    let (_, _, token) = client
+        .bootstrap("ak_expiry_merchant", "ak_expiry_profile")
+        .await;
 
-    // Just inside the cap (a day of slack for clock drift between test and server).
+    // Missing and null both mean the key never expires.
+    for body in [
+        json!({ "name": "no expiry" }),
+        json!({ "name": "null expiry", "expires_at": null }),
+    ] {
+        let response = client
+            .post("/api_keys")
+            .with_auth(&token)
+            .json(&body)
+            .send()
+            .await;
+        assert_eq!(response.status(), 201, "{body}");
+        let created: CreateApiKeyResponse = response.json().await.unwrap();
+        assert_eq!(created.api_key_details.expires_at, None, "{body}");
+
+        let response = client
+            .get(&format!("/api_keys/{}", created.api_key_details.id))
+            .with_auth(&token)
+            .send()
+            .await;
+        let fetched: Value = client.expect_success(response).await;
+        assert!(fetched["expires_at"].is_null(), "{body}");
+    }
+
+    // A date is still accepted, and there is no maximum.
     let response = client
         .post("/api_keys")
         .with_auth(&token)
-        .json(&create_body("almost a year", 364))
+        .json(&create_body("five years", 5 * 365))
         .send()
         .await;
     assert_eq!(response.status(), 201);
     let created: CreateApiKeyResponse = response.json().await.unwrap();
-
-    let response = client
-        .get(&format!("/api_keys/{}", created.api_key_details.id))
-        .with_auth(&token)
-        .send()
-        .await;
-    let fetched: Value = client.expect_success(response).await;
-    assert!(fetched["expires_at"].is_string());
-
-    let response = client
-        .post("/api_keys")
-        .with_auth(&token)
-        .json(&create_body("two years", 730))
-        .send()
-        .await;
-    assert_eq!(response.status(), 400);
+    assert!(created.api_key_details.expires_at.is_some());
 }
 
 #[tokio::test]

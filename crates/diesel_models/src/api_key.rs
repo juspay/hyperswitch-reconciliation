@@ -21,7 +21,7 @@ pub struct ApiKey {
     pub prefix: String,
     pub created_by: Option<String>,
     pub created_at: PrimitiveDateTime,
-    pub expires_at: PrimitiveDateTime,
+    pub expires_at: Option<PrimitiveDateTime>,
     pub last_modified_at: PrimitiveDateTime,
     pub status: ApiKeyStatus,
 }
@@ -37,7 +37,7 @@ pub struct ApiKeyNew {
     pub prefix: String,
     pub created_by: Option<String>,
     pub created_at: PrimitiveDateTime,
-    pub expires_at: PrimitiveDateTime,
+    pub expires_at: Option<PrimitiveDateTime>,
     pub last_modified_at: PrimitiveDateTime,
     pub status: ApiKeyStatus,
 }

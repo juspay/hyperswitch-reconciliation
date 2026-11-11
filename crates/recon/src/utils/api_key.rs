@@ -1,7 +1,7 @@
 use api_models::api_key::{ApiKeyResponse, CreateApiKeyRequest, UpdateApiKeyRequest};
 use diesel_models::api_key::ApiKey;
 use error_stack::Report;
-use time::{Duration, PrimitiveDateTime};
+use time::PrimitiveDateTime;
 
 use crate::errors::api_key::{ApiKeyError, ApiKeyResult};
 
@@ -28,7 +28,6 @@ impl ApiKeyExt for ApiKey {
 
 pub const MAX_NAME_LENGTH: usize = 64;
 pub const MAX_DESCRIPTION_LENGTH: usize = 256;
-pub const MAX_EXPIRY_DAYS: i64 = 365;
 
 pub trait ApiKeyRequestValidator {
     /// `now` is passed in so the caller can use the same instant for `created_at`.
@@ -62,13 +61,8 @@ impl ApiKeyRequestValidator for CreateApiKeyRequest {
         if let Some(description) = &self.description {
             validate_description(description)?;
         }
-        if self.expires_at <= now {
+        if self.expires_at.is_some_and(|expires_at| expires_at <= now) {
             return Err(Report::new(ApiKeyError::ExpiryInPast));
-        }
-        if self.expires_at > now + Duration::days(MAX_EXPIRY_DAYS) {
-            return Err(Report::new(ApiKeyError::ExpiryTooFar {
-                max_days: MAX_EXPIRY_DAYS,
-            }));
         }
         Ok(())
     }

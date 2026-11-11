@@ -25,9 +25,6 @@ pub enum ApiKeyError {
     #[error("expires_at must be in the future")]
     ExpiryInPast,
 
-    #[error("expires_at must be within {max_days} days of creation")]
-    ExpiryTooFar { max_days: i64 },
-
     #[error("at least one of name or description is required")]
     NothingToUpdate,
 }
@@ -44,7 +41,6 @@ impl From<ApiKeyError> for ReconAppError {
             | ApiKeyError::NameTooLong { .. }
             | ApiKeyError::DescriptionTooLong { .. }
             | ApiKeyError::ExpiryInPast
-            | ApiKeyError::ExpiryTooFar { .. }
             | ApiKeyError::NothingToUpdate => Self::ValidationError(error.to_string()),
         }
     }
@@ -73,9 +69,6 @@ impl ErrorSwitchFrom<ApiKeyError> for ApiErrorPayload {
             }
             ApiKeyError::ExpiryInPast => {
                 Self::BadRequest(ApiError::new("RE", 1705, error.to_string(), None))
-            }
-            ApiKeyError::ExpiryTooFar { .. } => {
-                Self::BadRequest(ApiError::new("RE", 1706, error.to_string(), None))
             }
             ApiKeyError::NothingToUpdate => {
                 Self::BadRequest(ApiError::new("RE", 1708, error.to_string(), None))
