@@ -9,7 +9,7 @@ use common_utils::{
 };
 use diesel_models::api_key::{ApiKeyNew, ApiKeyUpdate};
 use error_stack::ResultExt;
-use masking::Secret;
+use masking::StrongSecret;
 use storage_impl::api_key::ApiKeyInterface;
 
 use crate::{
@@ -54,7 +54,7 @@ pub async fn create_api_key(
     Ok(ApplicationResponse::json_created_no_store(
         CreateApiKeyResponse::new(
             api_key.to_api_response(),
-            Secret::new(plaintext_key.expose().to_string()),
+            StrongSecret::new(plaintext_key.expose().to_string()),
         ),
     ))
 }

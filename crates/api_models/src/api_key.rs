@@ -1,6 +1,6 @@
 use common_enums::ApiKeyStatus;
 use common_utils::id_type::MerchantId;
-use masking::Secret;
+use masking::StrongSecret;
 use serde::{Deserialize, Serialize};
 use time::PrimitiveDateTime;
 use utoipa::ToSchema;
@@ -75,11 +75,11 @@ pub struct CreateApiKeyResponse {
     #[serde(flatten)]
     pub api_key_details: ApiKeyResponse,
     #[schema(value_type = String, example = "dev_aB3dE9...")]
-    pub api_key: Secret<String>,
+    pub api_key: StrongSecret<String>,
 }
 
 impl CreateApiKeyResponse {
-    pub fn new(api_key_details: ApiKeyResponse, api_key: Secret<String>) -> Self {
+    pub fn new(api_key_details: ApiKeyResponse, api_key: StrongSecret<String>) -> Self {
         Self {
             api_key_details,
             api_key,
