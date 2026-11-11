@@ -470,8 +470,8 @@ impl Report {
                     .route(web::post().to(reporting::trigger_exception_report)),
             )
             .service(
-                web::resource("/linked-entry")
-                    .route(web::post().to(reporting::trigger_linked_entry_report)),
+                web::resource("/transaction_flows")
+                    .route(web::post().to(reporting::trigger_transaction_flow_report)),
             )
     }
 }

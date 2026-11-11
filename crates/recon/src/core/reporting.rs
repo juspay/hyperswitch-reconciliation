@@ -1,5 +1,5 @@
 use api_models::reporting::{
-    ExceptionReportFilters, LinkedEntryReportFilters, TransactionReportFilters,
+    ExceptionReportFilters, TransactionFlowReportFilters, TransactionReportFilters,
 };
 use common_utils::{auth::AuthContext, date_time};
 use error_stack::ResultExt;
@@ -10,7 +10,7 @@ use storage_impl::recon_rule::ReconRuleInterface;
 use crate::{
     config::ReportType,
     domain::reporting::{
-        ExceptionReportLambdaPayload, LinkedEntryReportLambdaPayload,
+        ExceptionReportLambdaPayload, TransactionFlowReportLambdaPayload,
         TransactionReportLambdaPayload,
     },
     errors::{
@@ -141,10 +141,10 @@ pub async fn generate_exception_report(
     Ok(ApplicationResponse::StatusOk)
 }
 
-pub async fn generate_linked_entry_report(
+pub async fn generate_transaction_flow_report(
     state: AppState,
     auth: AuthContext,
-    filters: LinkedEntryReportFilters,
+    filters: TransactionFlowReportFilters,
 ) -> ReportResponse<()> {
     filters
         .validate()
@@ -174,7 +174,7 @@ pub async fn generate_linked_entry_report(
         .chain(vec![primary_email])
         .collect();
 
-    let payload = LinkedEntryReportLambdaPayload {
+    let payload = TransactionFlowReportLambdaPayload {
         profile_id: auth.profile_id,
         rule_id: filters.rule_id,
         start_time: filters.time_range.start_time,
@@ -190,7 +190,7 @@ pub async fn generate_linked_entry_report(
             state
                 .config
                 .reporting_service
-                .function_name(ReportType::LinkedEntry),
+                .function_name(ReportType::TransactionFlow),
             payload_bytes,
         )
         .await

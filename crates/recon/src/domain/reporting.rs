@@ -29,7 +29,7 @@ pub struct ExceptionReportLambdaPayload {
 }
 
 #[derive(Serialize)]
-pub struct LinkedEntryReportLambdaPayload {
+pub struct TransactionFlowReportLambdaPayload {
     pub profile_id: String,
     pub rule_id: String,
     #[serde(with = "iso8601")]

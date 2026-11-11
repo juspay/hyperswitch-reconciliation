@@ -1,6 +1,6 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::reporting::{
-    ExceptionReportFilters, LinkedEntryReportFilters, TransactionReportFilters,
+    ExceptionReportFilters, TransactionFlowReportFilters, TransactionReportFilters,
 };
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
@@ -14,8 +14,18 @@ use crate::{
 #[derive(OpenApi)]
 #[openapi(
     tags((name = "Reports", description = "Report generation")),
-    paths(trigger_transaction_report, trigger_exception_report),
-    components(schemas(TransactionReportFilters, ExceptionReportFilters)),
+    paths(
+        trigger_transaction_report,
+        trigger_exception_report,
+        trigger_transaction_flow_report,
+    ),
+    components(
+        schemas(
+            TransactionReportFilters,
+            ExceptionReportFilters,
+            TransactionFlowReportFilters,
+        )
+    ),
 )]
 pub struct ReportApi;
 
@@ -81,14 +91,14 @@ pub async fn trigger_exception_report(
     .await
 }
 
-/// Trigger a linked entry report
+/// Trigger a transaction flow report
 #[utoipa::path(
     post,
-    path = "/report/linked-entry",
+    path = "/report/transaction_flows",
     tag = "Reports",
-    request_body = LinkedEntryReportFilters,
+    request_body = TransactionFlowReportFilters,
     responses(
-        (status = 200, description = "Linked entry report triggered"),
+        (status = 200, description = "Transaction flow report triggered"),
         (status = 400, description = "Invalid time range"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Recon rule not found"),
@@ -96,9 +106,9 @@ pub async fn trigger_exception_report(
     ),
     security(("Bearer" = []))
 )]
-pub async fn trigger_linked_entry_report(
+pub async fn trigger_transaction_flow_report(
     state: web::Data<AppState>,
-    req: web::Json<LinkedEntryReportFilters>,
+    req: web::Json<TransactionFlowReportFilters>,
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
@@ -106,7 +116,7 @@ pub async fn trigger_linked_entry_report(
         &http_req,
         state,
         |state, auth| async move {
-            core::reporting::generate_linked_entry_report(state, auth, req.into_inner()).await
+            core::reporting::generate_transaction_flow_report(state, auth, req.into_inner()).await
         },
     )
     .await

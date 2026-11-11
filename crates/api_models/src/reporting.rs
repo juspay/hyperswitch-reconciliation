@@ -35,7 +35,7 @@ impl ExceptionReportFilters {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
-pub struct LinkedEntryReportFilters {
+pub struct TransactionFlowReportFilters {
     #[serde(flatten)]
     pub time_range: TimeRange,
     pub rule_id: String,
@@ -43,7 +43,7 @@ pub struct LinkedEntryReportFilters {
     pub emails: HashSet<String>,
 }
 
-impl LinkedEntryReportFilters {
+impl TransactionFlowReportFilters {
     pub fn validate(&self) -> Result<(), String> {
         self.time_range.validate()
     }
