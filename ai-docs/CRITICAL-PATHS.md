@@ -9,6 +9,9 @@
 - **Critical**: JWT claims MUST include non-empty `user_id` - validation fails otherwise
 - **Critical**: AdminApiAuth uses the `admin-api-key` header (merchant API keys use `api-key`)
 - **Critical**: Admin endpoints bypass JWT validation entirely - different auth flow
+- **Critical**: Merchant API keys (`api-key` header) must be sent with `x-profile-id`; without it the request is a 401. The key's merchant must own that profile
+- **Critical**: `JwtOrApiKey` is for read routes only (today `POST /transactions/v2/list`). Keys have no permission check and `user_id` is `apikey:<id>`, so never put it on a write route
+- **Critical**: A Bearer token wins over `api-key`; a bad Bearer is a 401 with no fallback to the key
 - **Critical**: Service-to-service routes (transformation trigger) use `InternalApiKeyAuth` with the `x-internal-api-key` header and `auth.internal_api_key`, a different key from `admin_api_key`. Never use `NoAuth` for them
 - **Critical**: Admin API key required for merchant creation and bootstrap
 - **Critical**: Token generation API removed - clients must generate JWTs themselves using shared secret

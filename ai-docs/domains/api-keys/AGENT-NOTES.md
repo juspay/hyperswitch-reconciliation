@@ -1,6 +1,6 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; the `ApiKeyAuth` validator exists but no route uses it yet.
+Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; `ApiKeyAuth` authenticates keys, and `POST /transactions/v2/list` is the only route that accepts one.
 
 ## Data Model
 
@@ -44,5 +44,10 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 
 ## API Key Authentication (`services/auth.rs`)
 
-- **`ApiKeyAuth`** reads the key from the `api-key` header (`AdminApiAuth` uses a different one, `admin-api-key`). Flow: hash, `find_active_api_key_by_hash`, not expired (no `expires_at` never expires), mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
+- **`ApiKeyAuth`** reads the key from the `api-key` header (`AdminApiAuth` uses a different one, `admin-api-key`). Flow: hash, `find_active_api_key_by_hash`, not expired (a missing `expires_at` means the key never expires), mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
 - **`AuthContext.auth_method`** is `Jwt` or `ApiKey`. For keys `user_id` is `apikey:<id>`, which is not a Hyperswitch user: code that resolves `user_id` through Hyperswitch (`get_modified_by`) must branch on `auth_method` and omit `modified_by` for keys (no user lookup).
+- **`JwtOrApiKey`** wraps `JwtAuth` and `ApiKeyAuth`. If an `Authorization: Bearer` token is present it is used, and a bad token is a 401 with **no fallback** to the key, even if a valid `api-key` is also sent. Otherwise the `api-key` header is used. `Authorization` carries only the JWT; the key and the admin secret have their own headers.
+- **Enabled for keys: `POST /transactions/v2/list` only.** `GET /transactions/{id}`, `GET /transactions` and every other route stay JWT-only (or admin / internal key). A key sent to them is a 401. Add a route by switching its validator to `JwtOrApiKey::new(permission)` and adding an end-to-end test.
+- **Keys have no permission or scope check.** The permission given to `JwtOrApiKey::new` is enforced for JWT callers only; a valid key passes on any route that uses `JwtOrApiKey`. So keep `JwtOrApiKey` off write routes: `user_id` is `apikey:<id>`, and `modified_by` handling must branch on `auth_method` first. Scopes were deliberately left out for now.
+- **Breaking: the admin secret moved from the `api-key` header to `admin-api-key`.** `api-key` now means a merchant key only, so the old header is a 401 on admin routes. Check scripts, runbooks and deploy tooling before deploying.
+- Tests in `tests/api/api_key_test.rs` cover list v2 with a JWT and with a key, and these 401s: bad Bearer next to a key, missing `x-profile-id`, another merchant's profile, unknown key, no credential, admin key, revoked key. Expired keys, discarded profiles and keys on non-key routes have no test yet.
