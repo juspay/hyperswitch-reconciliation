@@ -30,7 +30,10 @@ use crate::{
     routes::AppState,
 };
 
-pub const API_KEY_PERMISSIONS: &[Permission] = &[Permission::ProfileReconTransactionRead];
+pub const API_KEY_PERMISSIONS: &[Permission] = &[
+    Permission::ProfileReconTransactionRead,
+    Permission::ProfileReconStagingEntryWrite,
+];
 
 pub mod auth_headers {
     pub const X_INTERNAL_API_KEY: &str = "x-internal-api-key";

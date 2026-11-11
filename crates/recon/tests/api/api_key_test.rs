@@ -141,6 +141,7 @@ async fn create_validates_scopes() {
         // Real permissions that are not in the allowlist.
         json!(["ProfileReconTransactionWrite"]),
         json!(["ProfileReconIngestionRead"]),
+        json!(["ProfileReconStagingEntryRead"]),
         // Keys can't mint keys.
         json!(["MerchantReconApiKeyWrite"]),
         json!(["MerchantReconApiKeyRead"]),
@@ -155,6 +156,17 @@ async fn create_validates_scopes() {
             .await;
         assert_eq!(response.status(), 400, "{scopes}");
     }
+
+    // Staging entry create is allowlisted.
+    let mut body = create_body("staging writer", 30);
+    body["scopes"] = json!([read, "ProfileReconStagingEntryWrite"]);
+    let response = client
+        .post("/api_keys")
+        .with_auth(&token)
+        .json(&body)
+        .send()
+        .await;
+    assert_eq!(response.status(), 201);
 
     // Scopes are required.
     let mut body = create_body("no scopes", 30);
