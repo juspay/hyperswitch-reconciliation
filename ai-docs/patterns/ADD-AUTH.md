@@ -301,6 +301,19 @@ pub async fn protected_with_error_details(
 - Forgetting to configure admin_api_key in environment configs
 - Not using `Secret<T>` wrapper when accessing config values
 
+## Adding a Permission
+
+Permissions are declared once in `crates/common_types/src/permissions.rs` via `generate_permissions!`:
+
+```rust
+ReconApiKey: { scopes: [Read, Write], entities: [Merchant] },
+```
+
+- The macro generates `Permission::{Entity}{Resource}{Scope}` variants, e.g. `MerchantReconApiKeyRead`. `entities` is `Profile` or `Merchant` (`crates/recon_derive/src/macros/generate_permissions.rs`).
+- **The entity decides who can hold the permission.** Recon has no roles; it asks Hyperswitch `/authorize`, which only lets a role whose entity level is at least the permission's entity hold it. `Merchant` excludes profile-level roles. Copying `entities: [Profile]` by mistake silently lets profile-level users in.
+- The resource must also exist in Hyperswitch (`Resource`, permission groups and role grants), and that build must be deployed. Otherwise `authorize_token` rejects the string. The mock user client in tests allows everything, so tests can't prove this part.
+- Use it with `JwtAuth::basic(Permission::MerchantReconApiKeyWrite)`.
+
 ## Related Patterns
 - [ADD-ENDPOINT](ADD-ENDPOINT.md) - For adding new protected endpoints
 - [ERROR-HANDLING](ERROR-HANDLING.md) - For auth error responses
