@@ -114,7 +114,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 - Server initialization spawns a separate linking processor, initially `Stopped`. Starting the recon processor does not start linking.
 - Admin endpoints: `GET /linking_processor/status` returns `{"status":"stopped"}` or `{"status":"running"}`; `POST` to the same path accepts that shape and returns HTTP 200.
-- Status-control authentication is `AdminApiAuth` (`Authorization: admin-api-key=<secret>`). Status lives in an in-process watch channel, is not persisted, and controls that application instance. Enqueue uses JWT authentication instead (see below).
+- Status-control authentication is `AdminApiAuth` with the `admin-api-key` header. Status lives in an in-process watch channel, is not persisted, and controls that application instance. Enqueue uses JWT authentication instead (see below).
 - Current processing fetches one pending entry at a time, ordered by `(created_at ASC, id ASC)`. It sleeps five seconds on an empty queue or a failed queue query.
 - **Future concurrency must partition by account.** No two workers may process entries belonging to the same account concurrently; processing within an account remains serialized. Since a link config is scoped to one account, this keeps both sides of a match under one worker.
 - Account ownership must remain exclusive across application instances and worker handoffs. This partitioning is planned, not implemented by the current global pending query. `BATCH_SIZE = 1` is only local serialization.

@@ -187,7 +187,7 @@ async fn expiry_is_optional_and_not_capped() {
 async fn management_requires_a_jwt() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (merchant_id, _, token) = client
+    let (merchant_id, _, _) = client
         .bootstrap("ak_cred_merchant", "ak_cred_profile")
         .await;
 
@@ -210,62 +210,6 @@ async fn management_requires_a_jwt() {
     // Invalid bearer token.
     let response = client.get("/api_keys").with_auth("not-a-jwt").send().await;
     assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/api_keys")
-        .header(
-            "Authorization",
-            "admin-api-key=test_admin_12345678901234567890,api-key=dev_abc",
-        )
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/api_keys")
-        .header("Authorization", &format!("Bearer {token}, admin-api-key=x"))
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-}
-
-#[tokio::test]
-async fn credentials_are_only_read_from_the_authorization_header() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let (merchant_id, _, token) = client.bootstrap("ak_hdr_merchant", "ak_hdr_profile").await;
-    let admin_key = "test_admin_12345678901234567890";
-
-    let response = client
-        .get("/api_keys")
-        .header("Authorization", &format!("admin-api-key={admin_key}"))
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
-    // Management is JWT only, so even a valid admin key is refused.
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/api_keys")
-        .header("api-key", admin_key)
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    for authorization in ["admin-api-key=wrong", "api-key=dev_not_a_real_key"] {
-        let response = client
-            .get("/api_keys")
-            .header("Authorization", authorization)
-            .header("x-merchant-id", merchant_id.get_string_repr())
-            .send()
-            .await;
-        assert_eq!(response.status(), 401, "{authorization}");
-    }
-
-    let response = client.get("/api_keys").with_auth(&token).send().await;
-    assert_eq!(response.status(), 200);
 }
 
 #[tokio::test]
@@ -527,4 +471,127 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
         .await;
     let fetched: ApiKeyResponse = client.expect_success(response).await;
     assert_eq!(fetched.status, ApiKeyStatus::Active);
+}
+
+#[tokio::test]
+async fn admin_routes_only_read_the_admin_api_key_header() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let admin_key = "test_admin_12345678901234567890";
+
+    // The `api-key` header is for merchant API keys, so it never authenticates an admin route.
+    let response = client
+        .get("/recon_engine/processor/status")
+        .header("api-key", admin_key)
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    let response = client
+        .get("/recon_engine/processor/status")
+        .with_admin_key()
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
+async fn transactions_list_v2_accepts_a_jwt_or_an_api_key() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, profile_id, token) = client
+        .bootstrap("ak_listv2_merchant", "ak_listv2_profile")
+        .await;
+    let (_, other_profile_id, _) = client
+        .bootstrap("ak_listv2_other_merchant", "ak_listv2_other_profile")
+        .await;
+    let key = create_key(&client, &token, "lists transactions").await;
+    let plaintext = key.api_key.peek().to_string();
+    let body = json!({
+        "cursor_payload": {
+            "limit": 10,
+            "direction": "next",
+            "sort_by": { "sort_field": "id", "id": null },
+            "order": "desc"
+        }
+    });
+
+    let list = |builder: crate::common::RequestBuilder| {
+        let body = body.clone();
+        async move { builder.json(&body).send().await.status().as_u16() }
+    };
+
+    // JWT, as before.
+    assert_eq!(
+        list(client.post("/transactions/v2/list").with_auth(&token)).await,
+        200
+    );
+
+    // API key plus profile.
+    assert_eq!(
+        list(
+            client
+                .post("/transactions/v2/list")
+                .header("api-key", &plaintext)
+                .header("x-profile-id", &profile_id)
+        )
+        .await,
+        200
+    );
+
+    // A JWT is used when present, even next to a key, and a bad token is not rescued by the key.
+    assert_eq!(
+        list(
+            client
+                .post("/transactions/v2/list")
+                .with_auth("not-a-jwt")
+                .header("api-key", &plaintext)
+                .header("x-profile-id", &profile_id)
+        )
+        .await,
+        401
+    );
+
+    // Missing profile, another merchant's profile, unknown key, no credential at all.
+    for builder in [
+        client
+            .post("/transactions/v2/list")
+            .header("api-key", &plaintext),
+        client
+            .post("/transactions/v2/list")
+            .header("api-key", &plaintext)
+            .header("x-profile-id", &other_profile_id),
+        client
+            .post("/transactions/v2/list")
+            .header("api-key", "dev_not_a_real_key")
+            .header("x-profile-id", &profile_id),
+        client.post("/transactions/v2/list"),
+    ] {
+        assert_eq!(list(builder).await, 401);
+    }
+
+    // The admin key is not an API key.
+    assert_eq!(
+        list(client.post("/transactions/v2/list").with_admin_key()).await,
+        401
+    );
+
+    // A revoked key stops working.
+    let response = client
+        .put(&format!("/api_keys/{}", key.api_key_details.id))
+        .with_auth(&token)
+        .json(&json!({ "status": "revoked" }))
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        list(
+            client
+                .post("/transactions/v2/list")
+                .header("api-key", &plaintext)
+                .header("x-profile-id", &profile_id)
+        )
+        .await,
+        401
+    );
 }

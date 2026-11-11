@@ -1,6 +1,6 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; the auth validators (`ApiKeyAuth`, `JwtOrApiKey`) exist but no route uses them yet.
+Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; the `ApiKeyAuth` validator exists but no route uses it yet.
 
 ## Data Model
 
@@ -42,9 +42,7 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 - Response mapping is `ApiKeyExt::to_api_response` (`utils/api_key.rs`), like the other `*Ext` traits. Error aliases follow the repo split: `ApiKeyResponse<T>` wraps `ApplicationResponse`, `ApiKeyResult<T>` is the plain `Result`. `core` imports the model struct as `ApiKeyApiResponse` to avoid the name clash.
 - Datetimes in API models must use `common_utils::custom_serde::iso8601` (RFC 3339 with an offset, e.g. `2027-01-01T00:00:00Z`). Plain `PrimitiveDateTime` serde is not ISO: it rejected real clients while tests that reused the same serde passed, so tests send the string form.
 
-## Credentials (`services/auth.rs`)
+## API Key Authentication (`services/auth.rs`)
 
-- **One `Authorization` header carries the credential** (the Hyperswitch v2 convention): `Bearer <jwt>`, `api-key=<key>`, or `admin-api-key=<secret>`. `extract_credential` is the only parser and requires exactly one credential; none, two (including two `Authorization` headers), an unknown scheme, or an empty value are all 401. Anything else in the value (a comma, spaces) is not parsed: it is hashed or compared as part of the secret, so it fails there.
-- **The old `api-key` header is gone**: no client used it, so it was removed rather than kept for compatibility. Sending it is a 401 (no credential). Admin routes (`AdminApiAuth`) now need `Authorization: admin-api-key=<secret>` too.
-- **`ApiKeyAuth`** flow: hash, `find_active_api_key_by_hash`, not expired, mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
-- **`AuthContext.auth_method`** is `Jwt` or `ApiKey`. For keys `user_id` is `apikey:<id>`, which is not a Hyperswitch user: code that resolves `user_id` through Hyperswitch (`get_modified_by`) must branch on `auth_method` and omit `modified_by` for keys (no user lookup). That branch lands with the first route that enables keys.
+- **`ApiKeyAuth`** reads the key from the `api-key` header (`AdminApiAuth` uses a different one, `admin-api-key`). Flow: hash, `find_active_api_key_by_hash`, not expired (no `expires_at` never expires), mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
+- **`AuthContext.auth_method`** is `Jwt` or `ApiKey`. For keys `user_id` is `apikey:<id>`, which is not a Hyperswitch user: code that resolves `user_id` through Hyperswitch (`get_modified_by`) must branch on `auth_method` and omit `modified_by` for keys (no user lookup).

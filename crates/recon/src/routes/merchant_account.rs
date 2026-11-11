@@ -43,7 +43,7 @@ pub struct MerchantAccountApi;
     path = "/merchant_accounts",
     tag = "Merchant Account",
     request_body = MerchantAccountCreateRequest,
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
     responses(
         (status = 201, description = "Merchant account created successfully", body = MerchantAccountResponse),
         (status = 409, description = "Merchant account already exists"),

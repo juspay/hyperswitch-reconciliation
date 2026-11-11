@@ -15,7 +15,7 @@ use api_models::auth::{
     path = "/auth/bootstrap",
     tag = "Auth",
     request_body = TestMerchantSetupRequest,
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
     responses(
         (status = 200, description = "Bootstrap successful - merchant and profile created", body = TestMerchantSetupResponse),
         (status = 400, description = "Invalid request"),
@@ -38,7 +38,7 @@ pub async fn bootstrap(
     path = "/auth/bootstrap_with_ids",
     tag = "Auth",
     request_body = TestMerchantSetupWithIdsRequest,
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
     responses(
         (status = 200, description = "Bootstrap successful - merchant and profile created with provided IDs", body = TestMerchantSetupResponse),
         (status = 400, description = "Invalid request"),

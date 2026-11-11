@@ -47,7 +47,7 @@ pub async fn admin_endpoint(
 ) -> impl Responder {
     let auth = AdminApiAuth;
     
-    // Validate admin API key from `Authorization: admin-api-key=<secret>`
+    // Validate admin API key from admin-api-key header
     auth.validate(&req, state.as_ref().clone())
         .await
         .map_err(|_| HttpResponse::Unauthorized().finish())?;
@@ -58,10 +58,9 @@ pub async fn admin_endpoint(
 ```
 
 ### API Key Authentication
-- **Header:** `Authorization: api-key=<key>` plus a mandatory `x-profile-id`. Exactly one credential per request.
-- `JwtOrApiKey::new(permission)` checks `permission` only for JWT callers. API keys are not checked against any permission yet, so do not put it on a route until key scopes exist.
+- `ApiKeyAuth`: `api-key: <key>` header plus a mandatory `x-profile-id`.
 - `auth_context.auth_method == AuthMethod::ApiKey` means `user_id` is `apikey:<id>`, not a Hyperswitch user.
-- Admin key: `Authorization: admin-api-key=<secret>`. See `domains/api-keys/AGENT-NOTES.md`.
+- API keys are not checked against any permission. See `domains/api-keys/AGENT-NOTES.md`.
 
 ## Full Implementation
 ```rust
@@ -272,7 +271,7 @@ pub async fn protected_with_error_details(
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin API key documentation -->
-- **Header-based**: `Authorization: admin-api-key=<secret>`, NOT `Bearer`
+- **Header-based**: The key is the value of the `admin-api-key` header. `Authorization` is not used (it carries only the JWT `Bearer` token)
 - **No JWT validation**: Bypasses JWT token validation entirely
 - **No auth context**: Returns `()` - admin operations don't need merchant/profile scope
 - **Simple comparison**: Validates against configured admin_api_key
@@ -301,7 +300,7 @@ pub async fn protected_with_error_details(
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin auth gotchas -->
-- Using `Authorization: Bearer` instead of `Authorization: admin-api-key=<secret>`
+- Sending the admin key in the `Authorization` header: that header is only for the JWT (`Bearer <token>`). The admin key goes in its own `admin-api-key` header
 - Trying to extract AuthContext from AdminApiAuth (returns `()`)
 - Using AdminApiAuth for user-scoped operations (use JWT instead)
 - Forgetting to configure admin_api_key in environment configs

@@ -108,7 +108,7 @@ pub async fn process_duplicate_staging_entry(
         (status = 200, description = "Current processor status", body = ProcessorStatusResponse),
         (status = 500, description = "Internal server error"),
     ),
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
 )]
 pub async fn get_processor_status(
     state: web::Data<AppState>,
@@ -130,7 +130,7 @@ pub async fn get_processor_status(
         (status = 400, description = "Invalid status value"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
 )]
 pub async fn set_processor_status(
     state: web::Data<AppState>,
