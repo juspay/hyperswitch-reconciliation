@@ -5,10 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::{
-    connection::{DatabaseRead, DatabaseWrite},
-    store::Store,
-};
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait BusinessProfileReadInterface {
@@ -55,8 +52,9 @@ impl<T: DatabaseRead> BusinessProfileReadInterface for T {
     }
 }
 
+/// Any store that can hand out write connections can write business profiles.
 #[async_trait]
-impl BusinessProfileWriteInterface for Store {
+impl<T: DatabaseWrite> BusinessProfileWriteInterface for T {
     async fn insert_business_profile(
         &self,
         business_profile: BusinessProfileNew,
