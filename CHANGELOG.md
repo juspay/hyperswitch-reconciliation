@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.11.0
+
+### Features
+
+- **api-key:** Add key generation, hashing and hash key config ([#24](https://github.com/juspay/hyperswitch-reconciliation/pull/24)) ([`8bc8ac5`](https://github.com/juspay/hyperswitch-reconciliation/commit/8bc8ac5ec4f2d95b8fdd1dae43fe78659023aeaf))
+
+**Full Changelog:** [`2026.11.06.1...2026.11.11.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.06.1...2026.11.11.0)
+
+- - -
+
 ## 2026.11.06.1
 
 ### Features
