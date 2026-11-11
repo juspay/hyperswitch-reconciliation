@@ -94,7 +94,7 @@ pub async fn initialize_server(
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
 
     // Create database store
-    let store = storage_impl::Store::new(config.database.get_inner())
+    let store = storage_impl::Store::new(&config.database.get_inner().clone().into())
         .await
         .map_err(|e| format!("Failed to create database store: {e:?}"))?;
 

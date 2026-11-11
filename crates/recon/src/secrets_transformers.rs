@@ -9,9 +9,7 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 
-use storage_impl::config::Database;
-
-use crate::config::{AuthConfig, Config};
+use crate::config::{AuthConfig, Config, Database};
 
 #[async_trait]
 impl SecretsHandler for AuthConfig {
@@ -35,6 +33,24 @@ impl SecretsHandler for AuthConfig {
             admin_api_key: Secret::new(admin_api_key.peek().clone()),
             internal_api_key: Secret::new(internal_api_key.peek().clone()),
             ..auth
+        }))
+    }
+}
+
+#[async_trait]
+impl SecretsHandler for Database {
+    async fn convert_to_raw_secret(
+        value: SecretStateContainer<Self, SecuredSecret>,
+        secret_management_client: &dyn SecretManagementInterface,
+    ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
+        let db = value.get_inner();
+        let db_password = secret_management_client
+            .get_secret(db.password.clone())
+            .await?;
+
+        Ok(value.transition_state(|db| Self {
+            password: Secret::new(db_password.peek().clone()),
+            ..db
         }))
     }
 }

@@ -4936,8 +4936,6 @@ dependencies = [
  "error-stack",
  "futures",
  "masking",
- "recon_interfaces",
- "serde",
  "time",
 ]
 

@@ -15,7 +15,6 @@ use recon_interfaces::{
     types::Proxy,
 };
 use serde::Deserialize;
-use storage_impl::config::Database;
 
 pub type ApplicationResult<T> = Result<T, error_stack::Report<ReconAppError>>;
 
@@ -59,6 +58,65 @@ impl ServerConfig {
             )));
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Database {
+    pub username: String,
+    pub password: Secret<String>,
+    pub host: String,
+    pub port: u16,
+    pub dbname: String,
+}
+
+impl Default for Database {
+    fn default() -> Self {
+        Self {
+            username: "db_user".to_string(),
+            password: Secret::new("db_pass".to_string()),
+            host: "localhost".to_string(),
+            port: 5432,
+            dbname: "recon".to_string(),
+        }
+    }
+}
+
+impl Database {
+    pub fn validate(&self) -> ApplicationResult<()> {
+        if self.username.is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database username must not be empty".into(),
+            )));
+        }
+        if self.password.peek().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database password must not be empty".into(),
+            )));
+        }
+        if self.host.is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database host must not be empty".into(),
+            )));
+        }
+        if self.dbname.is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database name must not be empty".into(),
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl From<Database> for storage_impl::config::Database {
+    fn from(database: Database) -> Self {
+        Self {
+            username: database.username,
+            password: database.password,
+            host: database.host,
+            port: database.port,
+            dbname: database.dbname,
+        }
     }
 }
 
@@ -200,11 +258,7 @@ impl Config<SecuredSecret> {
 
     pub fn validate(&self) -> ApplicationResult<()> {
         self.server.validate()?;
-        self.database.get_inner().validate().map_err(|error| {
-            error_stack::Report::from(ReconAppError::ValidationError(
-                error.current_context().to_string(),
-            ))
-        })?;
+        self.database.get_inner().validate()?;
         self.auth.get_inner().validate()?;
         self.application_encryption.get_inner().validate()?;
         self.user_client.get_inner().validate()?;
