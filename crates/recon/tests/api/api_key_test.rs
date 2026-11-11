@@ -316,8 +316,8 @@ async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
         .json(&json!({ "status": "active" }))
         .send()
         .await;
+    // Not a variant of the update request, so serde rejects it before the handler.
     assert_eq!(response.status(), 400);
-    assert_eq!(error_code(response).await, "RE_1707");
 
     let response = client
         .put(&format!("/api_keys/{id}"))
@@ -354,7 +354,7 @@ async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
             .json(&body)
             .send()
             .await;
-        // `active` is rejected up front, everything else matches no active key.
+        // `active` is rejected while parsing, everything else matches no active key.
         let expected = if body["status"] == "active" { 400 } else { 404 };
         assert_eq!(response.status(), expected, "{body}");
     }
@@ -382,8 +382,8 @@ async fn status_cannot_be_updated_together_with_details() {
             .json(&body)
             .send()
             .await;
+        // Neither update variant accepts this mix, so it is a parse error.
         assert_eq!(response.status(), 400, "{body}");
-        assert_eq!(error_code(response).await, "RE_1709", "{body}");
     }
 
     // The rejected requests changed nothing.

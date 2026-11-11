@@ -8,7 +8,7 @@ use common_utils::{
     id_generation::generate_id_with_default_len,
 };
 use diesel_models::api_key::{ApiKeyNew, ApiKeyUpdate};
-use error_stack::{Report, ResultExt};
+use error_stack::ResultExt;
 use masking::Secret;
 use storage_impl::api_key::ApiKeyInterface;
 
@@ -31,7 +31,7 @@ pub async fn create_api_key(
     let now = date_time::now();
     request.validate(now)?;
 
-    let plaintext_key = PlaintextApiKey::generate(env::prefix_for_env());
+    let plaintext_key = PlaintextApiKey::generate(env::which().prefix());
 
     let api_key = state
         .store
@@ -52,10 +52,10 @@ pub async fn create_api_key(
         .change_context(ApiKeyError::InternalServerError)?;
 
     Ok(ApplicationResponse::json_created_no_store(
-        CreateApiKeyResponse {
-            api_key_details: api_key.to_api_response(),
-            api_key: Secret::new(plaintext_key.expose().to_string()),
-        },
+        CreateApiKeyResponse::new(
+            api_key.to_api_response(),
+            Secret::new(plaintext_key.expose().to_string()),
+        ),
     ))
 }
 
@@ -99,14 +99,11 @@ pub async fn update_api_key(
 ) -> ApiKeyResponse<ApiKeyApiResponse> {
     request.validate(date_time::now())?;
 
-    let update = match request.status {
-        Some(ApiKeyStatus::Revoked) => ApiKeyUpdate::RevokeUpdate,
-        Some(ApiKeyStatus::Active) => {
-            return Err(Report::new(ApiKeyError::InvalidStatusUpdate));
-        }
-        None => ApiKeyUpdate::DetailsUpdate {
-            name: request.name,
-            description: request.description,
+    let update = match request {
+        UpdateApiKeyRequest::RevokeUpdate(_) => ApiKeyUpdate::RevokeUpdate,
+        UpdateApiKeyRequest::DetailsUpdate(details) => ApiKeyUpdate::DetailsUpdate {
+            name: details.name,
+            description: details.description,
         },
     };
 

@@ -1,7 +1,7 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::api_key::{
     ApiKeyResponse, CreateApiKeyRequest, CreateApiKeyResponse, ListApiKeysResponse,
-    UpdateApiKeyRequest,
+    RevokeApiKeyRequest, RevokedStatus, UpdateApiKeyDetailsRequest, UpdateApiKeyRequest,
 };
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
@@ -139,6 +139,9 @@ pub async fn update_api_key(
         CreateApiKeyRequest,
         CreateApiKeyResponse,
         UpdateApiKeyRequest,
+        RevokeApiKeyRequest,
+        RevokedStatus,
+        UpdateApiKeyDetailsRequest,
         ApiKeyResponse,
         ListApiKeysResponse
     )),

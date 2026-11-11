@@ -19,14 +19,31 @@ pub struct CreateApiKeyRequest {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(untagged)]
+pub enum UpdateApiKeyRequest {
+    RevokeUpdate(RevokeApiKeyRequest),
+    DetailsUpdate(UpdateApiKeyDetailsRequest),
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
-pub struct UpdateApiKeyRequest {
+pub struct RevokeApiKeyRequest {
+    pub status: RevokedStatus,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RevokedStatus {
+    Revoked,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateApiKeyDetailsRequest {
     #[schema(example = "Reporting integration")]
     pub name: Option<String>,
     #[schema(example = "Used by the nightly reporting job")]
     pub description: Option<String>,
-    #[schema(example = "revoked")]
-    pub status: Option<ApiKeyStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -60,6 +77,15 @@ pub struct CreateApiKeyResponse {
     pub api_key_details: ApiKeyResponse,
     #[schema(value_type = String, example = "dev_aB3dE9...")]
     pub api_key: Secret<String>,
+}
+
+impl CreateApiKeyResponse {
+    pub fn new(api_key_details: ApiKeyResponse, api_key: Secret<String>) -> Self {
+        Self {
+            api_key_details,
+            api_key,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

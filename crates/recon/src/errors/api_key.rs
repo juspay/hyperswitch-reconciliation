@@ -28,14 +28,8 @@ pub enum ApiKeyError {
     #[error("expires_at must be within {max_days} days of creation")]
     ExpiryTooFar { max_days: i64 },
 
-    #[error("status can only be updated to revoked")]
-    InvalidStatusUpdate,
-
-    #[error("at least one of name, description or status is required")]
+    #[error("at least one of name or description is required")]
     NothingToUpdate,
-
-    #[error("status cannot be updated together with name or description")]
-    StatusUpdateWithDetails,
 }
 
 pub type ApiKeyResponse<T> = Result<ApplicationResponse<T>, Report<ApiKeyError>>;
@@ -51,9 +45,7 @@ impl From<ApiKeyError> for ReconAppError {
             | ApiKeyError::DescriptionTooLong { .. }
             | ApiKeyError::ExpiryInPast
             | ApiKeyError::ExpiryTooFar { .. }
-            | ApiKeyError::InvalidStatusUpdate
-            | ApiKeyError::NothingToUpdate
-            | ApiKeyError::StatusUpdateWithDetails => Self::ValidationError(error.to_string()),
+            | ApiKeyError::NothingToUpdate => Self::ValidationError(error.to_string()),
         }
     }
 }
@@ -85,14 +77,8 @@ impl ErrorSwitchFrom<ApiKeyError> for ApiErrorPayload {
             ApiKeyError::ExpiryTooFar { .. } => {
                 Self::BadRequest(ApiError::new("RE", 1706, error.to_string(), None))
             }
-            ApiKeyError::InvalidStatusUpdate => {
-                Self::BadRequest(ApiError::new("RE", 1707, error.to_string(), None))
-            }
             ApiKeyError::NothingToUpdate => {
                 Self::BadRequest(ApiError::new("RE", 1708, error.to_string(), None))
-            }
-            ApiKeyError::StatusUpdateWithDetails => {
-                Self::BadRequest(ApiError::new("RE", 1709, error.to_string(), None))
             }
         }
     }

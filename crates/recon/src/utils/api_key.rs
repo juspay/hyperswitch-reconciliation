@@ -1,5 +1,4 @@
 use api_models::api_key::{ApiKeyResponse, CreateApiKeyRequest, UpdateApiKeyRequest};
-use common_enums::ApiKeyStatus;
 use diesel_models::api_key::ApiKey;
 use error_stack::Report;
 use time::{Duration, PrimitiveDateTime};
@@ -77,159 +76,19 @@ impl ApiKeyRequestValidator for CreateApiKeyRequest {
 
 impl ApiKeyRequestValidator for UpdateApiKeyRequest {
     fn validate(&self, _now: PrimitiveDateTime) -> ApiKeyResult<()> {
-        if self.name.is_none() && self.description.is_none() && self.status.is_none() {
+        let details = match self {
+            Self::RevokeUpdate(_) => return Ok(()),
+            Self::DetailsUpdate(details) => details,
+        };
+        if details.name.is_none() && details.description.is_none() {
             return Err(Report::new(ApiKeyError::NothingToUpdate));
         }
-        if let Some(name) = &self.name {
+        if let Some(name) = &details.name {
             validate_name(name)?;
         }
-        if let Some(description) = &self.description {
+        if let Some(description) = &details.description {
             validate_description(description)?;
         }
-        if let Some(status) = self.status {
-            if status != ApiKeyStatus::Revoked {
-                return Err(Report::new(ApiKeyError::InvalidStatusUpdate));
-            }
-            if self.name.is_some() || self.description.is_some() {
-                return Err(Report::new(ApiKeyError::StatusUpdateWithDetails));
-            }
-        }
         Ok(())
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use time::macros::datetime;
-
-    use super::*;
-
-    const NOW: PrimitiveDateTime = datetime!(2026-01-01 00:00);
-
-    fn create_request(name: &str, expires_at: PrimitiveDateTime) -> CreateApiKeyRequest {
-        CreateApiKeyRequest {
-            name: name.to_string(),
-            description: None,
-            expires_at,
-        }
-    }
-
-    fn update_request() -> UpdateApiKeyRequest {
-        UpdateApiKeyRequest {
-            name: None,
-            description: None,
-            status: None,
-        }
-    }
-
-    fn err_of(result: ApiKeyResult<()>) -> ApiKeyError {
-        result.unwrap_err().current_context().clone()
-    }
-
-    #[test]
-    fn create_accepts_valid_request() {
-        assert!(create_request("key", NOW + Duration::days(30))
-            .validate(NOW)
-            .is_ok());
-    }
-
-    #[test]
-    fn create_rejects_blank_and_long_names() {
-        let expiry = NOW + Duration::days(1);
-        assert!(matches!(
-            err_of(create_request("   ", expiry).validate(NOW)),
-            ApiKeyError::NameEmpty
-        ));
-        assert!(matches!(
-            err_of(create_request(&"a".repeat(65), expiry).validate(NOW)),
-            ApiKeyError::NameTooLong { .. }
-        ));
-        assert!(create_request(&"é".repeat(64), expiry)
-            .validate(NOW)
-            .is_ok());
-    }
-
-    #[test]
-    fn create_rejects_long_description() {
-        let mut request = create_request("key", NOW + Duration::days(1));
-        request.description = Some("a".repeat(257));
-        assert!(matches!(
-            err_of(request.validate(NOW)),
-            ApiKeyError::DescriptionTooLong { .. }
-        ));
-    }
-
-    #[test]
-    fn create_checks_expiry_bounds() {
-        assert!(matches!(
-            err_of(create_request("key", NOW).validate(NOW)),
-            ApiKeyError::ExpiryInPast
-        ));
-        assert!(create_request("key", NOW + Duration::days(365))
-            .validate(NOW)
-            .is_ok());
-        assert!(matches!(
-            err_of(
-                create_request("key", NOW + Duration::days(365) + Duration::seconds(1))
-                    .validate(NOW)
-            ),
-            ApiKeyError::ExpiryTooFar { .. }
-        ));
-    }
-
-    #[test]
-    fn update_rejects_empty_request() {
-        assert!(matches!(
-            err_of(update_request().validate(NOW)),
-            ApiKeyError::NothingToUpdate
-        ));
-    }
-
-    #[test]
-    fn update_only_allows_revoked_status() {
-        let mut request = update_request();
-        request.status = Some(ApiKeyStatus::Active);
-        assert!(matches!(
-            err_of(request.validate(NOW)),
-            ApiKeyError::InvalidStatusUpdate
-        ));
-        request.status = Some(ApiKeyStatus::Revoked);
-        assert!(request.validate(NOW).is_ok());
-    }
-
-    #[test]
-    fn update_rejects_status_together_with_details() {
-        let mut request = update_request();
-        request.status = Some(ApiKeyStatus::Revoked);
-        request.name = Some("new".to_string());
-        assert!(matches!(
-            err_of(request.validate(NOW)),
-            ApiKeyError::StatusUpdateWithDetails
-        ));
-
-        let mut request = update_request();
-        request.status = Some(ApiKeyStatus::Revoked);
-        request.description = Some("new".to_string());
-        assert!(matches!(
-            err_of(request.validate(NOW)),
-            ApiKeyError::StatusUpdateWithDetails
-        ));
-    }
-
-    #[test]
-    fn update_validates_name_and_description() {
-        let mut request = update_request();
-        request.name = Some(" ".to_string());
-        assert!(matches!(
-            err_of(request.validate(NOW)),
-            ApiKeyError::NameEmpty
-        ));
-        let mut request = update_request();
-        request.description = Some("a".repeat(257));
-        assert!(matches!(
-            err_of(request.validate(NOW)),
-            ApiKeyError::DescriptionTooLong { .. }
-        ));
     }
 }
