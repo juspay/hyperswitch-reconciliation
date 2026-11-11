@@ -44,7 +44,7 @@ impl SearchExpectation {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing expectations for matching: target_account_id={target_account_id}, rule_id={rule_id}, target_key={target_key}, hashed_source_value={hashed_source_value}"
             )
@@ -89,7 +89,7 @@ impl SearchExpectation {
             Ok(expectations) => Ok(expectations),
             Err(e) => Err(e)
                 .change_context(DatabaseError::Others)
-                .attach_printable_lazy(|| {
+                .attach_with(|| {
                     format!(
                         "Error while finding expectations for multiple targets: target_account_id={target_account_id}, search_criteria={search_criteria:?}"
                     )
@@ -108,7 +108,7 @@ impl SearchExpectation {
             search_expectation_update,
         )
         .await
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while batch updating search expectation status for primary_transaction_ids: {primary_transaction_ids:?}")
         })
     }
@@ -133,7 +133,7 @@ impl SearchExpectation {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while finding search expectation by primary_transaction_id: {primary_transaction_id} and target_account_id: {target_account_id}")
         })
     }
@@ -154,7 +154,7 @@ impl SearchExpectation {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing search expectations by primary_transaction_id: {primary_transaction_id}")
         })
     }
@@ -178,7 +178,7 @@ impl SearchExpectationNew {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(move || {
+        .attach_with(move || {
             format!("Error while batch inserting {expectation_count} search expectations")
         })
     }

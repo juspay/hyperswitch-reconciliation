@@ -2,7 +2,12 @@ use std::{fs, path::PathBuf};
 
 use crate::{env, errors::ReconAppError};
 use base64::Engine;
-use common_utils::{consts::BASE64_ENGINE, logging::LoggerConfig};
+use common_utils::{
+    api_key::ApiKeyHashKey,
+    consts::BASE64_ENGINE,
+    errors::{CryptoError, CustomResult},
+    logging::LoggerConfig,
+};
 use config::{Environment, File};
 use error_stack::ResultExt;
 use external_services::{
@@ -24,6 +29,65 @@ pub struct CmdLineConf {
     /// Application will look for "config/config.toml" if this option isn't specified.
     #[arg(short = 'f', long, value_name = "FILE")]
     pub config_path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DatabaseConfig {
+    pub username: String,
+    pub password: Secret<String>,
+    pub host: String,
+    pub port: u16,
+    pub dbname: String,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            username: "db_user".to_string(),
+            password: Secret::new("db_pass".to_string()),
+            host: "localhost".to_string(),
+            port: 5432,
+            dbname: "recon".to_string(),
+        }
+    }
+}
+
+impl DatabaseConfig {
+    pub fn validate(&self) -> ApplicationResult<()> {
+        if self.username.is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database username must not be empty".into(),
+            )));
+        }
+        if self.password.peek().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database password must not be empty".into(),
+            )));
+        }
+        if self.host.is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database host must not be empty".into(),
+            )));
+        }
+        if self.dbname.is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "Database name must not be empty".into(),
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl From<DatabaseConfig> for storage_impl::config::Database {
+    fn from(database: DatabaseConfig) -> Self {
+        Self {
+            username: database.username,
+            password: database.password,
+            host: database.host,
+            port: database.port,
+            dbname: database.dbname,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -62,65 +126,6 @@ impl ServerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Database {
-    pub username: String,
-    pub password: Secret<String>,
-    pub host: String,
-    pub port: u16,
-    pub dbname: String,
-}
-
-impl Default for Database {
-    fn default() -> Self {
-        Self {
-            username: "db_user".to_string(),
-            password: Secret::new("db_pass".to_string()),
-            host: "localhost".to_string(),
-            port: 5432,
-            dbname: "recon".to_string(),
-        }
-    }
-}
-
-impl Database {
-    pub fn validate(&self) -> ApplicationResult<()> {
-        if self.username.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database username must not be empty".into(),
-            )));
-        }
-        if self.password.peek().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database password must not be empty".into(),
-            )));
-        }
-        if self.host.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database host must not be empty".into(),
-            )));
-        }
-        if self.dbname.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
-                "Database name must not be empty".into(),
-            )));
-        }
-        Ok(())
-    }
-}
-
-impl From<Database> for storage_impl::config::Database {
-    fn from(database: Database) -> Self {
-        Self {
-            username: database.username,
-            password: database.password,
-            host: database.host,
-            port: database.port,
-            dbname: database.dbname,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct AuthConfig {
     pub jwt_secret: Secret<String>,
     pub jwt_expiry_hours: u64,
@@ -136,6 +141,38 @@ impl Default for AuthConfig {
             admin_api_key: Secret::new("admin_api_key".to_string()),
             internal_api_key: Secret::new("internal_api_key".to_string()),
         }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiKeysConfig {
+    pub hash_key: Secret<String>,
+}
+
+/// Empty on purpose, so a missing `[api_keys]` section fails `validate`: a publicly known default
+/// would defeat the keyed hash.
+impl Default for ApiKeysConfig {
+    fn default() -> Self {
+        Self {
+            hash_key: Secret::new(String::new()),
+        }
+    }
+}
+
+impl ApiKeysConfig {
+    /// Emptiness only: this runs before decryption, when the value is ciphertext under KMS.
+    pub fn validate(&self) -> ApplicationResult<()> {
+        if self.hash_key.peek().trim().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "api_keys.hash_key must not be empty".into(),
+            )));
+        }
+        Ok(())
+    }
+
+    /// Call this on the decrypted config only.
+    pub fn get_hash_key(&self) -> CustomResult<ApiKeyHashKey, CryptoError> {
+        ApiKeyHashKey::from_hex(self.hash_key.peek())
     }
 }
 
@@ -204,11 +241,12 @@ impl ReportConfig {
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct Config<S: SecretState> {
-    pub database: SecretStateContainer<Database, S>,
+    pub database: SecretStateContainer<DatabaseConfig, S>,
     pub server: ServerConfig,
     pub proxy: Proxy,
     pub logging: LoggerConfig,
     pub auth: SecretStateContainer<AuthConfig, S>,
+    pub api_keys: SecretStateContainer<ApiKeysConfig, S>,
     pub secrets_management: SecretsManagementConfig,
     pub file_storage: FileStorageConfig,
     pub faas: FaasConfig,
@@ -229,7 +267,7 @@ impl Config<SecuredSecret> {
         // 1. Defaults from the implementation of the `Default` trait.
         // 2. Values from config file. The config file accessed depends on the environment
         //    specified by the `RUN_ENV` environment variable. `RUN_ENV` can be one of
-        //    `development` or `production`. If nothing is specified for `RUN_ENV`,
+        //    `development`, `sandbox` or `production`. If nothing is specified for `RUN_ENV`,
         //    `/config/config.toml` file is read.
         // 3. Environment variables prefixed with `RECON` and each level separated by double
         //    underscores.
@@ -252,7 +290,7 @@ impl Config<SecuredSecret> {
             .change_context(ReconAppError::ValidationError("Configuration error".into()))?;
 
         serde_path_to_error::deserialize(config)
-            .attach_printable("Unable to deserialize application configuration")
+            .attach("Unable to deserialize application configuration")
             .change_context(ReconAppError::ValidationError("Configuration error".into()))
     }
 
@@ -260,6 +298,7 @@ impl Config<SecuredSecret> {
         self.server.validate()?;
         self.database.get_inner().validate()?;
         self.auth.get_inner().validate()?;
+        self.api_keys.get_inner().validate()?;
         self.application_encryption.get_inner().validate()?;
         self.user_client.get_inner().validate()?;
         self.reporting_service.validate()?;
@@ -285,6 +324,7 @@ impl Config<SecuredSecret> {
         } else {
             let config_file_name = match environment {
                 "production" => "prod.toml",
+                "sandbox" => "sandbox.toml",
                 _ => "config.toml",
             };
 

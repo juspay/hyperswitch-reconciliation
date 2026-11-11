@@ -25,7 +25,7 @@ pub mod transformation_config;
 pub mod transformation_history;
 
 pub type PgPooledConn = async_bb8_diesel::Connection<diesel::PgConnection>;
-pub type StorageResult<T> = error_stack::Result<T, errors::DatabaseError>;
+pub type StorageResult<T> = Result<T, error_stack::Report<errors::DatabaseError>>;
 
 pub(crate) mod diesel_impl {
     use diesel::{

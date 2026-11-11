@@ -10,6 +10,7 @@ use recon_interfaces::secrets_interface::secret_state::RawSecret;
 use crate::config::{Config, IngestionServiceConfig};
 use crate::openapi::create_openapi;
 use crate::routes::{search_entry_key, search_expectation, search_group};
+use common_utils::api_key::ApiKeyHashKey;
 use external_services::{
     faas::FaasHandler, file_storage::FileStorageHandler, ApplicationEncryptionClient,
 };
@@ -41,6 +42,7 @@ pub struct AppState {
     pub linking_processor_status: watch::Sender<LinkingProcessorStatus>,
     pub encryption_client: ApplicationEncryptionClient,
     pub user_client: external_services::UserClient,
+    pub api_key_hash_key: ApiKeyHashKey,
 }
 
 pub struct Health;
@@ -50,6 +52,7 @@ impl Health {
         web::scope("/health")
             .app_data(web::Data::new(state))
             .service(web::resource("").route(web::get().to(health::get_health)))
+            .service(web::resource("/deep").route(web::get().to(health::get_deep_health)))
     }
 }
 

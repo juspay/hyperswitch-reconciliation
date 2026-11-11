@@ -20,7 +20,7 @@ use diesel::{
     result::Error as DieselError,
     Insertable, QuerySource, Table,
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use crate::{
     connection::{ReadConnection, WriteConnection},
@@ -91,12 +91,13 @@ where
         Ok(value) => Ok(value),
         Err(err) => match err {
             DieselError::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _) => {
-                Err(report!(err)).change_context(errors::DatabaseError::UniqueViolation)
+                Err(error_stack::Report::new(err))
+                    .change_context(errors::DatabaseError::UniqueViolation)
             }
-            _ => Err(report!(err)).change_context(errors::DatabaseError::Others),
+            _ => Err(error_stack::Report::new(err)).change_context(errors::DatabaseError::Others),
         },
     }
-    .attach_printable_lazy(|| format!("Error while inserting {debug_values}"))
+    .attach_with(|| format!("Error while inserting {debug_values}"))
 }
 
 pub async fn generic_update<T, V, P>(
@@ -125,7 +126,7 @@ where
     )
     .await
     .change_context(errors::DatabaseError::Others)
-    .attach_printable_lazy(|| format!("Error while updating {debug_values}"))
+    .attach_with(|| format!("Error while updating {debug_values}"))
 }
 
 pub async fn generic_update_with_results<T, V, P, R>(
@@ -164,15 +165,17 @@ where
             logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
             Ok(result)
         }
-        Err(DieselError::QueryBuilderError(_)) => {
-            Err(report!(errors::DatabaseError::NoFieldsToUpdate))
-                .attach_printable_lazy(|| format!("Error while updating {debug_values}"))
+        Err(DieselError::QueryBuilderError(_)) => Err(error_stack::Report::new(
+            errors::DatabaseError::NoFieldsToUpdate,
+        ))
+        .attach_with(|| format!("Error while updating {debug_values}")),
+        Err(DieselError::NotFound) => {
+            Err(error_stack::Report::new(errors::DatabaseError::NotFound))
+                .attach_with(|| format!("Error while updating {debug_values}"))
         }
-        Err(DieselError::NotFound) => Err(report!(errors::DatabaseError::NotFound))
-            .attach_printable_lazy(|| format!("Error while updating {debug_values}")),
         Err(error) => Err(error)
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| format!("Error while updating {debug_values}")),
+            .attach_with(|| format!("Error while updating {debug_values}")),
     }
 }
 
@@ -208,7 +211,7 @@ where
             } else {
                 vec_r.pop().ok_or(errors::DatabaseError::Others)
             }
-            .attach_printable("Maybe not queried using a unique key")
+            .attach("Maybe not queried using a unique key")
         })?
 }
 
@@ -251,15 +254,17 @@ where
             logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
             Ok(result)
         }
-        Err(DieselError::QueryBuilderError(_)) => {
-            Err(report!(errors::DatabaseError::NoFieldsToUpdate))
-                .attach_printable_lazy(|| format!("Error while updating by ID {debug_values}"))
+        Err(DieselError::QueryBuilderError(_)) => Err(error_stack::Report::new(
+            errors::DatabaseError::NoFieldsToUpdate,
+        ))
+        .attach_with(|| format!("Error while updating by ID {debug_values}")),
+        Err(DieselError::NotFound) => {
+            Err(error_stack::Report::new(errors::DatabaseError::NotFound))
+                .attach_with(|| format!("Error while updating by ID {debug_values}"))
         }
-        Err(DieselError::NotFound) => Err(report!(errors::DatabaseError::NotFound))
-            .attach_printable_lazy(|| format!("Error while updating by ID {debug_values}")),
         Err(error) => Err(error)
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| format!("Error while updating by ID {debug_values}")),
+            .attach_with(|| format!("Error while updating by ID {debug_values}")),
     }
 }
 
@@ -281,13 +286,16 @@ where
     )
     .await
     .change_context(errors::DatabaseError::Others)
-    .attach_printable("Error while deleting")
+    .attach("Error while deleting")
     .and_then(|result| match result {
         n if n > 0 => {
             logging::debug!("{n} records deleted");
             Ok(true)
         }
-        0 => Err(report!(errors::DatabaseError::NotFound).attach_printable("No records deleted")),
+        0 => {
+            Err(error_stack::Report::new(errors::DatabaseError::NotFound)
+                .attach("No records deleted"))
+        }
         _ => Ok(true), // n is usize, rustc requires this for exhaustive check
     })
 }
@@ -314,11 +322,11 @@ where
     )
     .await
     .change_context(errors::DatabaseError::Others)
-    .attach_printable("Error while deleting")
+    .attach("Error while deleting")
     .and_then(|result| {
         result.first().cloned().ok_or_else(|| {
-            report!(errors::DatabaseError::NotFound)
-                .attach_printable("Object to be deleted does not exist")
+            error_stack::Report::new(errors::DatabaseError::NotFound)
+                .attach("Object to be deleted does not exist")
         })
     })
 }
@@ -343,12 +351,12 @@ where
         Ok(value) => Ok(value),
         Err(err) => match err {
             DieselError::NotFound => {
-                Err(report!(err)).change_context(errors::DatabaseError::NotFound)
+                Err(error_stack::Report::new(err)).change_context(errors::DatabaseError::NotFound)
             }
-            _ => Err(report!(err)).change_context(errors::DatabaseError::Others),
+            _ => Err(error_stack::Report::new(err)).change_context(errors::DatabaseError::Others),
         },
     }
-    .attach_printable_lazy(|| format!("Error finding record by primary key: {id:?}"))
+    .attach_with(|| format!("Error finding record by primary key: {id:?}"))
 }
 
 pub async fn generic_find_by_id<T, Pk, R>(conn: &impl ReadConnection, id: Pk) -> StorageResult<R>
@@ -395,10 +403,12 @@ where
     )
     .await
     .map_err(|err| match err {
-        DieselError::NotFound => report!(err).change_context(errors::DatabaseError::NotFound),
-        _ => report!(err).change_context(errors::DatabaseError::Others),
+        DieselError::NotFound => {
+            error_stack::Report::new(err).change_context(errors::DatabaseError::NotFound)
+        }
+        _ => error_stack::Report::new(err).change_context(errors::DatabaseError::Others),
     })
-    .attach_printable("Error finding record by predicate")
+    .attach("Error finding record by predicate")
 }
 
 pub async fn generic_find_one<T, P, R>(conn: &impl ReadConnection, predicate: P) -> StorageResult<R>

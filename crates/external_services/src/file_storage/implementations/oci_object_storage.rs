@@ -10,12 +10,14 @@ use aws_sdk_s3::{
     primitives::ByteStream,
     Client as S3Client,
 };
-use error_stack::{Report, Result, ResultExt};
+use error_stack::{Report, ResultExt};
 
 use crate::file_storage::{
     config::OciObjectStorageConfig,
     interfaces::{FileStorageError, FileStorageInterface},
 };
+
+type Result<T, E> = core::result::Result<T, Report<E>>;
 
 #[derive(Debug, Clone)]
 pub struct OciObjectStorage {
@@ -26,7 +28,7 @@ pub struct OciObjectStorage {
 impl OciObjectStorage {
     pub async fn new(config: &OciObjectStorageConfig) -> Result<Self, FileStorageError> {
         config.validate().map_err(|validation_error| {
-            Report::new(FileStorageError::ConfigurationError).attach_printable(validation_error)
+            Report::new(FileStorageError::ConfigurationError).attach(validation_error)
         })?;
 
         let region_provider = RegionProviderChain::first_try(Region::new(config.region.clone()));
@@ -51,18 +53,17 @@ impl OciObjectStorage {
 
     fn validate_file_key(&self, file_key: &str) -> Result<(), FileStorageError> {
         if file_key.is_empty() {
-            return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key cannot be empty");
+            return Err(FileStorageError::InvalidFileKey).attach("File key cannot be empty");
         }
 
         if file_key.starts_with('/') {
             return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key should not start with '/'");
+                .attach("File key should not start with '/'");
         }
 
         if file_key.contains('\0') {
             return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key contains null character");
+                .attach("File key contains null character");
         }
 
         Ok(())
@@ -88,7 +89,7 @@ impl FileStorageInterface for OciObjectStorage {
             .send()
             .await
             .change_context(FileStorageError::UploadFailed)
-            .attach_printable("Failed to upload file to OCI Object Storage")?;
+            .attach("Failed to upload file to OCI Object Storage")?;
 
         Ok(())
     }
@@ -104,14 +105,14 @@ impl FileStorageInterface for OciObjectStorage {
             .send()
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable("Failed to retrieve file from OCI Object Storage")?;
+            .attach("Failed to retrieve file from OCI Object Storage")?;
 
         let data = response
             .body
             .collect()
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable("Failed to read OCI object body")?
+            .attach("Failed to read OCI object body")?
             .into_bytes()
             .to_vec();
 
@@ -128,7 +129,7 @@ impl FileStorageInterface for OciObjectStorage {
             .send()
             .await
             .change_context(FileStorageError::DeleteFailed)
-            .attach_printable("Failed to delete file from OCI Object Storage")?;
+            .attach("Failed to delete file from OCI Object Storage")?;
 
         Ok(())
     }
@@ -154,7 +155,7 @@ impl FileStorageInterface for OciObjectStorage {
 
                 Err(err)
                     .change_context(FileStorageError::RetrieveFailed)
-                    .attach_printable("Failed to check if file exists in OCI Object Storage")
+                    .attach("Failed to check if file exists in OCI Object Storage")
             }
         }
     }
@@ -168,7 +169,7 @@ impl FileStorageInterface for OciObjectStorage {
 
         let presigning_config = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
             .map_err(|_| FileStorageError::ConfigurationError)
-            .attach_printable("Invalid expiration time for presigned URL")?;
+            .attach("Invalid expiration time for presigned URL")?;
 
         let presigned_request = self
             .client
@@ -178,7 +179,7 @@ impl FileStorageInterface for OciObjectStorage {
             .presigned(presigning_config)
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable("Failed to generate presigned URL for OCI Object Storage")?;
+            .attach("Failed to generate presigned URL for OCI Object Storage")?;
 
         Ok(Some(presigned_request.uri().to_string()))
     }

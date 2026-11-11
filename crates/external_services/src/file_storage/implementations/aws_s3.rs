@@ -3,12 +3,14 @@
 use async_trait::async_trait;
 use aws_config::{meta::region::RegionProviderChain, Region};
 use aws_sdk_s3::{config::Builder as S3ConfigBuilder, primitives::ByteStream, Client as S3Client};
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 
 use crate::file_storage::{
     config::AwsS3Config,
     interfaces::{FileStorageError, FileStorageInterface},
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// AWS S3 storage implementation
 #[derive(Debug, Clone)]
@@ -22,7 +24,7 @@ impl AwsS3Storage {
     pub async fn new(config: &AwsS3Config) -> Result<Self, FileStorageError> {
         // Validate configuration
         if let Err(validation_error) = config.validate() {
-            return Err(FileStorageError::ConfigurationError).attach_printable(validation_error);
+            return Err(FileStorageError::ConfigurationError).attach(validation_error);
         }
 
         // Set up AWS region
@@ -47,20 +49,19 @@ impl AwsS3Storage {
     /// Validates that the file key is safe for S3
     fn validate_file_key(&self, file_key: &str) -> Result<(), FileStorageError> {
         if file_key.is_empty() {
-            return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key cannot be empty");
+            return Err(FileStorageError::InvalidFileKey).attach("File key cannot be empty");
         }
 
         // S3 object keys should not start with '/'
         if file_key.starts_with('/') {
             return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key should not start with '/'");
+                .attach("File key should not start with '/'");
         }
 
         // Check for invalid characters (basic validation)
         if file_key.contains('\0') {
             return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key contains null character");
+                .attach("File key contains null character");
         }
 
         Ok(())
@@ -78,7 +79,7 @@ impl AwsS3Storage {
             std::time::Duration::from_secs(expires_in_secs),
         )
         .map_err(|_| FileStorageError::ConfigurationError)
-        .attach_printable("Invalid expiration time for presigned URL")?;
+        .attach("Invalid expiration time for presigned URL")?;
 
         let presigned_request = self
             .client
@@ -88,7 +89,7 @@ impl AwsS3Storage {
             .presigned(presigning_config)
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Failed to generate presigned URL for S3: bucket={}, key={}",
                     self.bucket_name, file_key
@@ -118,7 +119,7 @@ impl FileStorageInterface for AwsS3Storage {
             .send()
             .await
             .change_context(FileStorageError::UploadFailed)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Failed to upload file to S3: bucket={}, key={}",
                     self.bucket_name, file_key
@@ -139,7 +140,7 @@ impl FileStorageInterface for AwsS3Storage {
             .send()
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Failed to retrieve file from S3: bucket={}, key={}",
                     self.bucket_name, file_key
@@ -151,7 +152,7 @@ impl FileStorageInterface for AwsS3Storage {
             .collect()
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable("Failed to read S3 object body")?
+            .attach("Failed to read S3 object body")?
             .into_bytes()
             .to_vec();
 
@@ -168,7 +169,7 @@ impl FileStorageInterface for AwsS3Storage {
             .send()
             .await
             .change_context(FileStorageError::DeleteFailed)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Failed to delete file from S3: bucket={}, key={}",
                     self.bucket_name, file_key
@@ -200,7 +201,7 @@ impl FileStorageInterface for AwsS3Storage {
                 // For other errors, propagate them
                 Err(err)
                     .change_context(FileStorageError::RetrieveFailed)
-                    .attach_printable_lazy(|| {
+                    .attach_with(|| {
                         format!(
                             "Failed to check if file exists in S3: bucket={}, key={}",
                             self.bucket_name, file_key

@@ -11,13 +11,15 @@ use aws_sdk_lambda::{
     types::InvocationType,
     Client as LambdaClient,
 };
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 use reqwest::StatusCode;
 
 use crate::faas::{
     config::AwsLambdaConfig,
     interfaces::{FaasError, FaasInterface},
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// Falls back to this when `request_timeout_secs` is unset
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
@@ -32,7 +34,7 @@ impl AwsLambdaClient {
     /// Builds the SDK client once - credential provider chain included
     pub async fn new(config: &AwsLambdaConfig) -> Result<Self, FaasError> {
         config.validate().map_err(|validation_error| {
-            error_stack::report!(FaasError::ConfigurationError).attach_printable(validation_error)
+            error_stack::Report::new(FaasError::ConfigurationError).attach(validation_error)
         })?;
 
         let region_provider = RegionProviderChain::first_try(Region::new(config.region.clone()));
@@ -70,7 +72,7 @@ impl FaasInterface for AwsLambdaClient {
             .send()
             .await
             .map_err(|err| {
-                error_stack::report!(FaasError::InvocationFailed).attach_printable(format!(
+                error_stack::Report::new(FaasError::InvocationFailed).attach(format!(
                     "Lambda invoke failed: {function_name}: {}",
                     DisplayErrorContext(&err)
                 ))
@@ -80,7 +82,7 @@ impl FaasInterface for AwsLambdaClient {
         match output.status_code() {
             code if code == i32::from(StatusCode::ACCEPTED.as_u16()) => Ok(()),
             status => Err(FaasError::NotAccepted)
-                .attach_printable_lazy(|| format!("Not queued: {function_name}, status={status}")),
+                .attach_with(|| format!("Not queued: {function_name}, status={status}")),
         }
     }
 }

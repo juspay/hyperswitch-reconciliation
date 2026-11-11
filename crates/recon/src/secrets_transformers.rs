@@ -1,6 +1,6 @@
 //! Secret transformers for configuration structs
 use async_trait::async_trait;
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 use external_services::{ApplicationEncryptionConfig, UserConfig};
 use masking::{PeekInterface, Secret};
 use recon_interfaces::secrets_interface::{
@@ -9,7 +9,27 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 
-use crate::config::{AuthConfig, Config, Database};
+use crate::config::{ApiKeysConfig, AuthConfig, Config, DatabaseConfig};
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
+
+#[async_trait]
+impl SecretsHandler for DatabaseConfig {
+    async fn convert_to_raw_secret(
+        value: SecretStateContainer<Self, SecuredSecret>,
+        secret_management_client: &dyn SecretManagementInterface,
+    ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
+        let db = value.get_inner();
+        let db_password = secret_management_client
+            .get_secret(db.password.clone())
+            .await?;
+
+        Ok(value.transition_state(|db| Self {
+            password: Secret::new(db_password.peek().clone()),
+            ..db
+        }))
+    }
+}
 
 #[async_trait]
 impl SecretsHandler for AuthConfig {
@@ -38,19 +58,17 @@ impl SecretsHandler for AuthConfig {
 }
 
 #[async_trait]
-impl SecretsHandler for Database {
+impl SecretsHandler for ApiKeysConfig {
     async fn convert_to_raw_secret(
         value: SecretStateContainer<Self, SecuredSecret>,
         secret_management_client: &dyn SecretManagementInterface,
     ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
-        let db = value.get_inner();
-        let db_password = secret_management_client
-            .get_secret(db.password.clone())
+        let hash_key = secret_management_client
+            .get_secret(value.get_inner().hash_key.clone())
             .await?;
 
-        Ok(value.transition_state(|db| Self {
-            password: Secret::new(db_password.peek().clone()),
-            ..db
+        Ok(value.transition_state(|_| Self {
+            hash_key: Secret::new(hash_key.peek().clone()),
         }))
     }
 }
@@ -60,15 +78,20 @@ pub async fn fetch_raw_secrets(
     conf: Config<SecuredSecret>,
     secret_management_client: &dyn SecretManagementInterface,
 ) -> Result<Config<RawSecret>, SecretsManagementError> {
-    let database = Database::convert_to_raw_secret(conf.database, secret_management_client)
+    let database = DatabaseConfig::convert_to_raw_secret(conf.database, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt database configuration")?;
+        .attach("Failed to decrypt database configuration")?;
 
     let auth = AuthConfig::convert_to_raw_secret(conf.auth, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt auth configuration")?;
+        .attach("Failed to decrypt auth configuration")?;
+
+    let api_keys = ApiKeysConfig::convert_to_raw_secret(conf.api_keys, secret_management_client)
+        .await
+        .change_context(SecretsManagementError::FetchSecretFailed)
+        .attach("Failed to decrypt API keys configuration")?;
 
     let application_encryption = ApplicationEncryptionConfig::convert_to_raw_secret(
         conf.application_encryption,
@@ -76,12 +99,12 @@ pub async fn fetch_raw_secrets(
     )
     .await
     .change_context(SecretsManagementError::FetchSecretFailed)
-    .attach_printable("Failed to decrypt application encryption configuration")?;
+    .attach("Failed to decrypt application encryption configuration")?;
 
     let user_client = UserConfig::convert_to_raw_secret(conf.user_client, secret_management_client)
         .await
         .change_context(SecretsManagementError::FetchSecretFailed)
-        .attach_printable("Failed to decrypt HyperSwitch user configuration")?;
+        .attach("Failed to decrypt HyperSwitch user configuration")?;
 
     Ok(Config {
         database,
@@ -89,6 +112,7 @@ pub async fn fetch_raw_secrets(
         proxy: conf.proxy,
         logging: conf.logging,
         auth,
+        api_keys,
         secrets_management: conf.secrets_management,
         file_storage: conf.file_storage,
         faas: conf.faas,

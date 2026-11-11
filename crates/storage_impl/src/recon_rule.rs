@@ -100,7 +100,7 @@ impl ReconRuleInterface for Store {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable("Failed to create recon rule with sources and targets in transaction")
+        .attach("Failed to create recon rule with sources and targets in transaction")
     }
 
     async fn list_recon_rules_by_ids(

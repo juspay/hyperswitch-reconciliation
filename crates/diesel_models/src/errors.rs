@@ -10,6 +10,8 @@ pub enum DatabaseError {
     NoFieldsToUpdate,
     #[error("An error occurred when generating typed SQL query")]
     QueryGenerationFailed,
+    #[error("Database query failed")]
+    QueryFailed,
     #[error("An unknown error occurred")]
     Others,
 }

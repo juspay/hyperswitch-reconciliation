@@ -1,5 +1,5 @@
 use api_models::linking_processor::LinkingTriggerResponse;
-use common_enums::EntryLinkSide;
+use common_enums::{EntryLinkSide, EntryStatus};
 use common_types::entry_linking::{
     EntryLinkingData, EntryLinkingDataV1, LinkingFailureData, LinkingFailureDataV1,
 };
@@ -35,11 +35,14 @@ pub mod link_orchestration;
 
 #[derive(Debug, Clone, Error)]
 pub enum LinkingProcessingError {
+    #[error("Expected entries cannot be linked")]
+    Expected,
+
     #[error("Internal error: {0}")]
     InternalError(String),
 
     #[error("Missing transformation config id")]
-    TransformationConfigMissing,
+    NoTransformationConfigFound,
 
     #[error("Database error occurred")]
     DatabaseError,
@@ -60,6 +63,18 @@ pub async fn process_entry_linking_core(
     state: &AppState,
     entry: DieselEntry,
 ) -> LinkingProcessorResult<LinkingTriggerResponse> {
+    process_linking_or_fail!(
+        async {
+            if entry.status == EntryStatus::Expected {
+                Err(Report::new(LinkingProcessingError::Expected))
+            } else {
+                Ok(())
+            }
+        },
+        state,
+        &entry
+    );
+
     let merchant_encryptor = state
         .encryption_client
         .get_encryptor_for_merchant(entry.merchant_id.clone());
@@ -104,7 +119,7 @@ pub async fn process_entry_linking_core(
         None => {
             let reason = process_linking_error_context(
                 state,
-                Report::new(LinkingProcessingError::TransformationConfigMissing),
+                Report::new(LinkingProcessingError::NoTransformationConfigFound),
                 &entry,
             )
             .await?;

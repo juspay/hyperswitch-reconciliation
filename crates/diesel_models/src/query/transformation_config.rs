@@ -44,7 +44,7 @@ impl TransformationConfig {
 
         generics::generic_find_one::<transformation_config::table, _, _>(conn, predicate)
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while finding transformation config by profile_id: {profile_id} and transformation_id: {transformation_id}")
             })
     }
@@ -66,7 +66,7 @@ impl TransformationConfig {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing transformation configs by ids: {ids:?} and profile_id: {profile_id}")
         })
     }
@@ -110,7 +110,7 @@ impl TransformationConfig {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing transformation configs for profile_id: {profile_id}")
         })
     }
@@ -136,7 +136,7 @@ impl TransformationConfig {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing transformation configs for ingestion_id: {ingestion_id}")
         })
     }
@@ -152,7 +152,7 @@ impl TransformationConfig {
             transformation_config_update,
         )
         .await
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while updating transformation config with id: {transformation_id}")
         })
     }

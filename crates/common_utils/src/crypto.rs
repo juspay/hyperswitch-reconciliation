@@ -314,7 +314,7 @@ impl DecodeMessage for GcmAes256 {
             <[u8; aead::NONCE_LEN]>::try_from(
                 msg.get(..aead::NONCE_LEN)
                     .ok_or(errors::CryptoError::DecodingFailed)
-                    .attach_printable("Failed to read the nonce form the encrypted ciphertext")?,
+                    .attach("Failed to read the nonce form the encrypted ciphertext")?,
             )
             .change_context(errors::CryptoError::DecodingFailed)?,
         );
@@ -345,7 +345,7 @@ impl Ed25519 {
     ) -> CustomResult<(), errors::CryptoError> {
         // Validate public key length
         if public_key.len() != Self::ED25519_PUBLIC_KEY_LEN {
-            return Err(errors::CryptoError::InvalidKeyLength).attach_printable(format!(
+            return Err(errors::CryptoError::InvalidKeyLength).attach(format!(
                 "Invalid ED25519 public key length: expected {} bytes, got {}",
                 Self::ED25519_PUBLIC_KEY_LEN,
                 public_key.len()
@@ -354,7 +354,7 @@ impl Ed25519 {
 
         // Validate signature length
         if signature.len() != Self::ED25519_SIGNATURE_LEN {
-            return Err(errors::CryptoError::InvalidKeyLength).attach_printable(format!(
+            return Err(errors::CryptoError::InvalidKeyLength).attach(format!(
                 "Invalid ED25519 signature length: expected {} bytes, got {}",
                 Self::ED25519_SIGNATURE_LEN,
                 signature.len()
@@ -383,7 +383,7 @@ impl VerifySignature for Ed25519 {
         match ring_public_key.verify(msg, signature) {
             Ok(()) => Ok(true),
             Err(_err) => Err(errors::CryptoError::SignatureVerificationFailed)
-                .attach_printable("ED25519 signature verification failed"),
+                .attach("ED25519 signature verification failed"),
         }
     }
 }
@@ -395,14 +395,14 @@ impl SignMessage for Ed25519 {
         msg: &[u8],
     ) -> CustomResult<Vec<u8>, errors::CryptoError> {
         if secret.len() != 32 {
-            return Err(errors::CryptoError::InvalidKeyLength).attach_printable(format!(
+            return Err(errors::CryptoError::InvalidKeyLength).attach(format!(
                 "Invalid ED25519 private key length: expected 32 bytes, got {}",
                 secret.len()
             ));
         }
         let key_pair = ring::signature::Ed25519KeyPair::from_seed_unchecked(secret)
             .change_context(errors::CryptoError::MessageSigningFailed)
-            .attach_printable("Failed to create ED25519 key pair from seed")?;
+            .attach("Failed to create ED25519 key pair from seed")?;
 
         let signature = key_pair.sign(msg);
         Ok(signature.as_ref().to_vec())

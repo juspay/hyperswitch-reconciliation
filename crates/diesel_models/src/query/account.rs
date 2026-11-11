@@ -1,7 +1,7 @@
 use async_bb8_diesel::AsyncRunQueryDsl;
 use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use crate::{
     account::{Account, AccountNew, AccountUpdateInternal},
@@ -31,7 +31,7 @@ impl Account {
 
         generics::generic_find_one::<account::table, _, _>(conn, predicate)
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while finding account by profile_id: {profile_id} and account_id: {account_id}")
             })
     }
@@ -51,15 +51,14 @@ impl Account {
         {
             Ok(value) => Ok(value),
             Err(err) => match err {
-                DieselError::NotFound => {
-                    Err(report!(err)).change_context(errors::DatabaseError::NotFound)
+                DieselError::NotFound => Err(error_stack::Report::new(err))
+                    .change_context(errors::DatabaseError::NotFound),
+                _ => {
+                    Err(error_stack::Report::new(err)).change_context(errors::DatabaseError::Others)
                 }
-                _ => Err(report!(err)).change_context(errors::DatabaseError::Others),
             },
         }
-        .attach_printable_lazy(|| {
-            format!("Error while listing accounts for profile_id: {profile_id}")
-        })
+        .attach_with(|| format!("Error while listing accounts for profile_id: {profile_id}"))
     }
 
     pub async fn find_by_profile_id_and_account_ids(
@@ -80,7 +79,7 @@ impl Account {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while finding accounts for profile_id: {profile_id} and account_ids: {account_ids:?}")
         })
     }

@@ -54,7 +54,7 @@ impl SearchEntryKeyNew {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Transaction failed while batch inserting {row_count} search entry key rows")
         })
     }
@@ -87,7 +87,7 @@ impl SearchEntryKey {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing search entry keys for profile_id: {profile_id} and entry_count: {entry_count}"
             )

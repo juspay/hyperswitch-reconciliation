@@ -4,7 +4,7 @@ use diesel_models::{
     errors::DatabaseError,
     StorageResult,
 };
-use error_stack::{report, ResultExt};
+use error_stack::{Report, ResultExt};
 
 use super::store::{PgPool, PgPooledConn, Store};
 
@@ -58,7 +58,7 @@ impl DatabaseWrite for Store {
 async fn pg_connection(pool: &PgPool) -> StorageResult<PgPooledConn<'_>> {
     pool.get()
         .await
-        .map_err(|error| report!(error))
+        .map_err(Report::new)
         .change_context(DatabaseError::DatabaseConnectionError)
-        .attach_printable("Failed to get database connection from pool")
+        .attach("Failed to get database connection from pool")
 }

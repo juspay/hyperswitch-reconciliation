@@ -42,9 +42,7 @@ impl LinkConfig {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
-            format!("Error while listing link configs for profile_id: {profile_id}")
-        })
+        .attach_with(|| format!("Error while listing link configs for profile_id: {profile_id}"))
     }
 
     pub async fn find_by_profile_id_and_link_config_id(
@@ -105,7 +103,7 @@ impl LinkConfig {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing active link configs for account_id: {account_id}, rule_id: {rule_id} and profile_id: {profile_id}"
             )

@@ -28,7 +28,7 @@ impl ReconRule {
 
         generics::generic_find_one::<recon_rule::table, _, _>(conn, predicate)
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while finding recon rule by profile_id: {profile_id} and rule_id: {rule_id}"
                 )
@@ -58,9 +58,7 @@ impl ReconRule {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
-            format!("Error while listing recon rules for profile_id: {profile_id}")
-        })
+        .attach_with(|| format!("Error while listing recon rules for profile_id: {profile_id}"))
     }
 
     pub async fn list_by_rule_ids(
@@ -80,7 +78,7 @@ impl ReconRule {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while fetching recon rules for profile_id: {profile_id} and rule_ids: {rule_ids:?}"
             )
@@ -98,9 +96,7 @@ impl ReconRule {
             recon_rule_update,
         )
         .await
-        .attach_printable_lazy(|| {
-            format!("Error while updating recon rule with rule_id: {rule_id}")
-        })
+        .attach_with(|| format!("Error while updating recon rule with rule_id: {rule_id}"))
     }
 }
 

@@ -93,6 +93,13 @@ pub async fn initialize_server(
             .await
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
 
+    // Format is checked here, not in `Config::validate`: that runs before decryption (ciphertext under KMS).
+    let api_key_hash_key = config
+        .api_keys
+        .get_inner()
+        .get_hash_key()
+        .map_err(|e| format!("Invalid api_keys.hash_key: {e:?}"))?;
+
     // Create database store
     let store = storage_impl::Store::new(&config.database.get_inner().clone().into())
         .await
@@ -147,6 +154,7 @@ pub async fn initialize_server(
         linking_processor_status: linking_sx,
         encryption_client,
         user_client,
+        api_key_hash_key,
     };
 
     tokio::spawn(core::recon_engine::recon_processor_v2(state.clone(), rx));

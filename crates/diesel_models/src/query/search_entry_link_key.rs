@@ -34,7 +34,7 @@ impl SearchEntryLinkKey {
             search_entry_link_key_update,
         )
         .await
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while bulk updating search entry link keys for ids: {ids:?}")
         })
     }
@@ -62,7 +62,7 @@ impl SearchEntryLinkKey {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing search entry link keys for link_config_id: {link_config_id}, target_side: {target_side}, target_key: {target_key}"
             )

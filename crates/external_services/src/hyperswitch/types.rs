@@ -151,6 +151,6 @@ pub fn build_header(
 ) -> CustomResult<(HeaderName, HeaderValue), HyperswitchClientError> {
     let value = HeaderValue::from_str(value)
         .change_context(HyperswitchClientError::FailedtoConstructHeader)
-        .attach_printable_lazy(|| format!("Failed to construct header value for `{}`", name))?;
+        .attach_with(|| format!("Failed to construct header value for `{}`", name))?;
     Ok((name, value))
 }
