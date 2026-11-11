@@ -13,7 +13,7 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 
 ## Status
 - `status` is `VARCHAR(64)`, not a DB enum, so adding a state needs no `ALTER TYPE`. Expiry is derived from `expires_at`, never stored as a status.
-- Find and list only return `status = 'active'` rows. Revoke writes `revoked` and bumps `last_modified_at`; every update is filtered to `status = 'active'`, so a revoked key can't be revived or revoked twice (both return `NotFound`). Revoking goes through `ApiKeyUpdate::StatusUpdate`; name and description go through `ApiKeyUpdate::DetailsUpdate`. They are separate variants, so one request can't do both.
+- Find and list only return `status = 'active'` rows. Revoke writes `revoked` and bumps `last_modified_at`; every update is filtered to `status = 'active'`, so a revoked key can't be revived or revoked twice (both return `NotFound`). Revoking goes through `ApiKeyUpdate::RevokeUpdate`, a unit variant with no status payload, so no caller can write `active` through it; name and description go through `ApiKeyUpdate::DetailsUpdate`. They are separate variants, so one request can't do both. Don't add a status field to `RevokeUpdate`: reactivation is deliberately not possible.
 
 ## Store
 - Queries are scoped by `merchant_id`, so one merchant's id can never read another's key. Find returns `NotFound`; list returns an empty `Vec`.

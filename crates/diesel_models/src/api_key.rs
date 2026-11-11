@@ -58,9 +58,7 @@ pub enum ApiKeyUpdate {
         name: Option<String>,
         description: Option<String>,
     },
-    StatusUpdate {
-        status: ApiKeyStatus,
-    },
+    RevokeUpdate,
 }
 
 impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
@@ -74,10 +72,10 @@ impl From<ApiKeyUpdate> for ApiKeyUpdateInternal {
                 status: None,
                 last_modified_at,
             },
-            ApiKeyUpdate::StatusUpdate { status } => Self {
+            ApiKeyUpdate::RevokeUpdate => Self {
                 name: None,
                 description: None,
-                status: Some(status),
+                status: Some(ApiKeyStatus::Revoked),
                 last_modified_at,
             },
         }

@@ -8,7 +8,7 @@ use common_utils::{
     id_generation::generate_id_with_default_len,
 };
 use diesel_models::api_key::{ApiKeyNew, ApiKeyUpdate};
-use error_stack::ResultExt;
+use error_stack::{Report, ResultExt};
 use masking::Secret;
 use storage_impl::api_key::ApiKeyInterface;
 
@@ -100,7 +100,10 @@ pub async fn update_api_key(
     request.validate(date_time::now())?;
 
     let update = match request.status {
-        Some(status) => ApiKeyUpdate::StatusUpdate { status },
+        Some(ApiKeyStatus::Revoked) => ApiKeyUpdate::RevokeUpdate,
+        Some(ApiKeyStatus::Active) => {
+            return Err(Report::new(ApiKeyError::InvalidStatusUpdate));
+        }
         None => ApiKeyUpdate::DetailsUpdate {
             name: request.name,
             description: request.description,
