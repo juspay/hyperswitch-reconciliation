@@ -8,10 +8,10 @@ The linking processor associates persisted entries from transaction and confirma
 |---|---|
 | `EntryLinkStatus::Final` (`final`) | Final link between posted entries |
 | `EntryLinkStatus::Provisional` (`provisional`) | Historical link between non-posted entries |
-| `entry.linking_status` | Processing state: `pending`, `processed`, `failed`, or `not_applicable` |
+| `entry.linking_status` | Flat Diesel state: `pending`, `processed`, or `failed_<reason>` (e.g. `failed_expected_entry`) |
 | `search_entry_link_key.status` | Search state: `open` / `matched` for non-posted keys, `posted_open` / `posted_matched` for posted keys |
 
-- **Expected placeholders start with `NotApplicable`; other newly created entries start with `Pending`.** The queue filters only on linking status, so this is constructor behavior, not an entry-kind guard in the processor. Explicit enqueue accepts only Failed linking status and rejects NotApplicable entries. Processing still requires transformation/schema resolution, a matching config, trigger, and usable identifier.
+- **All new entries, including Expected placeholders, start with `Pending`.** The linking processor records Expected entries as Failed with error type Expected before schema/config resolution or creating keys. Explicit enqueue accepts all Failed reasons, including Expected failures. There is no NotApplicable state.
 - **Historical links are intentional.** Archiving an entry preserves its linking fields and keys. Archived and void entries are not excluded from the pending query or from historical matching. Do not add a current-version-only filter or invalidate links merely because reconciliation replaced an entry.
 - **Provisional does not mean a single latest row.** Non-posted matching retains history and creates links to all matching keys, including keys already marked `Matched`.
 - **`Processed` does not mean linked.** An entry with no counterpart still gets a searchable key and becomes `Processed`; a later entry on the opposite side can find it.
@@ -95,7 +95,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 ## Matching Outcomes and Persistence
 
-`EntryStatus::is_posted()` is true only for `Posted`; `Matched`, `Pending`, `Mismatched`, `Archived`, and `Void` use the non-posted path. Expected placeholders stay out through `linking_status = not_applicable`, which explicit enqueue does not accept.
+`EntryStatus::is_posted()` is true only for `Posted`; `Matched`, `Pending`, `Mismatched`, `Archived`, and `Void` use the non-posted path. Expected placeholders start Pending like all entries; the processor records Failed with error type Expected without creating keys.
 
 | Incoming entry | Eligible matching keys | Outcome |
 |---|---|---|
@@ -123,7 +123,7 @@ Example composite identifier stored in `link_search_identifier`:
 ## Inline Processing
 
 - `POST /linking_processor/{entry_id}/process` accepts a physical entry ID with no body and uses `AdminApiAuth` (`api-key`), not a profile JWT. It has no JWT profile ownership check; a JWT alone cannot authorize it.
-- Only `entry.linking_status = Pending` is eligible. Failed, Processed, and NotApplicable return 400 `LP_802`; an unknown entry returns 404 `LP_801`. To retry a Failed entry, fix the cause and use JWT enqueue before processing.
+- Only `entry.linking_status = Pending` is eligible. Any Failed reason and Processed return 400 `LP_802`; an unknown entry returns 404 `LP_801`. To retry a Failed entry, fix the cause and use JWT enqueue before processing.
 - The request runs the same core pipeline inline, even when the background processor is Stopped, and does not change processor status. HTTP 200 can contain JSON `"success"` or `{"failure":"<reason>"}`: recorded processing failures are successful HTTP responses. Success can mean a searchable key was created without a counterpart.
 - Direct infrastructure/data-integrity errors still propagate as HTTP 500 and can leave the entry Pending; see [failure policy](#failure-policy). The entry response does not expose linking state, and an empty linked-entry list alone cannot distinguish pending, failed, or processed-without-match entries.
 - **Inline calls must share the account serialization contract.** The Pending check is not a claim or lock, and inline calls can race each other or the background worker. A stopped status does not acknowledge completion of already-running work; ensure no same-account work remains in flight before processing manually.
@@ -139,7 +139,8 @@ Example composite identifier stored in `link_search_identifier`:
 
 - `POST /linking_processor/{entry_id}/enqueue` takes a physical `entry.id`, with no request body. It uses `JwtAuth::basic(Permission::ProfileReconTransactionWrite)` and returns HTTP 200 after resetting `linking_status` and `linking_data` to Pending. It does not run linking inline or start the processor.
 - Ownership is checked through `find_account_by_profile_id_and_account_id` against the JWT profile before checking status. A missing entry or an account outside that profile returns 404 `LP_801`; storage failures map to 500 `LP_800`.
-- **Only Failed linking status can be enqueued.** `EntryLinkingStatus::enqueuable_statuses()` defines the allowed set. Pending, Processed, and NotApplicable return HTTP 400 `LP_802` (`InvalidEntryLinkingStatus`), with the current and expected statuses in the error message. Eligibility uses `entry.linking_status`, independently of reconciliation `entry.status`.
+<!-- AI-UPDATED: 2026-11-04 - Enqueue eligibility uses an exhaustive predicate -->
+- **Only Failed linking statuses can be enqueued.** `DomainEntryLinkingStatus::is_enqueuable()` is an exhaustive match, so a new top-level status must opt in or out. New failure reasons are enqueueable through `Failed(_)` without a separate decision. The error's expected statuses are `DomainEntryLinkingStatus::iter()` filtered by that predicate. `iter()` goes through the flat Diesel enum, since deriving `EnumIter` on the domain enum would yield a single `Failed` value. Convert the Diesel status to domain before checking eligibility. Pending and Processed return HTTP 400 `LP_802` (`InvalidEntryLinkingStatus`), with the current and expected statuses in the error message. Eligibility uses `entry.linking_status`, independently of reconciliation `entry.status`.
 - A successful reset replaces prior failure data, leaves reconciliation state and existing keys/links unchanged, and preserves `created_at`, so queue order is still the entry's original creation order. A request that reads the entry as Pending is rejected; enqueue is a failed-entry retry, not a way to re-link Processed entries.
 - Enqueue checks status before a separate update by entry ID; it does not claim the entry or perform a conditional status transition. Retry requests for the same entry must be coordinated with processing.
 - Retry Failed entries after resolving the cause through the [config APIs](#config-api-and-update-constraints), then enqueue. The pending entry can be handled by the background worker or the admin-only [inline endpoint](#inline-processing).
@@ -155,17 +156,22 @@ There are two deliberate error paths, following the recon engine's separation be
 
 - Recorded failures cover entry decryption, config selection (`NoLinkConfigFound` included), missing identifier fields, ambiguous posted matches, and failures during context creation/persistence.
 - `LinkingProcessingError::DatabaseError` is stored as `LinkingProcessingErrorTypeV1::InternalError`, not a separate database-error payload. If persisting the failure itself fails, that error propagates and the entry can remain pending.
-- **No transformation ID** is explicitly recorded as `TransformationConfigMissing`. **An ID whose lookup fails** follows the blocking path instead.
+- **No transformation ID** is explicitly recorded as `NoTransformationConfigFound`. **An ID whose lookup fails** follows the blocking path instead.
 - Transaction lookup/decryption and transformation/schema lookup failures propagate directly. These relationships are expected to be valid from transaction creation; do not silently skip the entry or convert this policy to best-effort processing.
 - The current loop discards per-entry results and immediately retries pending entries; it does not change processor status to `Stopped` on a hard failure. A reported `running` status therefore does not guarantee queue progress.
 - Failed entries are not automatically retried; explicit enqueue resets their linking state to Pending while preserving existing keys and links.
 
 ## Storage and Migration Gotchas
 
-- `entry.linking_status` and versioned JSONB `linking_data` are separate from reconciliation `status`/`data`. `EntryUpdate::LinkingUpdate` derives the linking status from the data and leaves reconciliation state untouched.
+<!-- AI-UPDATED: 2026-11-04 - Separate flat Diesel and hierarchical domain linking status -->
+- `entry.linking_status` uses `DieselEntryLinkingStatus`: Pending, Processed, and six `Failed<Reason>` variants. `DomainEntryLinkingStatus` uses `Failed(EntryLinkingFailureReason)` and serializes as status/sub_status. Conversions are total in both directions; messages and missing-field details stay in versioned JSONB `linking_data`.
+- Linking status/data remain separate from reconciliation status/data. `EntryUpdate::LinkingUpdate` derives domain status from data, then converts to Diesel status; never hand-write a generic `failed` value. The database failure strings are `failed_expected_entry`, `failed_internal_error`, `failed_no_transformation_config_found`, `failed_no_link_config_found`, `failed_missing_search_identifier_value`, and `failed_multiple_posted_links_found`.
 - Pending data serializes as `{"data_version":"v1","status":"pending"}`. Failures additionally carry `failure_data_version`, an `error_type` object, and its `error_type_version` / `error_type` tags.
-- `EntryNew::new` sets Expected entries to `NotApplicable` and other statuses to `Pending`; domain direct/expected constructors initialize the corresponding states too. `DiscardUpdate` deliberately leaves them unchanged.
-- Migrations `2026-10-09-120000` through `120300` create `link_config`, `entry_link`, `search_entry_link_key`, and add the entry linking fields. The backfill marks rows currently `Expected` as `not_applicable` and every other status, including archived rows, as `failed` with a `no_link_config_found` reason. Historical rows are not automatically queued; new-entry constructors still default non-Expected entries to Pending.
+- `EntryNew::new` and domain constructors set all new entries to Pending without checking reconciliation status. `DiscardUpdate` deliberately leaves linking state unchanged.
+<!-- AI-UPDATED: 2026-11-06 - Require backfill before enforcing linking constraints -->
+- Migrations `2026-10-09-120000` through `120200` create the linking tables; `120300` originally adds nullable entry linking columns for compatibility with existing rows. Migration `2026-11-06-100000` makes both columns NOT NULL without backfilling: every environment must backfill both fields before applying it (sandbox is already backfilled). It fails if either field still contains NULL.
+- Legacy `failed` and `not_applicable` values are no longer supported; there is no automatic SQL rewrite. Diesel schema and Diesel/domain entry models require both linking fields; all new entries initialize Pending. `EntryUpdateInternal` retains Option fields to mean “leave unchanged” for non-linking updates, not SQL NULL.
+- `120500` creates `idx_entry_linking_status` on `(linking_status)` only, restricted to `WHERE linking_status = 'pending'`. The old `(created_at, id)` index was never deployed. Keep `run_in_transaction = false` for concurrent creation and rollback; queue ordering still uses `(created_at, id)` and is not covered by this index.
 - The unique index on `link_config(profile_id, account_id, priority)` covers active and inactive configs and supports profile/account lookup. There is no separate active-only config index.
 - Unique indexes enforce `search_entry_link_key(entry_id, link_config_id)` and `entry_link(link_config_id, confirmation_entry_id, transaction_entry_id)`. Neither includes status, and inserts have no upsert/conflict-ignore behavior. The linking tables have no foreign keys; profile/account/rule consistency remains application-owned.
 - Other indexes support key lookup by config/target key/hash, links by either entry ID, and pending-entry ordering.

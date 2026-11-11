@@ -182,8 +182,8 @@ Ingestion service handles automated file retrieval from external sources (primar
   - Breaking change: Clients expecting old response format will fail
 - Connection data transformation pattern in `IngestionConfigDataApiExt`
   - Maps internal `IngestionConfigData` enum to API-friendly `IngestionConnectionData`
-  - Handles sensitive credential exposure vs. API response requirements
-  - Example: Adyen config exposes auth credentials in API response for client configuration
+  - **Secrets are never returned**: Adyen responses carry only `webhook_basic_auth_username` and `report_basic_auth_username`
+  - `hmac_secret` and both passwords are absent from `IngestionConnectionData` by design (see Security note below)
 
 <!-- AI-UPDATED: 2025-09-10 - Ingestion-specific history query implementation -->
 
@@ -277,8 +277,8 @@ Ingestion service handles automated file retrieval from external sources (primar
 - **Affected API Endpoints**: All ingestion config CRUD operations now handle encryption
   - `POST /ingestions/config` - Encrypts sensitive fields during creation
   - `PUT /ingestions/config/{id}` - Re-encrypts modified sensitive data
-  - `GET /ingestions/config` and `GET /ingestions/config/{id}` - Decrypt for responses
-  - API requests use `Secret<String>`, responses return masked `EncryptableName`
+  - `GET /ingestions/config` and `GET /ingestions/config/{id}` - Decrypt internally; secrets are omitted from the response
+  - API requests use `Secret<String>`; responses contain no secret fields
 - **New Types Introduced**:
   - `EncryptableName` - Type alias for `Encryptable<Secret<String>>` (prevents accidental exposure)
   - `CryptoOperation<T,S>` - Enum for encrypt/decrypt operations with batch support
@@ -288,11 +288,12 @@ Ingestion service handles automated file retrieval from external sources (primar
 - **Encrypted Fields by PSP Type**:
   - **Adyen**: `hmac_secret`, `webhook_basic_auth_password`, `report_basic_auth_password`
   - **SftpInternal/Manual**: No encryption needed for current field set
-- **Type Safety**: `EncryptableName` prevents accidental exposure of sensitive data in logs/responses
-  - Cannot be accidentally printed or serialized without explicit conversion
-  - Enforces encryption at compile time through type system
+- **Type Safety**: `EncryptableName` protects logs/Debug output only
+  - **Gotcha**: `Secret<T>` / `Encryptable<Secret<T>>` serialize as PLAINTEXT over HTTP (`pii_serialize` only masks for `masked_serialize`). Putting one in an API response type leaks it
+  - Never put secrets in API response types; omit the fields (past incident: config GET/POST/PUT/list returned decrypted Adyen secrets to any read-permission JWT)
+  - Update (`PUT`) replaces `config` wholesale, so clients must resend all secrets; they cannot read them back
 - **Breaking Changes in API Responses**:
-  - Sensitive fields now return `EncryptableName` instead of plain strings (masked values)
+  - Sensitive fields are no longer returned in responses at all
   - New `[application_encryption]` config section required with encryption strategy
   - Database schema changes: sensitive fields stored as binary `Encryption` type
   - AppState now includes `encryption_client: ApplicationEncryptionClient`

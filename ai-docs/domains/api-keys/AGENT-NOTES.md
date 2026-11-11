@@ -1,6 +1,6 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. Only the table, diesel model and store interface exist so far; there are no endpoints or auth yet.
+Merchant-level API keys for machine access to recon. The table, diesel model, store interface and key generation/hashing exist so far; there are no endpoints or auth yet.
 
 ## Data Model
 - **`merchant_id` is not a database foreign key**: the repo does not enforce FKs at DB level (`domains/database`), so callers must check the merchant exists.
@@ -17,3 +17,11 @@ Merchant-level API keys for machine access to recon. Only the table, diesel mode
 
 ## Store
 - Queries are scoped by `merchant_id`, so one merchant's id can never read another's key. Find returns `NotFound`; list returns an empty `Vec`.
+
+## Key Generation and Hashing
+- `common_utils::api_key`: `PlaintextApiKey::generate(env_prefix)` makes `{env}_{64 base62}` (e.g. `dev_…`, `sbx_…`, `prd_…`) from `crypto::generate_cryptographically_secure_random_string` (OS CSPRNG via `OsRng`), not nanoid. There is deliberately no `recon_` marker: recon is its own service. `display_prefix()` is `{env}_` plus the first 6 random chars. `PlaintextApiKey::hash(&ApiKeyHashKey)` is the **only** hash function, so creation and authentication can't diverge. It returns `HashedApiKey(Secret<String>)`, so the hash is masked in `Debug` like the `hashed_api_key` column; use `peek()` or `Into<Secret<String>>` to store it. Request keys go through `from_request`, which trims. `ApiKeyHashKey` and `PlaintextApiKey` wrap `StrongSecret` (zeroized on drop, masked `Debug`); the hash key is decoded straight into a `[u8; 32]` so no unzeroized `Vec` is left behind.
+- `api_keys.hash_key` (own `[api_keys]` section, not `[auth]`; 64 hex chars, 32 bytes) is **required**: `AppState.api_key_hash_key` is a plain `ApiKeyHashKey`. A missing, empty or malformed value fails startup, so every environment (prod included) must have the secret provisioned before deploying a build with this code. There is deliberately no default value (`ApiKeysConfig::default()` is empty so a missing section fails `validate`). `config/prod.toml` and `config/sandbox.toml` reference `${API_KEY_HASH_KEY}`, which must be supplied (env override `RECON__API_KEYS__HASH_KEY` or KMS); an unresolved placeholder fails startup.
+- The env prefix comes from `recon::env::prefix_for_env()` (`Env::prefix`): `dev`, `sbx` (`RUN_ENV=sandbox`) or `prd`. There is no separate config field. `RUN_ENV=sandbox` loads its own `config/sandbox.toml` (see `config_path`), a copy of `prod.toml` with sandbox-named DB/bucket values, so a missed override can't reach production resources. Keep the two in sync when adding settings. Deployed sandbox and prod get their values from `RECON__API_KEYS__HASH_KEY` (or KMS), not from the file. They must use different hash keys and databases: that, not the prefix, is what stops a sandbox key working in prod. The prefix only labels the environment.
+- The hash key is format-checked in `initialize_server` **after** decryption, not in `Config::validate` (which only checks it is non-empty) (ciphertext under KMS, see `patterns/CONFIGURATION.md`). A malformed value fails startup. Parse errors never include the value.
+- **No rotation**: changing the hash key invalidates every issued key.
+- The row `id` is not generated in `common_utils::api_key`. The create handler (management endpoints PR) calls `generate_id_with_default_len("apikey")`. The `id` is the safe handle for URLs and logs; never log the plaintext key or its hash.

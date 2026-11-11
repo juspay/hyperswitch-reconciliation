@@ -4,6 +4,66 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.11.0
+
+### Features
+
+- **api-key:** Add key generation, hashing and hash key config ([#24](https://github.com/juspay/hyperswitch-reconciliation/pull/24)) ([`8bc8ac5`](https://github.com/juspay/hyperswitch-reconciliation/commit/8bc8ac5ec4f2d95b8fdd1dae43fe78659023aeaf))
+
+**Full Changelog:** [`2026.11.06.1...2026.11.11.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.06.1...2026.11.11.0)
+
+- - -
+
+## 2026.11.06.1
+
+### Features
+
+- **health:** Add `deep_health` endpoint to check dependencies ([#31](https://github.com/juspay/hyperswitch-reconciliation/pull/31)) ([`196eb93`](https://github.com/juspay/hyperswitch-reconciliation/commit/196eb93101a0d02b4d5f934e26f47d54b3a8c08c))
+
+### Bug Fixes
+
+- **health:** Update health checks for error-stack compatibility ([#40](https://github.com/juspay/hyperswitch-reconciliation/pull/40)) ([`2612746`](https://github.com/juspay/hyperswitch-reconciliation/commit/2612746a4622327613881efafcdfaa10fb1a7851))
+- **ingestion:** Remove adyen webhook secrets from response ([#34](https://github.com/juspay/hyperswitch-reconciliation/pull/34)) ([`9b50bd1`](https://github.com/juspay/hyperswitch-reconciliation/commit/9b50bd185a8eddb958e1e4a244f9f967bd687535))
+
+### Miscellaneous Tasks
+
+- **deps:** Bump vulnerable dependencies to their patched versions ([#32](https://github.com/juspay/hyperswitch-reconciliation/pull/32)) ([`4024329`](https://github.com/juspay/hyperswitch-reconciliation/commit/40243296be574ed4f9d6e9cb3fba66fb5a6904d9))
+
+**Full Changelog:** [`2026.11.06.0...2026.11.06.1`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.06.0...2026.11.06.1)
+
+- - -
+
+## 2026.11.06.0
+
+### Bug Fixes
+
+- **linking:** Make entry linking fields non null ([#39](https://github.com/juspay/hyperswitch-reconciliation/pull/39)) ([`330597d`](https://github.com/juspay/hyperswitch-reconciliation/commit/330597d4a1b03ce626ac2d513a9ee7b340658443))
+
+**Full Changelog:** [`2026.11.05.0...2026.11.06.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.05.0...2026.11.06.0)
+
+- - -
+
+## 2026.11.05.0
+
+### Bug Fixes
+
+- **ingestion:** Scope SFTP file access to the configured merchant ([#25](https://github.com/juspay/hyperswitch-reconciliation/pull/25)) ([`969b731`](https://github.com/juspay/hyperswitch-reconciliation/commit/969b73113f781186b2fecbb87f888864d512d168))
+- **linking:** Use detailed statuses and defer linking backfill ([#35](https://github.com/juspay/hyperswitch-reconciliation/pull/35)) ([`67ff8dd`](https://github.com/juspay/hyperswitch-reconciliation/commit/67ff8dda5d7a26a61b9570ca4d378248e2a784d3))
+
+**Full Changelog:** [`2026.11.03.0...2026.11.05.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.03.0...2026.11.05.0)
+
+- - -
+
+## 2026.11.03.0
+
+### Miscellaneous Tasks
+
+- **migrations:** Chunk entry linking backfill queries ([#28](https://github.com/juspay/hyperswitch-reconciliation/pull/28)) ([`8b1e59f`](https://github.com/juspay/hyperswitch-reconciliation/commit/8b1e59f38c833c922f4d07c17ca667cd64130f56))
+
+**Full Changelog:** [`2026.11.02.0...2026.11.03.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.02.0...2026.11.03.0)
+
+- - -
+
 ## 2026.11.02.0
 
 ### Features

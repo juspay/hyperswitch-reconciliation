@@ -170,8 +170,8 @@ impl TransformationConfigInterface for Store {
             Ok::<_, DatabaseError>(created_transformation_config)
         })
         .await
-        .map_err(|e| error_stack::report!(e))
-        .attach_printable_lazy(|| {
+        .map_err(|e| error_stack::Report::new(e))
+        .attach_with(|| {
             format!(
                 "Failed to create transformation config '{transformation_id}' with metadata schema '{schema_id}' atomically"
             )

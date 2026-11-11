@@ -884,7 +884,7 @@ async fn matching_values_are_isolated_by_config() {
 }
 
 #[actix_web::test]
-async fn expected_entries_cannot_be_processed_or_enqueued() {
+async fn expected_entries_record_linking_failure_and_can_be_retried() {
     let app = TestApp::new().await;
     let client = app.api_client();
     let (merchant_id, profile_id, token) = client.bootstrap("Link merchant", "Link profile").await;
@@ -912,20 +912,32 @@ async fn expected_entries_cannot_be_processed_or_enqueued() {
         }));
     for entry in create_entries(&client, &token, &request, false).await {
         if entry.status == EntryStatus::Expected {
-            for request in [
-                client
-                    .post(&format!("/linking_processor/{}/process", entry.entry_id))
-                    .with_admin_key(),
-                client
-                    .post(&format!("/linking_processor/{}/enqueue", entry.entry_id))
-                    .with_auth(&token),
-            ] {
-                let response = request.send().await;
-                assert_api_error(response, 400, "LP_802").await;
-            }
-            assert!(linked_entries(&client, &token, &entry.entry_id)
-                .await
-                .is_empty());
+            // All new entries start Pending, so enqueue is rejected until
+            // the linking processor records a failure.
+            let response = client
+                .post(&format!("/linking_processor/{}/enqueue", entry.entry_id))
+                .with_auth(&token)
+                .send()
+                .await;
+            assert_api_error(response, 400, "LP_802").await;
+            process_failure(&client, &token, &entry, "Expected entries cannot be linked").await;
+
+            let response = client
+                .post(&format!("/linking_processor/{}/process", entry.entry_id))
+                .with_admin_key()
+                .send()
+                .await;
+            assert_api_error(response, 400, "LP_802").await;
+
+            // Failed(Expected) is retryable, but processing must record the
+            // same failure again without creating links.
+            let response = client
+                .post(&format!("/linking_processor/{}/enqueue", entry.entry_id))
+                .with_auth(&token)
+                .send()
+                .await;
+            assert_eq!(response.status(), 200);
+            process_failure(&client, &token, &entry, "Expected entries cannot be linked").await;
         } else {
             assert_eq!(entry.status, EntryStatus::Pending);
             let response = client

@@ -6,11 +6,10 @@ use crate::encryption::implementations::{
 use async_trait::async_trait;
 use common_utils::{
     consts::DEFAULT_TENANT_ID,
-    errors::CustomResult,
+    errors::{CustomResult, KeyManagerClientError},
     id_type::MerchantId,
     types::keymanager::{Identifier, KeyManagerState},
 };
-use error_stack::Result;
 use masking::{PeekInterface, Secret};
 use recon_domain_models::{
     type_encryption::{CryptoOperation, CryptoOutput},
@@ -22,6 +21,8 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 use serde::Deserialize;
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 /// Configuration for local encryption
 #[derive(Debug, Clone, Deserialize)]
 pub struct LocalEncryptionConfig {
@@ -120,6 +121,13 @@ impl ApplicationEncryptionInterface for ApplicationEncryptionClient {
 }
 
 impl ApplicationEncryptionClient {
+    pub async fn health_check(&self) -> CustomResult<(), KeyManagerClientError> {
+        match self {
+            Self::Local(_) => Ok(()),
+            Self::KeymanagerService(client) => client.health_check().await,
+        }
+    }
+
     pub fn get_encryptor_for_merchant(
         &self,
         merchant_id: MerchantId,

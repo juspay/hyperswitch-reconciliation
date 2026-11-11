@@ -39,7 +39,7 @@ use diesel_models::{
     transformation_config::TransformationConfig,
     transformation_history::{TransformationConfigHistoryView, TransformationHistoryUpdate},
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use storage_impl::transformation::TransformationHistoryInterface;
 
 use crate::{
@@ -257,7 +257,7 @@ pub async fn generate_and_upload_transformation_reports(
 
     let json_report = serde_json::to_vec_pretty(&rows)
         .change_context(TransformationError::ReportGenerationFailed)
-        .attach_printable("Failed to serialize detailed transformation report")?;
+        .attach("Failed to serialize detailed transformation report")?;
     let json_report_file_key = upload_transformation_report(
         state,
         transformation_id,
@@ -294,20 +294,20 @@ fn serialize_readable_transformation_report(
         writer
             .write_record(["source_type", "identifier", "outcome", "details"])
             .change_context(TransformationError::ReportGenerationFailed)
-            .attach_printable("Failed to write readable transformation report header")?;
+            .attach("Failed to write readable transformation report header")?;
     } else {
         for row in rows {
             writer
                 .serialize(ReadableTransformationReportRow::from(row))
                 .change_context(TransformationError::ReportGenerationFailed)
-                .attach_printable("Failed to serialize readable transformation report")?;
+                .attach("Failed to serialize readable transformation report")?;
         }
     }
 
     writer
         .into_inner()
         .change_context(TransformationError::ReportGenerationFailed)
-        .attach_printable("Failed to finish readable transformation report")
+        .attach("Failed to finish readable transformation report")
 }
 
 async fn upload_transformation_report(
@@ -327,15 +327,15 @@ async fn upload_transformation_report(
     .collect();
     let file_key_str = file_key
         .to_str()
-        .ok_or_else(|| report!(TransformationError::ReportUploadFailed))
-        .attach_printable("Failed to construct transformation report key")?;
+        .ok_or_else(|| error_stack::Report::new(TransformationError::ReportUploadFailed))
+        .attach("Failed to construct transformation report key")?;
 
     state
         .file_storage
         .upload_file(file_key_str, file)
         .await
         .change_context(TransformationError::ReportUploadFailed)
-        .attach_printable_lazy(|| format!("Failed to upload transformation report {file_name}"))?;
+        .attach_with(|| format!("Failed to upload transformation report {file_name}"))?;
 
     Ok(file_key)
 }
@@ -595,7 +595,9 @@ pub fn validate_transformation_config_request(
         .iter()
         .any(|skip_config| skip_config.conditions.is_empty())
     {
-        return Err(report!(TransformationError::EmptySkipConfigConditionsFound));
+        return Err(error_stack::Report::new(
+            TransformationError::EmptySkipConfigConditionsFound,
+        ));
     }
 
     Ok(())

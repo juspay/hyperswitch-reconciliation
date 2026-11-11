@@ -2,7 +2,12 @@ use std::{fs, path::PathBuf};
 
 use crate::{env, errors::ReconAppError};
 use base64::Engine;
-use common_utils::{consts::BASE64_ENGINE, logging::LoggerConfig};
+use common_utils::{
+    api_key::ApiKeyHashKey,
+    consts::BASE64_ENGINE,
+    errors::{CryptoError, CustomResult},
+    logging::LoggerConfig,
+};
 use config::{Environment, File};
 use error_stack::ResultExt;
 use external_services::{
@@ -138,6 +143,38 @@ impl Default for AuthConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiKeysConfig {
+    pub hash_key: Secret<String>,
+}
+
+/// Empty on purpose, so a missing `[api_keys]` section fails `validate`: a publicly known default
+/// would defeat the keyed hash.
+impl Default for ApiKeysConfig {
+    fn default() -> Self {
+        Self {
+            hash_key: Secret::new(String::new()),
+        }
+    }
+}
+
+impl ApiKeysConfig {
+    /// Emptiness only: this runs before decryption, when the value is ciphertext under KMS.
+    pub fn validate(&self) -> ApplicationResult<()> {
+        if self.hash_key.peek().trim().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "api_keys.hash_key must not be empty".into(),
+            )));
+        }
+        Ok(())
+    }
+
+    /// Call this on the decrypted config only.
+    pub fn get_hash_key(&self) -> CustomResult<ApiKeyHashKey, CryptoError> {
+        ApiKeyHashKey::from_hex(self.hash_key.peek())
+    }
+}
+
 impl AuthConfig {
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.internal_api_key.peek().trim().is_empty() {
@@ -216,6 +253,7 @@ pub struct Config<S: SecretState> {
     pub proxy: Proxy,
     pub logging: LoggerConfig,
     pub auth: SecretStateContainer<AuthConfig, S>,
+    pub api_keys: SecretStateContainer<ApiKeysConfig, S>,
     pub secrets_management: SecretsManagementConfig,
     pub file_storage: FileStorageConfig,
     pub faas: FaasConfig,
@@ -236,7 +274,7 @@ impl Config<SecuredSecret> {
         // 1. Defaults from the implementation of the `Default` trait.
         // 2. Values from config file. The config file accessed depends on the environment
         //    specified by the `RUN_ENV` environment variable. `RUN_ENV` can be one of
-        //    `development` or `production`. If nothing is specified for `RUN_ENV`,
+        //    `development`, `sandbox` or `production`. If nothing is specified for `RUN_ENV`,
         //    `/config/config.toml` file is read.
         // 3. Environment variables prefixed with `RECON` and each level separated by double
         //    underscores.
@@ -259,7 +297,7 @@ impl Config<SecuredSecret> {
             .change_context(ReconAppError::ValidationError("Configuration error".into()))?;
 
         serde_path_to_error::deserialize(config)
-            .attach_printable("Unable to deserialize application configuration")
+            .attach("Unable to deserialize application configuration")
             .change_context(ReconAppError::ValidationError("Configuration error".into()))
     }
 
@@ -267,6 +305,7 @@ impl Config<SecuredSecret> {
         self.server.validate()?;
         self.database.get_inner().validate()?;
         self.auth.get_inner().validate()?;
+        self.api_keys.get_inner().validate()?;
         self.application_encryption.get_inner().validate()?;
         self.user_client.get_inner().validate()?;
         self.reporting_service.validate()?;
@@ -292,6 +331,7 @@ impl Config<SecuredSecret> {
         } else {
             let config_file_name = match environment {
                 "production" => "prod.toml",
+                "sandbox" => "sandbox.toml",
                 _ => "config.toml",
             };
 

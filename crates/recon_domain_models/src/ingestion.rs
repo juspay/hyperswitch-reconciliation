@@ -8,6 +8,7 @@ use api_models::ingestion::{
 use common_utils::{
     errors::{CustomResult, ValidationError},
     id_type::MerchantId,
+    validation::validate_sftp_file_path,
 };
 use diesel_models::ingestion_config::IngestionConfigNew;
 use diesel_models::ingestion_config::{
@@ -95,9 +96,14 @@ pub async fn to_diesel_config(
                 }),
             )))
         }
-        IngestionConfigDataApi::SftpInternal { file_path } => Ok(DieselIngestionConfigData::V1(
-            DieselIngestionConfigV1::SftpInternal(DieselSftpInternalIngestionConfig { file_path }),
-        )),
+        IngestionConfigDataApi::SftpInternal { file_path } => {
+            validate_sftp_file_path(&file_path)?;
+            Ok(DieselIngestionConfigData::V1(
+                DieselIngestionConfigV1::SftpInternal(DieselSftpInternalIngestionConfig {
+                    file_path,
+                }),
+            ))
+        }
         IngestionConfigDataApi::Manual => Ok(DieselIngestionConfigData::V1(
             DieselIngestionConfigV1::Manual,
         )),
@@ -254,11 +260,8 @@ impl DomainIngestionConfigData {
             Self::V1(v1) => match v1 {
                 IngestionConfigV1::Psp(psp) => match psp {
                     IngestionConfigPsp::Adyen(adyen) => IngestionConnectionDataApi::Adyen {
-                        hmac_secret: adyen.hmac_secret.clone(),
                         webhook_basic_auth_username: adyen.webhook_basic_auth.username,
-                        webhook_basic_auth_password: adyen.webhook_basic_auth.password,
                         report_basic_auth_username: adyen.report_basic_auth.username,
-                        report_basic_auth_password: adyen.report_basic_auth.password,
                     },
                 },
                 IngestionConfigV1::SftpInternal(sftp) => IngestionConnectionDataApi::SftpInternal {
