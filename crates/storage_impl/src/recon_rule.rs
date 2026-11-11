@@ -1,5 +1,5 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     errors::DatabaseError,
     recon_rule::{ReconRule, ReconRuleNew, ReconRuleUpdate},
@@ -78,7 +78,7 @@ impl ReconRuleInterface for Store {
     ) -> StorageResult<(ReconRule, Vec<ReconRuleAccount>)> {
         let conn = self.get_connection().await?;
 
-        conn.transaction_async(|connection_pool| async move {
+        conn.transaction(|connection_pool| async move {
             // Insert the main recon rule
             let created_rule = recon_rule
                 .insert(&connection_pool)

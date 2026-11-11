@@ -5,16 +5,17 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::{report, ResultExt};
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     ingestion_config::{IngestionConfig, IngestionConfigNew, IngestionConfigUpdateInternal},
     query::generics,
     schema::ingestion_config::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl IngestionConfig {
     pub async fn find_by_ingestion_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         ingestion_id: &str,
     ) -> StorageResult<Self> {
         generics::generic_find_by_id::<ingestion_config::table, _, _>(conn, ingestion_id.to_owned())
@@ -22,7 +23,7 @@ impl IngestionConfig {
     }
 
     pub async fn find_by_profile_id_and_ingestion_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         ingestion_id: &str,
     ) -> StorageResult<Self> {
@@ -38,7 +39,7 @@ impl IngestionConfig {
     }
 
     pub async fn list_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: ListIngestionConfigsFilters,
     ) -> StorageResult<Vec<Self>> {
@@ -65,7 +66,7 @@ impl IngestionConfig {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<ingestion_config::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -75,12 +76,15 @@ impl IngestionConfig {
         })
     }
 
-    pub async fn insert(conn: &PgPooledConn, new: IngestionConfigNew) -> StorageResult<Self> {
+    pub async fn insert(
+        conn: &impl WriteConnection,
+        new: IngestionConfigNew,
+    ) -> StorageResult<Self> {
         generics::generic_insert::<ingestion_config::table, _, _>(conn, new).await
     }
 
     pub async fn update_by_ingestion_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         ingestion_id: &str,
         update: IngestionConfigUpdateInternal,
     ) -> StorageResult<Self> {

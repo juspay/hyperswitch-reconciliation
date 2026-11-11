@@ -1,8 +1,8 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_types::transformation::{
     ListTransformationConfigsFilters, ListTransformationHistoryFilters,
 };
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     errors::DatabaseError,
     metadata_schema::MetadataSchemaNew,
@@ -154,7 +154,7 @@ impl TransformationConfigInterface for Store {
 
         let conn = self.get_connection().await?;
 
-        conn.transaction_async(|connection_pool| async move {
+        conn.transaction(|connection_pool| async move {
             // Create the metadata schema first
             metadata_schema
                 .insert(&connection_pool)

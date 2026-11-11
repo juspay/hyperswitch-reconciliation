@@ -5,16 +5,17 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::search_duplicate::{self, dsl},
     search_duplicate::{SearchDuplicate, SearchDuplicateNew, SearchDuplicateUpdateInternal},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl SearchDuplicate {
     pub async fn find_by_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         search_duplicate_id: String,
     ) -> StorageResult<Self> {
         generics::generic_find_by_id::<search_duplicate::table, _, _>(conn, search_duplicate_id)
@@ -22,7 +23,7 @@ impl SearchDuplicate {
     }
 
     pub async fn list_by_staging_entry_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         staging_entry_id: &str,
         status_filter: Option<SearchDuplicateStatus>,
     ) -> StorageResult<Vec<Self>> {
@@ -37,7 +38,7 @@ impl SearchDuplicate {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_duplicate::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -50,7 +51,7 @@ impl SearchDuplicate {
     }
 
     pub async fn list_by_transformation_id_field_path_hashed_field_value(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transformation_id: &str,
         field_path: &str,
         hashed_field_value: &str,
@@ -69,7 +70,7 @@ impl SearchDuplicate {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_duplicate::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -82,7 +83,7 @@ impl SearchDuplicate {
     }
 
     pub async fn update_by_primary_staging_entry_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         primary_staging_entry_id: &str,
         search_duplicate_update: SearchDuplicateUpdateInternal,
     ) -> StorageResult<Self> {
@@ -97,12 +98,12 @@ impl SearchDuplicate {
 }
 
 impl SearchDuplicateNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<SearchDuplicate> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<SearchDuplicate> {
         generics::generic_insert(conn, self).await
     }
 
     pub async fn batch_insert(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         search_duplicates: Vec<Self>,
     ) -> StorageResult<Vec<SearchDuplicate>> {
         let duplicate_count = search_duplicates.len();
@@ -111,7 +112,7 @@ impl SearchDuplicateNew {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_duplicate::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Insert,
         )
         .await

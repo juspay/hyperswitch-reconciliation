@@ -1,3 +1,4 @@
+use diesel_models::connection::WriteConnection;
 use std::collections::HashSet;
 
 use api_models::{
@@ -10,7 +11,6 @@ use api_models::{
     transformation::ApiTransformationConfigData,
     user::User,
 };
-use async_bb8_diesel::AsyncConnection;
 use common_types::{
     amount::{AmountResponse, AmountType},
     metadata_schema::{ExposedKeysProvider, ProcessingModeProvider},
@@ -601,7 +601,7 @@ pub async fn void_staging_entry_core(
         .change_context(StagingEntryError::InternalServerError)?;
 
     let void_staging_entry = conn
-        .transaction_async(|conn| async move {
+        .transaction(|conn| async move {
             // Step 1: Archive the existing staging entry
             let archive_update = StagingEntryUpdate::DiscardUpdate {
                 original_data: existing_staging_entry.data.clone(),
@@ -740,7 +740,7 @@ pub async fn update_staging_entry(
         .change_context(StagingEntryError::InternalServerError)?;
 
     let updated_staging_entry = conn
-        .transaction_async(|txn_conn| async move {
+        .transaction(|txn_conn| async move {
             // Archive current version
             let archive_update = StagingEntryUpdate::DiscardUpdate {
                 original_data: existing_staging_entry.data.clone(),

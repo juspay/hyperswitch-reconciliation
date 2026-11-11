@@ -5,19 +5,23 @@ use error_stack::{report, ResultExt};
 
 use crate::{
     account::{Account, AccountNew, AccountUpdateInternal},
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::account::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl Account {
-    pub async fn find_by_account_id(conn: &PgPooledConn, account_id: &str) -> StorageResult<Self> {
+    pub async fn find_by_account_id(
+        conn: &impl ReadConnection,
+        account_id: &str,
+    ) -> StorageResult<Self> {
         generics::generic_find_by_id::<account::table, _, _>(conn, account_id.to_owned()).await
     }
 
     pub async fn find_by_profile_id_and_account_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         account_id: &str,
     ) -> StorageResult<Self> {
@@ -32,7 +36,7 @@ impl Account {
             })
     }
     pub async fn list_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
     ) -> StorageResult<Vec<Self>> {
         let query = dsl::account.filter(dsl::profile_id.eq(profile_id.to_owned()));
@@ -40,7 +44,7 @@ impl Account {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<account::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -59,7 +63,7 @@ impl Account {
     }
 
     pub async fn find_by_profile_id_and_account_ids(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         account_ids: &[String],
     ) -> StorageResult<Vec<Self>> {
@@ -71,7 +75,7 @@ impl Account {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<account::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -82,7 +86,7 @@ impl Account {
     }
 
     pub async fn update_by_account_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         account_id: &str,
         account_update: AccountUpdateInternal,
     ) -> StorageResult<Self> {
@@ -96,7 +100,7 @@ impl Account {
 }
 
 impl AccountNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<Account> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<Account> {
         generics::generic_insert(conn, self).await
     }
 }

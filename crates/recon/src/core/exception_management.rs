@@ -76,7 +76,7 @@ use common_types::{
 };
 use common_utils::{auth::AuthContext, logging};
 use diesel_models::{
-    connection::{ReadConnection, WriteConnection},
+    connection::WriteConnection,
     entry::EntryNew,
     errors::DatabaseError,
     search_duplicate::SearchDuplicateNew,
@@ -223,7 +223,7 @@ pub async fn force_reconcile_transaction(
 
     let reconciled_transaction = conn
         .transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             // Step 1: Archive old data using the centralized function
             let transaction = domain_transaction.convert();
 
@@ -829,7 +829,7 @@ pub async fn manual_transaction_reconciliation(
 
     let final_transaction = conn
         .transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             // Archive old transaction, entries, and expectations
             let (
                 _archived_transaction,
@@ -1103,7 +1103,7 @@ pub async fn manual_transaction_reconciliation_v2(
 
     let transaction = conn
         .transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             let (transaction, _, _, _) = state
                 .store
                 .discard_transaction_with_entries_and_expectations(&txn, existing_transaction)

@@ -39,7 +39,7 @@ use common_types::{
 };
 use common_utils::{auth::AuthContext, date_time, errors::ErrorSwitchFrom, logging};
 use diesel_models::{
-    connection::{ReadConnection, WriteConnection},
+    connection::WriteConnection,
     entry::EntryNew,
     transaction::{Transaction, TransactionNew},
 };
@@ -446,7 +446,7 @@ pub async fn void_transaction_core(
 
     let void_transaction = conn
         .transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             // Step 1: Archive old data using the centralized function
             let (
                 _archived_transaction,
@@ -538,7 +538,7 @@ pub async fn manual_post_transaction_core(
 
     let posted_transaction = conn
         .transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             // Step 1: Archive old data using the centralized function
             let (
                 _archived_transaction,

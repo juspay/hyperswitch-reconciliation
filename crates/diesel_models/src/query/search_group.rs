@@ -5,20 +5,21 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors::DatabaseError,
     query::generics,
     schema::search_group::{self, dsl},
     search_group::{SearchGroup, SearchGroupNew, SearchGroupUpdateInternal},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl SearchGroup {
-    pub async fn find_by_id(conn: &PgPooledConn, id: String) -> StorageResult<Self> {
+    pub async fn find_by_id(conn: &impl ReadConnection, id: String) -> StorageResult<Self> {
         generics::generic_find_by_id::<search_group::table, _, _>(conn, id).await
     }
 
     pub async fn find_by_id_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<Self> {
@@ -34,7 +35,7 @@ impl SearchGroup {
     }
 
     pub async fn find_by_rule_id_and_hashed_group_value(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         rule_id: &str,
         hashed_grouping_value: &str,
     ) -> StorageResult<Option<Self>> {
@@ -59,7 +60,7 @@ impl SearchGroup {
     }
 
     pub async fn find_by_primary_transaction_id_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         primary_transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<Self>> {
@@ -83,7 +84,7 @@ impl SearchGroup {
     }
 
     pub async fn discard_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         id: &str,
         update: SearchGroupUpdateInternal,
     ) -> StorageResult<Self> {
@@ -98,13 +99,13 @@ impl SearchGroup {
 }
 
 impl SearchGroupNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<SearchGroup> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<SearchGroup> {
         generics::generic_insert(conn, self).await
     }
 
     pub async fn batch_insert(
         search_groups: Vec<Self>,
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
     ) -> StorageResult<Vec<SearchGroup>> {
         if search_groups.is_empty() {
             return Ok(Vec::new());
@@ -114,7 +115,7 @@ impl SearchGroupNew {
         generics::db_metrics::track_database_call::<search_group::table, _, _>(
             diesel::insert_into(search_group::table)
                 .values(search_groups)
-                .get_results_async(conn),
+                .get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Insert,
         )
         .await

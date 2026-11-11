@@ -1,7 +1,7 @@
-use async_bb8_diesel::AsyncConnection;
 use common_enums::{EntryLinkKeyStatus, EntryLinkSide, EntryLinkStatus};
 use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
 use common_utils::{encryption::Encryption, logging};
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     entry::{Entry, EntryUpdate},
     entry_link::EntryLinkNew,
@@ -207,7 +207,7 @@ impl LinkingProcessor for LinkConfig {
             LinkingProcessingError::InternalError("Failed to get database connection".to_string()),
         )?;
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let entry_link_key_new = match context {
                 EntryLinkContext::UnLinked { entry_link_key_new } => entry_link_key_new,
                 EntryLinkContext::Linked {

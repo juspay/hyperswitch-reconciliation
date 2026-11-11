@@ -6,24 +6,25 @@ use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors::DatabaseError,
     query::generics,
     schema::search_entry_link_key::{self, dsl},
     search_entry_link_key::{
         SearchEntryLinkKey, SearchEntryLinkKeyNew, SearchEntryLinkKeyUpdateInternal,
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl SearchEntryLinkKeyNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<SearchEntryLinkKey> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<SearchEntryLinkKey> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl SearchEntryLinkKey {
     pub async fn bulk_update_by_ids(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         ids: Vec<String>,
         search_entry_link_key_update: SearchEntryLinkKeyUpdateInternal,
     ) -> StorageResult<Vec<Self>> {
@@ -39,7 +40,7 @@ impl SearchEntryLinkKey {
     }
 
     pub async fn list_for_linking(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         link_config_id: &str,
         target_side: &EntryLinkSide,
         target_key: &FieldPathKey,
@@ -56,7 +57,7 @@ impl SearchEntryLinkKey {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_entry_link_key::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

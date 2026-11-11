@@ -1,4 +1,3 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_utils::id_type::MerchantId;
 use diesel_models::{
@@ -30,7 +29,7 @@ impl ApiKeyInterface for Store {
     async fn insert_api_key(&self, api_key: ApiKeyNew) -> StorageResult<ApiKey> {
         let conn = self.get_connection().await?;
 
-        api_key.insert(conn.as_async_conn()).await
+        api_key.insert(&conn).await
     }
 
     async fn find_active_api_key_by_merchant_id_and_id(
@@ -40,12 +39,7 @@ impl ApiKeyInterface for Store {
     ) -> StorageResult<ApiKey> {
         let conn = self.get_connection().await?;
 
-        ApiKey::find_active_by_merchant_id_and_api_key_id(
-            conn.as_async_conn(),
-            merchant_id,
-            api_key_id,
-        )
-        .await
+        ApiKey::find_active_by_merchant_id_and_api_key_id(&conn, merchant_id, api_key_id).await
     }
 
     async fn list_active_api_keys_by_merchant_id(
@@ -54,6 +48,6 @@ impl ApiKeyInterface for Store {
     ) -> StorageResult<Vec<ApiKey>> {
         let conn = self.get_connection().await?;
 
-        ApiKey::list_active_by_merchant_id(conn.as_async_conn(), merchant_id).await
+        ApiKey::list_active_by_merchant_id(&conn, merchant_id).await
     }
 }

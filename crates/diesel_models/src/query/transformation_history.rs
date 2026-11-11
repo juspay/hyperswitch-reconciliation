@@ -5,6 +5,7 @@ use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
 use error_stack::report;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::{
@@ -16,18 +17,18 @@ use crate::{
         TransformationConfigHistoryView, TransformationHistory, TransformationHistoryNew,
         TransformationHistoryUpdateInternal,
     },
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl TransformationHistoryNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<TransformationHistory> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<TransformationHistory> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl TransformationHistory {
     pub async fn find_config_and_history_by_id_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<TransformationConfigHistoryView> {
@@ -42,7 +43,7 @@ impl TransformationHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_result_async::<(Self, TransformationConfig)>(conn)
+            .get_result_async::<(Self, TransformationConfig)>(conn.async_conn())
             .await
             .map(|(history, config)| TransformationConfigHistoryView { config, history })
             .map_err(|err| match err {
@@ -56,7 +57,7 @@ impl TransformationHistory {
     }
 
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         transformation_history_id: &str,
         transformation_history_update: TransformationHistoryUpdateInternal,
     ) -> StorageResult<Self> {
@@ -69,7 +70,7 @@ impl TransformationHistory {
     }
 
     pub async fn list_by_transformation_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         transformation_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<Self>> {
@@ -85,7 +86,7 @@ impl TransformationHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transformation_history::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -97,7 +98,7 @@ impl TransformationHistory {
     }
 
     pub async fn list_history_with_config_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: ListTransformationHistoryFilters,
     ) -> StorageResult<Vec<TransformationConfigHistoryView>> {
@@ -138,7 +139,7 @@ impl TransformationHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_results_async::<(Self, TransformationConfig)>(conn)
+            .get_results_async::<(Self, TransformationConfig)>(conn.async_conn())
             .await
             .map(|rows| {
                 rows.into_iter()

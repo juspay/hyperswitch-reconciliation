@@ -18,11 +18,8 @@ impl BusinessProfile {
         conn: &impl ReadConnection,
         profile_id: &str,
     ) -> StorageResult<Self> {
-        generics::generic_find_by_id::<business_profile::table, _, _>(
-            conn.async_conn(),
-            profile_id.to_owned(),
-        )
-        .await
+        generics::generic_find_by_id::<business_profile::table, _, _>(conn, profile_id.to_owned())
+            .await
     }
 
     pub async fn list_by_merchant_id(
@@ -61,7 +58,7 @@ impl BusinessProfile {
         business_profile_update: BusinessProfileUpdateInternal,
     ) -> StorageResult<Self> {
         generics::generic_update_by_id::<business_profile::table, _, _, _>(
-            conn.async_conn(),
+            conn,
             profile_id.to_owned(),
             business_profile_update,
         )
@@ -71,6 +68,6 @@ impl BusinessProfile {
 
 impl BusinessProfileNew {
     pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<BusinessProfile> {
-        generics::generic_insert(conn.async_conn(), self).await
+        generics::generic_insert(conn, self).await
     }
 }

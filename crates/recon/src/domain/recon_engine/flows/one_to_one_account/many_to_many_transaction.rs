@@ -17,7 +17,7 @@ use common_types::{
 use common_utils::{date_time, id_type::MerchantId, logging};
 use diesel_models::{
     account::Account,
-    connection::{ReadConnection, WriteConnection},
+    connection::WriteConnection,
     entry::EntryNew,
     errors::DatabaseError,
     metadata_schema::MetadataSchema,
@@ -456,7 +456,7 @@ impl ReconEngine for OneToOneManyManyV1 {
         match context {
             ManyToManyTransactionContext::ExistingSearchGroup(context) => {
                 conn.transaction(|txn| async move {
-                    let conn = txn.async_conn();
+                    let conn = &txn;
                     state
                         .store
                         .discard_transaction_with_entries_and_expectations(
@@ -543,7 +543,7 @@ impl ReconEngine for OneToOneManyManyV1 {
             }
             ManyToManyTransactionContext::NewSearchGroup(context) => {
                 conn.transaction(|txn| async move {
-                    let conn = txn.async_conn();
+                    let conn = &txn;
                     StagingEntry::update_by_id(
                         conn,
                         &context.staging_entry_archive.0.id,
@@ -635,7 +635,7 @@ impl ReconEngine for OneToOneManyManyV1 {
                 ))?;
 
         conn.transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             state
                 .store
                 .discard_transaction_with_entries_and_expectations(

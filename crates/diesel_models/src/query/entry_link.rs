@@ -1,22 +1,23 @@
-use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
+use async_bb8_diesel::AsyncRunQueryDsl;
 use common_utils::{chunking::chunked, logging};
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     entry::Entry,
     entry_link::{EntryLink, EntryLinkNew},
     errors::DatabaseError,
     query::generics,
     schema::{entry, entry_link},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 const ENTRY_LINK_BATCH_CHUNK_SIZE: usize = 1000;
 
 impl EntryLink {
     pub async fn list_linked_entries_by_entry_id_and_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         entry_id: &str,
         profile_id: &str,
     ) -> StorageResult<Vec<(Self, Entry)>> {
@@ -36,7 +37,7 @@ impl EntryLink {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<entry_link::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -48,12 +49,12 @@ impl EntryLink {
 }
 
 impl EntryLinkNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<EntryLink> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<EntryLink> {
         generics::generic_insert(conn, self).await
     }
 
     pub async fn bulk_insert_chunked(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         entry_links: Vec<Self>,
     ) -> StorageResult<Vec<EntryLink>> {
         if entry_links.is_empty() {
@@ -62,7 +63,7 @@ impl EntryLinkNew {
 
         let entry_link_count = entry_links.len();
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let mut inserted_entry_links: Vec<EntryLink> = Vec::with_capacity(entry_link_count);
 
             for (chunk_idx, chunk) in
@@ -74,7 +75,7 @@ impl EntryLinkNew {
 
                 let rows: Vec<EntryLink> =
                     generics::db_metrics::track_database_call::<entry_link::table, _, _>(
-                        query.get_results_async(&conn),
+                        query.get_results_async(conn.async_conn()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await

@@ -109,8 +109,7 @@ where
 
 impl Transaction {
     pub async fn find_by_id(conn: &impl ReadConnection, id: String) -> StorageResult<Self> {
-        generics::generic_find_one::<transaction::table, _, _>(conn.async_conn(), dsl::id.eq(id))
-            .await
+        generics::generic_find_one::<transaction::table, _, _>(conn, dsl::id.eq(id)).await
     }
 
     pub async fn find_by_id_and_profile(
@@ -119,7 +118,7 @@ impl Transaction {
         profile_id: String,
     ) -> StorageResult<Self> {
         generics::generic_find_one::<transaction::table, _, _>(
-            conn.async_conn(),
+            conn,
             dsl::id.eq(id).and(dsl::profile_id.eq(profile_id)),
         )
         .await
@@ -131,7 +130,7 @@ impl Transaction {
         profile_id: &str,
     ) -> StorageResult<Option<Self>> {
         generics::generic_find_one_optional::<transaction::table, _, _>(
-            conn.async_conn(),
+            conn,
             dsl::transaction_id
                 .eq(transaction_id.to_owned())
                 .and(dsl::profile_id.eq(profile_id.to_owned()))
@@ -151,7 +150,7 @@ impl Transaction {
         version: i32,
     ) -> StorageResult<Self> {
         generics::generic_find_one::<transaction::table, _, _>(
-            conn.async_conn(),
+            conn,
             dsl::transaction_id
                 .eq(transaction_id.to_owned())
                 .and(dsl::version.eq(version)),
@@ -231,7 +230,7 @@ impl Transaction {
         transaction_update: TransactionUpdateInternal,
     ) -> StorageResult<Self> {
         generics::generic_update_with_unique_predicate_get_result::<transaction::table, _, _, _>(
-            conn.async_conn(),
+            conn,
             dsl::id.eq(id.to_owned()),
             transaction_update,
         )
@@ -866,6 +865,6 @@ impl Transaction {
 
 impl TransactionNew {
     pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<Transaction> {
-        generics::generic_insert(conn.async_conn(), self).await
+        generics::generic_insert(conn, self).await
     }
 }

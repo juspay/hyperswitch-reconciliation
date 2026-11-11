@@ -1,6 +1,6 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_types::ingestion::ListIngestionHistoryFilters;
+use diesel_models::connection::WriteConnection;
 use diesel_models::{
     ingestion_history::{
         IngestionConfigHistoryView, IngestionHistory, IngestionHistoryNew, IngestionHistoryUpdate,
@@ -135,7 +135,7 @@ impl IngestionHistoryInterface for Store {
         let conn = self.get_connection().await?;
 
         // Use database transaction to ensure atomicity
-        conn.transaction_async(|connection_pool| async move {
+        conn.transaction(|connection_pool| async move {
             // Step 1: Discard the previous version by updating it
             let discard_update = IngestionHistoryUpdate::DiscardUpdate {
                 original_status: previous_version.status,

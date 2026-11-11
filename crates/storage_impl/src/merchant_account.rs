@@ -1,4 +1,3 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_utils::id_type::MerchantId;
 use diesel_models::{
@@ -29,7 +28,7 @@ impl MerchantAccountInterface for Store {
     ) -> StorageResult<MerchantAccount> {
         let conn = self.get_connection().await?;
 
-        merchant_account.insert(conn.as_async_conn()).await
+        merchant_account.insert(&conn).await
     }
 
     async fn find_merchant_account_by_id(
@@ -38,6 +37,6 @@ impl MerchantAccountInterface for Store {
     ) -> StorageResult<MerchantAccount> {
         let conn = self.get_connection().await?;
 
-        MerchantAccount::find_by_merchant_id(conn.as_async_conn(), merchant_id).await
+        MerchantAccount::find_by_merchant_id(&conn, merchant_id).await
     }
 }

@@ -18,7 +18,7 @@ use common_types::{
 use common_utils::{id_type::MerchantId, logging};
 use diesel_models::{
     account::Account,
-    connection::{ReadConnection, WriteConnection},
+    connection::WriteConnection,
     entry::{Entry, EntryNew, ExpectedEntryUpdateInternal},
     errors::DatabaseError,
     metadata_schema::MetadataSchema,
@@ -516,7 +516,7 @@ impl ReconEngine for OneToOneManySingleV1 {
         match context {
             ManyToOneTransactionContext::ExpectedSourceAppend(context) => conn
                 .transaction(|txn| async move {
-                    let conn = txn.async_conn();
+                    let conn = &txn;
                     StagingEntry::update_by_id(
                         conn,
                         &context.staging_entry_archive.0.id,
@@ -589,7 +589,7 @@ impl ReconEngine for OneToOneManySingleV1 {
                 .change_context(ProcessingError::DatabaseError),
             ManyToOneTransactionContext::ExistingSearchGroup(context) => {
                 conn.transaction(|txn| async move {
-                    let conn = txn.async_conn();
+                    let conn = &txn;
                     state
                         .store
                         .discard_transaction_with_entries_and_expectations(
@@ -676,7 +676,7 @@ impl ReconEngine for OneToOneManySingleV1 {
             }
             ManyToOneTransactionContext::NewSearchGroup(context) => {
                 conn.transaction(|txn| async move {
-                    let conn = txn.async_conn();
+                    let conn = &txn;
                     StagingEntry::update_by_id(
                         conn,
                         &context.staging_entry_archive.0.id,
@@ -765,7 +765,7 @@ impl ReconEngine for OneToOneManySingleV1 {
                 ))?;
 
         conn.transaction(|txn| async move {
-            let conn = txn.async_conn();
+            let conn = &txn;
             state
                 .store
                 .discard_transaction_with_entries_and_expectations(

@@ -6,21 +6,22 @@ use error_stack::{report, ResultExt};
 
 use crate::{
     api_key::{ApiKey, ApiKeyNew},
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::api_key::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl ApiKeyNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<ApiKey> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<ApiKey> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl ApiKey {
     pub async fn find_active_by_merchant_id_and_api_key_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         merchant_id: &MerchantId,
         api_key_id: &str,
     ) -> StorageResult<Self> {
@@ -35,7 +36,7 @@ impl ApiKey {
     }
 
     pub async fn list_active_by_merchant_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         merchant_id: &MerchantId,
     ) -> StorageResult<Vec<Self>> {
         let query = dsl::api_key
@@ -46,7 +47,7 @@ impl ApiKey {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<api_key::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.async_conn()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

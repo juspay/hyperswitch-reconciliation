@@ -9,7 +9,7 @@ use common_types::{
 };
 use common_utils::logging;
 use diesel_models::{
-    connection::{ReadConnection, TransactionConnection, WriteConnection},
+    connection::{TransactionConnection, WriteConnection},
     entry::{Entry, EntryNew, EntryUpdate},
     errors::DatabaseError,
     search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},
@@ -298,13 +298,13 @@ impl TransactionWriteInterface for Store {
             let mut created_entries = Vec::new();
             for entry in entries {
                 let created_entry = entry
-                    .insert(connection_pool.async_conn())
+                    .insert(&connection_pool)
                     .await
                     .map_err(|_| DatabaseError::Others)?;
                 created_entries.push(created_entry);
             }
 
-            SearchEntryKeyNew::batch_insert(search_entry_keys, connection_pool.async_conn())
+            SearchEntryKeyNew::batch_insert(search_entry_keys, &connection_pool)
                 .await
                 .map_err(|_| DatabaseError::Others)?;
 
@@ -312,7 +312,7 @@ impl TransactionWriteInterface for Store {
             let mut created_expectations = Vec::new();
             for expectation in search_expectations {
                 let created_expectation = expectation
-                    .insert(connection_pool.async_conn())
+                    .insert(&connection_pool)
                     .await
                     .map_err(|_| DatabaseError::Others)?;
                 created_expectations.push(created_expectation);
@@ -356,7 +356,7 @@ impl TransactionWriteInterface for Store {
 
             // Get entries for the existing transaction version
             let old_entries = Entry::list_by_transaction_id_and_version(
-                connection_pool.async_conn(),
+                &connection_pool,
                 &transaction.transaction_id,
                 Some(transaction.version),
             )
@@ -367,7 +367,7 @@ impl TransactionWriteInterface for Store {
             })?;
 
             future::try_join_all(old_entries.iter().map(|entry| {
-                let conn = connection_pool.async_conn();
+                let conn = &connection_pool;
                 let transaction_id = transaction.transaction_id.clone();
                 async move {
                     Entry::discard_entry_by_id(
@@ -400,7 +400,7 @@ impl TransactionWriteInterface for Store {
                     .as_ref()
                     .map(|staging_entry_id| {
                         SearchDuplicate::update_by_primary_staging_entry_id(
-                            connection_pool.async_conn(),
+                            &connection_pool,
                             staging_entry_id,
                             SearchDuplicateUpdate::StatusUpdate {
                                 status: SearchDuplicateStatus::Archived,
@@ -416,7 +416,7 @@ impl TransactionWriteInterface for Store {
             })?;
 
             let search_group = SearchGroup::find_by_primary_transaction_id_and_profile_id(
-                connection_pool.async_conn(),
+                &connection_pool,
                 &transaction.id,
                 &transaction.profile_id,
             )
@@ -432,7 +432,7 @@ impl TransactionWriteInterface for Store {
 
             if let Some(ref search_group) = search_group {
                 SearchGroup::discard_by_id(
-                    connection_pool.async_conn(),
+                    &connection_pool,
                     &search_group.id,
                     SearchGroupUpdate::DiscardUpdate.into(),
                 )
@@ -457,7 +457,7 @@ impl TransactionWriteInterface for Store {
             if !all_entry_ids.is_empty() {
                 search_expectations =
                     SearchExpectation::batch_update_status_by_primary_transaction_ids(
-                        connection_pool.async_conn(),
+                        &connection_pool,
                         vec![transaction.id.clone()],
                         SearchExpectationUpdate::StatusUpdate {
                             status: ExpectationStatus::Archived,
