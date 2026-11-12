@@ -19,6 +19,8 @@ use crate::{
     common::TestApp,
 };
 
+const ADMIN_API_KEY: &str = "test_admin_12345678901234567890";
+
 fn expires_in_days(days: i64) -> Value {
     json!((date_time::now() + Duration::days(days))
         .assume_utc()
@@ -199,81 +201,26 @@ async fn expiry_is_optional_and_not_capped() {
 async fn management_requires_a_jwt() {
     let app = TestApp::new().await;
     let client = app.api_client();
-    let (merchant_id, _, token) = client
+    let (_, profile_id, token) = client
         .bootstrap("ak_cred_merchant", "ak_cred_profile")
         .await;
+    let key = create_key(&client, &token, "cannot manage keys").await;
 
-    let response = client.get("/api_keys").send().await;
-    assert_eq!(response.status(), 401);
-
-    // The admin API key is not accepted on these endpoints, with or without a merchant header.
-    let response = client.get("/api_keys").with_admin_key().send().await;
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .post("/api_keys")
-        .with_admin_key()
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .json(&create_body("by admin", 30))
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    // Invalid bearer token.
-    let response = client.get("/api_keys").with_auth("not-a-jwt").send().await;
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/api_keys")
-        .header(
-            "Authorization",
-            "admin-api-key=test_admin_12345678901234567890,api-key=dev_abc",
-        )
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/api_keys")
-        .header("Authorization", &format!("Bearer {token}, admin-api-key=x"))
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-}
-
-#[tokio::test]
-async fn credentials_are_only_read_from_the_authorization_header() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let (merchant_id, _, token) = client.bootstrap("ak_hdr_merchant", "ak_hdr_profile").await;
-    let admin_key = "test_admin_12345678901234567890";
-
-    let response = client
-        .get("/api_keys")
-        .header("Authorization", &format!("admin-api-key={admin_key}"))
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
-    // Management is JWT only, so even a valid admin key is refused.
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/api_keys")
-        .header("api-key", admin_key)
-        .header("x-merchant-id", merchant_id.get_string_repr())
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    for authorization in ["admin-api-key=wrong", "api-key=dev_not_a_real_key"] {
-        let response = client
+    // No credential, the admin key, the old `api-key` header, a valid API key, a bad token.
+    for builder in [
+        client.get("/api_keys"),
+        client.get("/api_keys").with_admin_key(),
+        client
             .get("/api_keys")
-            .header("Authorization", authorization)
-            .header("x-merchant-id", merchant_id.get_string_repr())
-            .send()
-            .await;
-        assert_eq!(response.status(), 401, "{authorization}");
+            .header("api-key", ADMIN_API_KEY)
+            .header("x-profile-id", &profile_id),
+        client
+            .get("/api_keys")
+            .header("Authorization", &format!("api-key={}", key.api_key.peek()))
+            .header("x-profile-id", &profile_id),
+        client.get("/api_keys").with_auth("not-a-jwt"),
+    ] {
+        assert_eq!(builder.send().await.status(), 401);
     }
 
     let response = client.get("/api_keys").with_auth(&token).send().await;
@@ -614,23 +561,7 @@ async fn staging_entry_v2_create_accepts_an_api_key_without_modified_by() {
     let fetched: GetStagingEntryResponse = client.expect_success(response).await;
     assert!(fetched.modified_by.is_none());
 
-    // Missing profile, no credential, the admin key, and the v1 create route (keys are not enabled).
-    for builder in [
-        client
-            .post("/staging_entries/v2")
-            .header("Authorization", &authorization),
-        client
-            .post("/staging_entries/v2")
-            .header("x-profile-id", &profile_id),
-        client
-            .post("/staging_entries/v2")
-            .with_admin_key()
-            .header("x-profile-id", &profile_id),
-    ] {
-        let response = builder.json(&request).send().await;
-        assert_eq!(response.status(), 401);
-    }
-
+    // The v1 create route is not enabled for keys.
     let v1_request = staging_entry_request(
         &account_id,
         BalanceDirection::Debit,
@@ -644,6 +575,107 @@ async fn staging_entry_v2_create_accepts_an_api_key_without_modified_by() {
         .header("Authorization", &authorization)
         .header("x-profile-id", &profile_id)
         .json(&v1_request)
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+}
+
+fn list_transactions_request() -> Value {
+    json!({
+        "filters": {},
+        "cursor_payload": { "limit": 10, "sort_by": { "sort_field": "id", "id": null } },
+    })
+}
+
+#[tokio::test]
+async fn transactions_list_v2_validates_the_api_key_and_profile() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, profile_id, token) = client
+        .bootstrap("ak_list_merchant", "ak_list_profile")
+        .await;
+    let (_, other_profile_id, _) = client
+        .bootstrap("ak_list_other_merchant", "ak_list_other_profile")
+        .await;
+    let key = create_key(&client, &token, "lists transactions").await;
+    let plaintext = key.api_key.peek().clone();
+    let authorization = format!("api-key={plaintext}");
+
+    let response = client
+        .post("/transactions/v2/list")
+        .header("Authorization", &authorization)
+        .header("x-profile-id", &profile_id)
+        .json(&list_transactions_request())
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+
+    let admin_authorization = format!("admin-api-key={ADMIN_API_KEY}");
+    let bearer_key = format!("Bearer {plaintext}");
+    for (authorization, profile) in [
+        // The profile is mandatory, must exist and must belong to the key's merchant.
+        (Some(authorization.as_str()), None),
+        (
+            Some(authorization.as_str()),
+            Some(other_profile_id.as_str()),
+        ),
+        (Some(authorization.as_str()), Some("profile_does_not_exist")),
+        // Unknown, empty and unprefixed keys.
+        (
+            Some("api-key=dev_not_a_real_key"),
+            Some(profile_id.as_str()),
+        ),
+        (Some("api-key="), Some(profile_id.as_str())),
+        (Some(plaintext.as_str()), Some(profile_id.as_str())),
+        // A `Bearer` value is only ever read as a JWT.
+        (Some(bearer_key.as_str()), Some(profile_id.as_str())),
+        (
+            Some(admin_authorization.as_str()),
+            Some(profile_id.as_str()),
+        ),
+        (None, Some(profile_id.as_str())),
+    ] {
+        let mut builder = client.post("/transactions/v2/list");
+        if let Some(authorization) = authorization {
+            builder = builder.header("Authorization", authorization);
+        }
+        if let Some(profile) = profile {
+            builder = builder.header("x-profile-id", profile);
+        }
+        let response = builder.json(&list_transactions_request()).send().await;
+        // The key itself is never printed.
+        assert_eq!(
+            response.status(),
+            401,
+            "authorization set: {}, profile: {profile:?}",
+            authorization.is_some()
+        );
+    }
+
+    // The old `api-key` header is not read.
+    let response = client
+        .post("/transactions/v2/list")
+        .header("api-key", &plaintext)
+        .header("x-profile-id", &profile_id)
+        .json(&list_transactions_request())
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    // A revoked key stops working on the next request.
+    let response = client
+        .put(&format!("/api_keys/{}", key.api_key_details.id))
+        .with_auth(&token)
+        .json(&json!({ "update_type": "revoke_update" }))
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+
+    let response = client
+        .post("/transactions/v2/list")
+        .header("Authorization", &authorization)
+        .header("x-profile-id", &profile_id)
+        .json(&list_transactions_request())
         .send()
         .await;
     assert_eq!(response.status(), 401);

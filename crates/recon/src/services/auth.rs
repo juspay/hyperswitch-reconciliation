@@ -307,7 +307,8 @@ impl AuthValidator for ApiKeyAuth {
                 .attach(format!("API key {key_id} has expired")));
         }
 
-        let profile_id = get_header_value_by_key(auth_headers::X_PROFILE_ID.into(), req.headers())?
+        let profile_id = get_header_value_by_key(auth_headers::X_PROFILE_ID.into(), req.headers())
+            .change_context(ReconAppError::Unauthorized)?
             .get_required_value(auth_headers::X_PROFILE_ID)?
             .to_string();
 
