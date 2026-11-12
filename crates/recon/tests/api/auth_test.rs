@@ -28,6 +28,35 @@ async fn bootstrap_without_admin_key_fails() {
 }
 
 #[actix_web::test]
+async fn bootstrap_rejects_a_wrong_or_misplaced_admin_key() {
+    let app = common::TestApp::new().await;
+    let client = app.api_client();
+
+    let request = TestMerchantSetupRequest {
+        merchant_name: "Test Merchant".to_string(),
+        profile_name: "Test Profile".to_string(),
+        timezone: Timezone::UTC,
+    };
+
+    // A wrong secret, an empty one, the secret without its prefix, and the old `api-key` header.
+    for (header, value) in [
+        ("Authorization", "admin-api-key=wrong"),
+        ("Authorization", "admin-api-key="),
+        ("Authorization", "test_admin_12345678901234567890"),
+        ("Authorization", "api-key=test_admin_12345678901234567890"),
+        ("api-key", "test_admin_12345678901234567890"),
+    ] {
+        let response = client
+            .post("/auth/bootstrap")
+            .header(header, value)
+            .json(&request)
+            .send()
+            .await;
+        assert_eq!(response.status(), 401, "{header}: {value}");
+    }
+}
+
+#[actix_web::test]
 async fn bootstrap_success() {
     // Arrange
     let app = common::TestApp::new().await;

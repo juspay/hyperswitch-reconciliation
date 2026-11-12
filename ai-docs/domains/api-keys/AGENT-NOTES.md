@@ -1,8 +1,9 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist. Nothing authenticates with a key.
+Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; `ApiKeyAuth` authenticates keys, and `POST /transactions/v2/list` and `POST /staging_entries/v2` (via `JwtOrApiKey`) are the only routes that accept one.
 
 ## Data Model
+
 - **`merchant_id` is not a database foreign key**: the repo does not enforce FKs at DB level (`domains/database`), so callers must check the merchant exists.
 - **Only a keyed hash is stored** in `hashed_api_key`, globally `UNIQUE` across merchants. A lookup by hash will not involve the merchant, so the caller must compare the key's merchant with the request's.
 - **`hashed_api_key` is `Secret<String>`**: `generic_insert` attaches the `Debug` of the inserted values to its error. Masking keeps the hash out of logs when an insert fails.
@@ -12,13 +13,16 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 - **`expires_at` must not change after creation**: moving it would let a leaked or old key be extended indefinitely. To get a longer life, create a new key and revoke the old one.
 
 ## Status
+
 - `status` is `VARCHAR(64)`, not a DB enum, so adding a state needs no `ALTER TYPE`. Expiry is derived from `expires_at`, never stored as a status.
 - Find and list only return `status = 'active'` rows. Revoke writes `revoked` and bumps `last_modified_at`; every update is filtered to `status = 'active'`, so a revoked key can't be revived or revoked twice (both return `NotFound`). Revoking goes through `ApiKeyUpdate::RevokeUpdate`, a unit variant with no status payload, so no caller can write `active` through it; name and description go through `ApiKeyUpdate::DetailsUpdate`. They are separate variants, so one request can't do both. Don't add a status field to `RevokeUpdate`: reactivation is deliberately not possible.
 
 ## Store
+
 - Queries are scoped by `merchant_id`, so one merchant's id can never read another's key. Find returns `NotFound`; list returns an empty `Vec`.
 
 ## Key Generation and Hashing
+
 - `common_utils::api_key`: `PlaintextApiKey::generate(env_prefix)` makes `{env}_{64 base62}` (e.g. `dev_…`, `sbx_…`, `prd_…`) from `crypto::generate_cryptographically_secure_random_string` (OS CSPRNG via `OsRng`), not nanoid. There is deliberately no `recon_` marker: recon is its own service. `display_prefix()` is `{env}_` plus the first 6 random chars. `PlaintextApiKey::hash(&ApiKeyHashKey)` is the **only** hash function, so creation and authentication can't diverge. It returns `HashedApiKey(Secret<String>)`, so the hash is masked in `Debug` like the `hashed_api_key` column; use `peek()` or `Into<Secret<String>>` to store it. Request keys go through `from_request`, which trims. `ApiKeyHashKey` and `PlaintextApiKey` wrap `StrongSecret` (zeroized on drop, masked `Debug`); the hash key is decoded straight into a `[u8; 32]` so no unzeroized `Vec` is left behind.
 - `api_keys.hash_key` (own `[api_keys]` section, not `[auth]`; 64 hex chars, 32 bytes) is **required**: `AppState.api_key_hash_key` is a plain `ApiKeyHashKey`. A missing, empty or malformed value fails startup, so every environment (prod included) must have the secret provisioned before deploying a build with this code. There is deliberately no default value (`ApiKeysConfig::default()` is empty so a missing section fails `validate`). `config/prod.toml` and `config/sandbox.toml` reference `${API_KEY_HASH_KEY}`, which must be supplied (env override `RECON__API_KEYS__HASH_KEY` or KMS); an unresolved placeholder fails startup.
 - The env prefix comes from `recon::env::which().prefix()` (`Env::prefix`): `dev`, `sbx` (`RUN_ENV=sandbox`) or `prd`. There is no separate config field. `RUN_ENV=sandbox` loads its own `config/sandbox.toml` (see `config_path`), a copy of `prod.toml` with sandbox-named DB/bucket values, so a missed override can't reach production resources. Keep the two in sync when adding settings. Deployed sandbox and prod get their values from `RECON__API_KEYS__HASH_KEY` (or KMS), not from the file. They must use different hash keys and databases: that, not the prefix, is what stops a sandbox key working in prod. The prefix only labels the environment.
@@ -37,3 +41,12 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 - **Validation lives on the request types** (`ApiKeyRequestValidator` in `utils/api_key.rs`, called first in each handler with a single `now`). Each failure is its own `ApiKeyError` variant with its own code (`RE_1702` name empty, `1703` name too long, `1704` description too long, `1705` expiry in the past, `1708` nothing to update (`1706`, `1707` and `1709` are retired); `1700` internal, `1701` not found). Add a variant for a new rule instead of reusing a generic message.
 - Response mapping is `ApiKeyExt::to_api_response` (`utils/api_key.rs`), like the other `*Ext` traits. Error aliases follow the repo split: `ApiKeyResponse<T>` wraps `ApplicationResponse`, `ApiKeyResult<T>` is the plain `Result`. `core` imports the model struct as `ApiKeyApiResponse` to avoid the name clash.
 - Datetimes in API models must use `common_utils::custom_serde::iso8601` (RFC 3339 with an offset, e.g. `2027-01-01T00:00:00Z`). Plain `PrimitiveDateTime` serde is not ISO: it rejected real clients while tests that reused the same serde passed, so tests send the string form.
+
+## Credentials (`services/auth.rs`)
+
+- **One `Authorization` header carries the credential** (the Hyperswitch v2 convention): `Bearer <jwt>`, `api-key=<key>`, or `admin-api-key=<secret>`. There is no shared credential parser: each validator reads the header with `get_authorization_header` and strips its own prefix inline, as Hyperswitch's `V2ApiKeyAuth` / `V2AdminApiAuth` do. A missing header, the wrong scheme or an empty value is a 401. The value is not split on commas: anything after the prefix is hashed or compared as part of the secret. A repeated `Authorization` header is not rejected; the first one is used.
+- **The old `api-key` header is gone**: no client used it, so it was removed rather than kept for compatibility. Sending it is a 401 (no credential). Admin routes (`AdminApiAuth`) now need `Authorization: admin-api-key=<secret>` too.
+- **`ApiKeyAuth`** flow (all in `validate`): hash, `find_active_api_key_by_hash`, not expired, mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
+- **`AuthContext.user_id` is `Option<String>`**: `Some` for a JWT, `None` for a key (a key is not a Hyperswitch user). `AuthContext` deliberately does not say how the request authenticated: everything key-specific (expiry, `x-profile-id`, merchant/profile match) is checked in `ApiKeyAuth` before core runs, and core must not branch on the auth type. Core passes `user_id` straight into `modified_by`; code that truly needs a user (reporting's primary email) errors on `None`.
+- **`JwtOrApiKey`** picks by the `Authorization` scheme: `Bearer ` goes to `JwtAuth` (a bad token is a 401, no fallback), everything else goes to `ApiKeyAuth`, which rejects whatever is not `api-key=` (including `admin-api-key=`). Keys have no permission check.
+- **`POST /staging_entries/v2` accepts keys, the only write route that does.** A key has `user_id = None`, so the row gets `modified_by = None` (the column is nullable) and `get_modified_by` never calls the user client for it. The cost is that nothing records which key created the entry. `POST /staging_entries` (v1), update, void and bulk stay JWT-only. Known gap: the list paths still call `list_users_by_ids` with an empty set when no row has a `modified_by`.

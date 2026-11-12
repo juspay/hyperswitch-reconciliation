@@ -37,7 +37,7 @@ pub async fn create_api_key(
             request.description,
             plaintext_key.hash(&state.api_key_hash_key).into(),
             plaintext_key.display_prefix(),
-            Some(auth_context.user_id),
+            auth_context.user_id,
             request.expires_at,
             now,
         ))

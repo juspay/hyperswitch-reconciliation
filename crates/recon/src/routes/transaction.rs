@@ -22,7 +22,10 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{JwtAuth, JwtOrApiKey},
+    },
 };
 
 #[derive(OpenApi)]
@@ -129,11 +132,11 @@ pub async fn list_transactions(
     path = "/transactions/v2/list",
     tag = "Transactions",
     request_body = ListTransactionsV2Request,
-    security(("Bearer" = [])),
+    security(("Bearer" = []), ("ApiKey" = [])),
     responses(
         (status = 200, description = "Paginated transactions", body = TransactionListV2Page),
         (status = 400, description = "Bad request - invalid cursor or filter validation error"),
-        (status = 401, description = "Unauthorized - invalid or missing JWT token"),
+        (status = 401, description = "Unauthorized - invalid or missing JWT token or API key"),
         (status = 500, description = "Internal server error")
     )
 )]
@@ -143,7 +146,7 @@ pub async fn list_transactions_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        JwtOrApiKey::new(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move {
