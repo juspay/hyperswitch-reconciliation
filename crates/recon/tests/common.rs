@@ -132,16 +132,6 @@ impl TestClient {
         }
     }
 
-    pub fn delete(&self, path: &str) -> RequestBuilder {
-        RequestBuilder {
-            client: self.client.clone(),
-            method: reqwest::Method::DELETE,
-            url: format!("{}{}", self.base_url, path),
-            headers: reqwest::header::HeaderMap::new(),
-            request_builder: None,
-        }
-    }
-
     /// Setup a complete test merchant with profile and return JWT token.
     ///
     /// Sends no `timezone`, so the profile is created at UTC through the request type's

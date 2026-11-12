@@ -78,15 +78,6 @@ pub struct CreateApiKeyResponse {
     pub api_key: StrongSecret<String>,
 }
 
-impl CreateApiKeyResponse {
-    pub fn new(api_key_details: ApiKeyResponse, api_key: StrongSecret<String>) -> Self {
-        Self {
-            api_key_details,
-            api_key,
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ListApiKeysResponse {
     pub api_keys: Vec<ApiKeyResponse>,

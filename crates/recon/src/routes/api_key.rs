@@ -31,7 +31,7 @@ pub async fn create_api_key(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantReconApiKeyWrite),
+        JwtAuth::basic(Permission::MerchantAccountWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -54,7 +54,7 @@ pub async fn create_api_key(
 )]
 pub async fn list_api_keys(state: web::Data<AppState>, http_req: HttpRequest) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantReconApiKeyRead),
+        JwtAuth::basic(Permission::MerchantAccountRead),
         &http_req,
         state,
         |state, auth| async move { core::api_key::list_api_keys(state, auth).await },
@@ -84,7 +84,7 @@ pub async fn get_api_key(
 ) -> impl Responder {
     let api_key_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantReconApiKeyRead),
+        JwtAuth::basic(Permission::MerchantAccountRead),
         &http_req,
         state,
         |state, auth| async move { core::api_key::get_api_key(state, &api_key_id, auth).await },
@@ -117,7 +117,7 @@ pub async fn update_api_key(
 ) -> impl Responder {
     let api_key_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantReconApiKeyWrite),
+        JwtAuth::basic(Permission::MerchantAccountWrite),
         &http_req,
         state,
         |state, auth| async move {

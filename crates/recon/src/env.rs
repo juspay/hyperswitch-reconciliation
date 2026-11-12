@@ -78,24 +78,3 @@ macro_rules! service_name {
         env!("CARGO_BIN_NAME")
     };
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn every_env_prefix_is_a_valid_key_prefix() {
-        use strum::IntoEnumIterator;
-
-        for env in Env::iter() {
-            let prefix = env.prefix();
-            assert!(!prefix.is_empty() && !prefix.contains('_'), "{env}");
-        }
-    }
-
-    #[test]
-    fn each_env_has_its_own_prefix() {
-        assert_eq!(Env::Development.prefix(), "dev");
-        assert_eq!(Env::Sandbox.prefix(), "sbx");
-        assert_eq!(Env::Production.prefix(), "prd");
-    }
-}

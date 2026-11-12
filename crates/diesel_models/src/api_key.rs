@@ -1,6 +1,5 @@
 use common_enums::ApiKeyStatus;
-use common_utils::date_time;
-use common_utils::id_type::MerchantId;
+use common_utils::{date_time, id_generation::generate_id_with_default_len, id_type::MerchantId};
 use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
 use masking::Secret;
 use time::PrimitiveDateTime;
@@ -49,6 +48,34 @@ pub struct ApiKeyUpdateInternal {
     pub description: Option<String>,
     pub status: Option<ApiKeyStatus>,
     pub last_modified_at: PrimitiveDateTime,
+}
+
+impl ApiKeyNew {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        merchant_id: MerchantId,
+        name: String,
+        description: Option<String>,
+        hashed_api_key: Secret<String>,
+        prefix: String,
+        created_by: Option<String>,
+        expires_at: Option<PrimitiveDateTime>,
+        now: PrimitiveDateTime,
+    ) -> Self {
+        Self {
+            id: generate_id_with_default_len("apikey"),
+            merchant_id,
+            name,
+            description,
+            hashed_api_key,
+            prefix,
+            created_by,
+            created_at: now,
+            expires_at,
+            last_modified_at: now,
+            status: ApiKeyStatus::Active,
+        }
+    }
 }
 
 /// `expires_at` is deliberately not updatable.

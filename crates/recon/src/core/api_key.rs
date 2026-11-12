@@ -2,11 +2,7 @@ use api_models::api_key::{
     ApiKeyResponse as ApiKeyApiResponse, CreateApiKeyRequest, CreateApiKeyResponse,
     ListApiKeysResponse, UpdateApiKeyRequest,
 };
-use common_enums::ApiKeyStatus;
-use common_utils::{
-    api_key::PlaintextApiKey, auth::AuthContext, date_time,
-    id_generation::generate_id_with_default_len,
-};
+use common_utils::{api_key::PlaintextApiKey, auth::AuthContext, date_time};
 use diesel_models::api_key::{ApiKeyNew, ApiKeyUpdate};
 use error_stack::ResultExt;
 use masking::StrongSecret;
@@ -35,27 +31,24 @@ pub async fn create_api_key(
 
     let api_key = state
         .store
-        .insert_api_key(ApiKeyNew {
-            id: generate_id_with_default_len("apikey"),
-            merchant_id: auth_context.merchant_id,
-            name: request.name,
-            description: request.description,
-            hashed_api_key: plaintext_key.hash(&state.api_key_hash_key).into(),
-            prefix: plaintext_key.display_prefix(),
-            created_by: Some(auth_context.user_id),
-            created_at: now,
-            expires_at: request.expires_at,
-            last_modified_at: now,
-            status: ApiKeyStatus::Active,
-        })
+        .insert_api_key(ApiKeyNew::new(
+            auth_context.merchant_id,
+            request.name,
+            request.description,
+            plaintext_key.hash(&state.api_key_hash_key).into(),
+            plaintext_key.display_prefix(),
+            Some(auth_context.user_id),
+            request.expires_at,
+            now,
+        ))
         .await
         .change_context(ApiKeyError::InternalServerError)?;
 
     Ok(ApplicationResponse::json_created_no_store(
-        CreateApiKeyResponse::new(
-            api_key.to_api_response(),
-            StrongSecret::new(plaintext_key.expose().to_string()),
-        ),
+        CreateApiKeyResponse {
+            api_key_details: api_key.to_api_response(),
+            api_key: StrongSecret::new(plaintext_key.expose().to_string()),
+        },
     ))
 }
 
