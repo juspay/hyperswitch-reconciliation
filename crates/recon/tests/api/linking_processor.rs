@@ -950,3 +950,57 @@ async fn expected_entries_record_linking_failure_and_can_be_retried() {
         }
     }
 }
+
+#[actix_web::test]
+async fn processor_status_linking_context_keeps_existing_linking_state() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (merchant_id, profile_id, token) = client
+        .bootstrap("Linking status merchant", "Linking status profile")
+        .await;
+    let setup = setup_linking(&client, &token, &merchant_id, &profile_id).await;
+    create_config(&client, &token, &setup.config).await;
+    let request = transaction_request(&setup, EntryLinkSide::Transaction, "linking_status");
+    let entries = create_entries(&client, &token, &request, false).await;
+
+    let path = "/recon_engine/processor/status";
+    let response = client
+        .post(path)
+        .json(&json!({ "linking_status_context": "expected" }))
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    for (query, body) in [
+        ("", json!({})),
+        ("", json!({ "linking_status_context": "expected" })),
+        (
+            "?limit=10",
+            json!({ "linking_status_context": "non_expected" }),
+        ),
+        (
+            "?limit=10000",
+            json!({ "linking_status_context": "non_expected", "cursor": "entry_" }),
+        ),
+    ] {
+        let response = client
+            .post(&format!("{path}{query}"))
+            .with_admin_key()
+            .json(&body)
+            .send()
+            .await;
+        let result: Value = client.expect_success(response).await;
+        assert!(result["next_cursor"].is_null(), "{query} {body}: {result}");
+    }
+
+    // No request set `status`, so the processor keeps its initial state.
+    let response = client.get(path).with_admin_key().send().await;
+    let status: Value = client.expect_success(response).await;
+    assert_eq!(status["status"], "stopped");
+
+    // Entries created through the API start Pending, and inline processing
+    // accepts only Pending entries, so this fails if the update changed them.
+    for entry in &entries {
+        process_entry(&client, &token, entry).await;
+    }
+}

@@ -1,19 +1,28 @@
-use api_models::linking_processor::{LinkingProcessorStatusResponse, LinkingTriggerResponse};
-use common_enums::LinkingProcessorStatus;
+use api_models::{
+    linking_processor::{LinkingProcessorStatusResponse, LinkingTriggerResponse},
+    recon_engine::LinkingStatusContext,
+};
+use common_enums::{EntryStatus, LinkingProcessorStatus};
 use common_types::entry_linking::{
     status::DomainEntryLinkingStatus, EntryLinkingData, EntryLinkingDataV1,
 };
 use common_utils::{auth::AuthContext, logging};
 use diesel_models::entry::EntryUpdate;
+use error_stack::ResultExt;
+use strum::IntoEnumIterator;
 use tokio::sync::watch;
 
 use storage_impl::{account::AccountInterface, entry::EntryInterface};
 
 use crate::{
-    domain::linking_processor::process_entry_linking_core,
+    domain::linking_processor::{
+        failed_linking_data, process_entry_linking_core, LinkingProcessingError,
+    },
     errors::{
         conversions::StorageErrorExt,
-        linking_processor::{LinkingProcessorError, LinkingProcessorResponse},
+        linking_processor::{
+            LinkingProcessorError, LinkingProcessorResponse, LinkingProcessorResult,
+        },
     },
     routes::AppState,
     types::ApplicationResponse,
@@ -104,6 +113,47 @@ pub async fn process_entry(
 
     let response = process_entry_linking_core(&state, entry).await?;
     Ok(ApplicationResponse::json(response))
+}
+
+const NULL_LINKING_UPDATE_LIMIT: u16 = 5000;
+
+pub async fn update_null_linking_status(
+    state: &AppState,
+    context: LinkingStatusContext,
+    cursor: Option<String>,
+    limit: Option<u16>,
+) -> LinkingProcessorResult<Option<String>> {
+    let (entry_statuses, failure) = match context {
+        LinkingStatusContext::Expected => (
+            vec![EntryStatus::Expected],
+            LinkingProcessingError::Expected,
+        ),
+        LinkingStatusContext::NonExpected => (
+            EntryStatus::iter()
+                .filter(|status| *status != EntryStatus::Expected)
+                .collect(),
+            LinkingProcessingError::NoLinkConfigFound,
+        ),
+    };
+
+    let updated_ids = state
+        .store
+        .update_null_entry_linking(
+            entry_statuses,
+            cursor,
+            failed_linking_data(failure),
+            limit
+                .unwrap_or(NULL_LINKING_UPDATE_LIMIT)
+                .min(NULL_LINKING_UPDATE_LIMIT),
+        )
+        .await
+        .change_context(LinkingProcessorError::InternalServerError)?;
+    logging::info!(
+        "Set linking status on {} entries for {context:?}",
+        updated_ids.len()
+    );
+
+    Ok(updated_ids.into_iter().max())
 }
 
 pub async fn linking_processor(

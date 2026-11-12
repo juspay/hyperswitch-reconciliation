@@ -1,10 +1,15 @@
-use api_models::recon_engine::{ProcessorStatusResponse, ReconTriggerResponse};
+use api_models::recon_engine::{
+    ProcessorStatusRequest, ProcessorStatusResponse, ProcessorStatusUpdateQuery,
+    ProcessorStatusUpdateResponse, ReconTriggerResponse,
+};
 use common_enums::{DieselStagingEntryStatus, ReconProcessorStatus};
 use common_types::staging_entry::status::DomainStagingEntryStatus;
 use common_utils::{auth::AuthContext, logging};
+use error_stack::ResultExt;
 use tokio::sync::watch;
 
 use crate::{
+    core::linking_processor::update_null_linking_status,
     domain::recon_engine::process_staging_entry_core_v2,
     errors::{conversions::StorageErrorExt, recon_engine::ReconEngineResponse, ReconEngineError},
     routes::AppState,
@@ -69,14 +74,26 @@ pub async fn process_duplicate_staging_entry(
 
 pub async fn set_processor_status(
     state: AppState,
-    status: ReconProcessorStatus,
-) -> ReconEngineResponse<()> {
-    state
-        .recon_processor_status
-        .send(status)
-        .map_err(|_| ReconEngineError::InternalServerError)?;
+    request: ProcessorStatusRequest,
+    query: ProcessorStatusUpdateQuery,
+) -> ReconEngineResponse<ProcessorStatusUpdateResponse> {
+    let next_cursor = match request.linking_status_context {
+        Some(context) => update_null_linking_status(&state, context, request.cursor, query.limit)
+            .await
+            .change_context(ReconEngineError::InternalServerError)?,
+        None => None,
+    };
 
-    Ok(ApplicationResponse::StatusOk)
+    if let Some(status) = request.status {
+        state
+            .recon_processor_status
+            .send(status)
+            .map_err(|_| ReconEngineError::InternalServerError)?;
+    }
+
+    Ok(ApplicationResponse::json(ProcessorStatusUpdateResponse {
+        next_cursor,
+    }))
 }
 
 pub async fn get_processor_status(
