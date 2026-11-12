@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.12.0
+
+### Features
+
+- **api-key:** Add create, list and update endpoints ([#30](https://github.com/juspay/hyperswitch-reconciliation/pull/30)) ([`dacd217`](https://github.com/juspay/hyperswitch-reconciliation/commit/dacd2174577d91e14c6f0b6bc6fd9a48f1ce4206))
+
+**Full Changelog:** [`2026.11.11.0...2026.11.12.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.11.0...2026.11.12.0)
+
+- - -
+
 ## 2026.11.11.0
 
 ### Features
