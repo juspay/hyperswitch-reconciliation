@@ -19,7 +19,11 @@ use common_types::{
         StagingEntryDataV2, StagingEntryListFiltersV2, VoidData, VoidDataV1,
     },
 };
-use common_utils::{auth::AuthContext, errors::ErrorSwitchFrom, logging};
+use common_utils::{
+    auth::{AuthContext, AuthMethod},
+    errors::ErrorSwitchFrom,
+    logging,
+};
 use diesel_models::{
     errors::DatabaseError,
     staging_entry::{
@@ -914,7 +918,12 @@ pub async fn create_staging_entry_with_validation(
         request.transformation_id,
         request.transformation_history_id,
         validated_entry.row_data.order_id,
-        Some(auth_context.user_id),
+        // An API key is not a Hyperswitch user: `None` also keeps `get_modified_by` from calling
+        // the user client for it.
+        match auth_context.auth_method {
+            AuthMethod::Jwt => Some(auth_context.user_id),
+            AuthMethod::ApiKey => None,
+        },
         validated_entry.row_data.exposed_metadata,
         validated_entry.row_data.searchable_metadata,
     );

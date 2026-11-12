@@ -1,11 +1,23 @@
-use api_models::api_key::{ApiKeyResponse, CreateApiKeyResponse, ListApiKeysResponse};
-use common_enums::ApiKeyStatus;
+use std::collections::HashMap;
+
+use api_models::{
+    api_key::{ApiKeyResponse, CreateApiKeyResponse, ListApiKeysResponse},
+    staging_entry::{GetStagingEntryResponse, StagingEntryCreateRequestV2},
+};
+use common_enums::{ApiKeyStatus, BalanceDirection, Currency, StagingEntryProcessingMode};
+use common_types::recon_rule::entry_field::EntryField;
 use common_utils::date_time;
 use masking::PeekInterface;
 use serde_json::{json, Value};
 use time::Duration;
 
-use crate::common::TestApp;
+use crate::{
+    api::{
+        account_test::create_test_account, staging_entry_test::staging_entry_request,
+        transformation_test::create_transformation_config,
+    },
+    common::TestApp,
+};
 
 fn expires_in_days(days: i64) -> Value {
     json!((date_time::now() + Duration::days(days))
@@ -527,4 +539,112 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
         .await;
     let fetched: ApiKeyResponse = client.expect_success(response).await;
     assert_eq!(fetched.status, ApiKeyStatus::Active);
+}
+
+#[tokio::test]
+async fn staging_entry_v2_create_accepts_an_api_key_without_modified_by() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (merchant_id, profile_id, token) = client
+        .bootstrap("ak_staging_merchant", "ak_staging_profile")
+        .await;
+    let account_id = create_test_account(
+        &client,
+        &token,
+        "ak staging account",
+        BalanceDirection::Debit,
+    )
+    .await;
+    let transformation = create_transformation_config(
+        &profile_id,
+        &account_id,
+        None,
+        &merchant_id,
+        &token,
+        &client,
+        EntryField::OrderId,
+        StagingEntryProcessingMode::Transaction,
+        vec![],
+    )
+    .await;
+    let key = create_key(&client, &token, "creates staging entries").await;
+    let authorization = format!("api-key={}", key.api_key.peek());
+
+    let request = StagingEntryCreateRequestV2 {
+        account_id: account_id.clone(),
+        transformation_id: transformation.transformation_id.clone(),
+        metadata_schema_id: transformation.metadata_schema_id.clone(),
+        raw_data: HashMap::from([
+            (EntryField::Amount.to_string(), Some("100".to_string())),
+            (EntryField::Currency.to_string(), Some("USD".to_string())),
+            (
+                EntryField::EffectiveAt.to_string(),
+                Some("12-12-2025".to_string()),
+            ),
+            (
+                EntryField::EntryType.to_string(),
+                Some(BalanceDirection::Debit.to_string()),
+            ),
+            (
+                EntryField::OrderId.to_string(),
+                Some("ak_order_1".to_string()),
+            ),
+        ]),
+        transformation_history_id: None,
+    };
+
+    // A key creates the entry. There is no user to record, so `modified_by` is empty.
+    let response = client
+        .post("/staging_entries/v2")
+        .header("Authorization", &authorization)
+        .header("x-profile-id", &profile_id)
+        .json(&request)
+        .send()
+        .await;
+    assert_eq!(response.status(), 201);
+    let created: GetStagingEntryResponse = client.expect_success(response).await;
+    assert!(created.modified_by.is_none());
+
+    // A JWT can read it back.
+    let response = client
+        .get(&format!("/staging_entries/{}", created.id))
+        .with_auth(&token)
+        .send()
+        .await;
+    let fetched: GetStagingEntryResponse = client.expect_success(response).await;
+    assert!(fetched.modified_by.is_none());
+
+    // Missing profile, no credential, the admin key, and the v1 create route (keys are not enabled).
+    for builder in [
+        client
+            .post("/staging_entries/v2")
+            .header("Authorization", &authorization),
+        client
+            .post("/staging_entries/v2")
+            .header("x-profile-id", &profile_id),
+        client
+            .post("/staging_entries/v2")
+            .with_admin_key()
+            .header("x-profile-id", &profile_id),
+    ] {
+        let response = builder.json(&request).send().await;
+        assert_eq!(response.status(), 401);
+    }
+
+    let v1_request = staging_entry_request(
+        &account_id,
+        BalanceDirection::Debit,
+        StagingEntryProcessingMode::Transaction,
+        100.0,
+        Currency::USD,
+        transformation.transformation_id,
+    );
+    let response = client
+        .post("/staging_entries")
+        .header("Authorization", &authorization)
+        .header("x-profile-id", &profile_id)
+        .json(&v1_request)
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
 }

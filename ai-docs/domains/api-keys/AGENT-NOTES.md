@@ -1,6 +1,6 @@
 # API Keys - Agent Notes
 
-Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; `ApiKeyAuth` authenticates keys, and `POST /transactions/v2/list` (via `JwtOrApiKey`) is the only route that accepts one.
+Merchant-level API keys for machine access to recon. The table, store, key generation/hashing and the JWT-only management endpoints exist; `ApiKeyAuth` authenticates keys, and `POST /transactions/v2/list` and `POST /staging_entries/v2` (via `JwtOrApiKey`) are the only routes that accept one.
 
 ## Data Model
 
@@ -49,3 +49,4 @@ Merchant-level API keys for machine access to recon. The table, store, key gener
 - **`ApiKeyAuth`** flow: hash, `find_active_api_key_by_hash`, not expired, mandatory `x-profile-id`, merchant and profile exist and the profile belongs to the key's merchant (`validate_merchant_and_profile`, shared with `JwtAuth`). Every failure is the same 401; the log carries the key `id`, never a header value. The hash lookup is not merchant-scoped, so the merchant comparison is the isolation check.
 - **`AuthContext.auth_method`** is `Jwt` or `ApiKey`. For keys `user_id` is `apikey:<id>`, which is not a Hyperswitch user: code that resolves `user_id` through Hyperswitch (`get_modified_by`) must branch on `auth_method` and omit `modified_by` for keys (no user lookup). That branch lands with the first route that enables keys.
 - **`JwtOrApiKey`** picks by the `Authorization` scheme: `Bearer` goes to `JwtAuth` (a bad token is a 401, no fallback), `api-key=` goes to `ApiKeyAuth`, anything else (including `admin-api-key=`) is a 401. Keys have no permission check, so keep it on read routes only.
+- **`POST /staging_entries/v2` accepts keys, the only write route that does.** For `AuthMethod::ApiKey` it stores `modified_by = None` (the column is nullable): `apikey:<id>` is not a Hyperswitch user, so the response's `get_modified_by` call and every later read of the row (single and batch) would otherwise fail with a 500 after the insert. The cost is that nothing records which key created the entry. `POST /staging_entries` (v1), update, void and bulk stay JWT-only. Known gap: the list paths still call `list_users_by_ids` with an empty set when no row has a `modified_by`.

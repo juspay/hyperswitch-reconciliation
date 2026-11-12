@@ -8,7 +8,7 @@
 - **Gotcha**: Bootstrap endpoint creates merchant + profile only (no token returned)
 - **Critical**: JWT claims MUST include non-empty `user_id` - validation fails otherwise
 - **Critical**: AdminApiAuth uses `Authorization: admin-api-key=<secret>`, NOT `Bearer`; API keys use `Authorization: api-key=<key>` + `x-profile-id`
-- **Critical**: `JwtOrApiKey` is for read routes only (today `POST /transactions/v2/list`). Keys have no permission check and `user_id` is `apikey:<id>`, so never put it on a write route
+- **Critical**: `JwtOrApiKey` is enabled on `POST /transactions/v2/list` (read) and `POST /staging_entries/v2` (the only write). Keys have no permission check and `user_id` is `apikey:<id>`, so a write route must store `modified_by = None` for keys (`auth_method == ApiKey`); `get_modified_by` returns `None` early and never calls Hyperswitch for it
 - **Critical**: Admin endpoints bypass JWT validation entirely - different auth flow
 - **Critical**: Service-to-service routes (transformation trigger) use `InternalApiKeyAuth` with the `x-internal-api-key` header and `auth.internal_api_key`, a different key from `admin_api_key`. Never use `NoAuth` for them
 - **Critical**: Admin API key required for merchant creation and bootstrap
