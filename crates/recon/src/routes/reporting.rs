@@ -6,7 +6,7 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtAuth},
+    services::{api, auth::UserAuth},
 };
 
 #[derive(OpenApi)]
@@ -38,7 +38,7 @@ pub async fn trigger_transaction_report(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        UserAuth::jwt(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -69,7 +69,7 @@ pub async fn trigger_exception_report(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconExceptionRead),
+        UserAuth::jwt(Permission::ProfileReconExceptionRead),
         &http_req,
         state,
         |state, auth| async move {

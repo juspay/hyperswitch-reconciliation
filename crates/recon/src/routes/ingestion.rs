@@ -16,7 +16,7 @@ use crate::{
     core,
     services::{
         api,
-        auth::{AdminApiAuth, JwtAuth, NoAuth},
+        auth::{AdminApiAuth, NoAuth, UserAuth},
     },
     utils,
 };
@@ -57,7 +57,7 @@ pub struct IngestionApi;
     tag = "Ingestion",
     request_body = IngestionConfigCreateRequest,
     security(
-        ("ApiKey" = [])
+        ("AdminApiKey" = [])
     ),
     responses(
         (status = 201, description = "Ingestion config created successfully", body = IngestionConfigResponse),
@@ -107,7 +107,7 @@ pub async fn upload_file_to_ingestion(
     let ingestion_id = path.into_inner();
 
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconIngestionWrite),
+        UserAuth::jwt(Permission::ProfileReconIngestionWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -144,7 +144,7 @@ pub async fn list_ingestion_configs(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconIngestionRead),
+        UserAuth::jwt(Permission::ProfileReconIngestionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -179,7 +179,7 @@ pub async fn get_ingestion_config(
 ) -> impl Responder {
     let ingestion_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconIngestionRead),
+        UserAuth::jwt(Permission::ProfileReconIngestionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -198,7 +198,7 @@ pub async fn get_ingestion_config(
     ),
     request_body = IngestionConfigUpdateRequest,
     security(
-        ("ApiKey" = [])
+        ("AdminApiKey" = [])
     ),
     responses(
         (status = 200, description = "Ingestion config updated successfully", body = IngestionConfigResponse),
@@ -246,7 +246,7 @@ pub async fn find_ingestion_config_and_history_by_id(
     let id = path.into_inner();
 
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconIngestionRead),
+        UserAuth::jwt(Permission::ProfileReconIngestionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -278,7 +278,7 @@ pub async fn list_ingestion_history(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconIngestionRead),
+        UserAuth::jwt(Permission::ProfileReconIngestionRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -353,7 +353,7 @@ pub async fn download_ingested_file(
     let history_id = path.into_inner();
 
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconIngestionRead),
+        UserAuth::jwt(Permission::ProfileReconIngestionRead),
         &http_req,
         state,
         |state, auth| async move {

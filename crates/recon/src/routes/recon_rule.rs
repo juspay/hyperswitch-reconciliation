@@ -8,7 +8,7 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{api, auth::JwtAuth},
+    services::{api, auth::UserAuth},
 };
 
 /// OpenAPI documentation for recon rule endpoints
@@ -52,7 +52,7 @@ pub async fn create_recon_rule_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleWrite),
+        UserAuth::jwt(Permission::ProfileReconRuleWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -84,7 +84,7 @@ pub async fn get_recon_rule_v2_by_id(
 ) -> impl Responder {
     let rule_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleRead),
+        UserAuth::jwt(Permission::ProfileReconRuleRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -119,7 +119,7 @@ pub async fn update_recon_rule(
 ) -> impl Responder {
     let rule_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleWrite),
+        UserAuth::jwt(Permission::ProfileReconRuleWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -145,7 +145,7 @@ pub async fn list_recon_rules_by_profile_id_v2(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconRuleRead),
+        UserAuth::jwt(Permission::ProfileReconRuleRead),
         &http_req,
         state,
         |state, auth| async move {

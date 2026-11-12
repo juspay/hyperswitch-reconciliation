@@ -8,7 +8,7 @@ use crate::{
     core,
     services::{
         api,
-        auth::{AdminApiAuth, JwtAuth},
+        auth::{AdminApiAuth, UserAuth},
     },
 };
 
@@ -43,7 +43,7 @@ pub struct MerchantAccountApi;
     path = "/merchant_accounts",
     tag = "Merchant Account",
     request_body = MerchantAccountCreateRequest,
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
     responses(
         (status = 201, description = "Merchant account created successfully", body = MerchantAccountResponse),
         (status = 409, description = "Merchant account already exists"),
@@ -86,7 +86,7 @@ pub async fn get_merchant_account(
     let merchant_id = MerchantId::wrap(merchant_id.into_inner())
         .map_err(|_| actix_web::error::ErrorBadRequest("Invalid merchant_id format"))?;
     Ok(api::server_wrap(
-        JwtAuth::with_merchant_without_permission(merchant_id.clone()),
+        UserAuth::jwt_without_permission().require_merchant_id(merchant_id.clone()),
         &http_req,
         state,
         move |state, auth| async move {

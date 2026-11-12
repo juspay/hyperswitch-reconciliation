@@ -12,7 +12,7 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{api, auth::JwtAuth},
+    services::{api, auth::UserAuth},
 };
 
 /// OpenAPI documentation for metadata schema endpoints
@@ -72,7 +72,7 @@ pub async fn create_metadata_schema(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransformationWrite),
+        UserAuth::jwt(Permission::ProfileReconTransformationWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -104,7 +104,7 @@ pub async fn get_metadata_schema_by_id(
 ) -> impl Responder {
     let id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransformationRead),
+        UserAuth::jwt(Permission::ProfileReconTransformationRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -136,7 +136,7 @@ pub async fn list_metadata_schemas(
 ) -> impl Responder {
     let filters = query.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransformationRead),
+        UserAuth::jwt(Permission::ProfileReconTransformationRead),
         &http_req,
         state,
         |state, auth| async move {
@@ -171,7 +171,7 @@ pub async fn update_metadata_schema(
 ) -> impl Responder {
     let id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransformationWrite),
+        UserAuth::jwt(Permission::ProfileReconTransformationWrite),
         &http_req,
         state,
         |state, auth| async move {

@@ -6,7 +6,7 @@ use utoipa::OpenApi;
 use crate::{
     core,
     routes::AppState,
-    services::{api, auth::JwtAuth},
+    services::{api, auth::UserAuth},
 };
 
 #[utoipa::path(
@@ -31,7 +31,7 @@ pub async fn get_search_group_by_id(
 ) -> impl Responder {
     let id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        UserAuth::jwt(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move { core::search_group::get_search_group_by_id(state, &id, auth).await },
@@ -61,7 +61,7 @@ pub async fn get_search_group_by_primary_transaction_id(
 ) -> impl Responder {
     let primary_transaction_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        UserAuth::jwt(Permission::ProfileReconTransactionRead),
         &http_req,
         state,
         |state, auth| async move {

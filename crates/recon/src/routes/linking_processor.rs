@@ -9,7 +9,7 @@ use crate::{
     core,
     services::{
         api,
-        auth::{AdminApiAuth, JwtAuth},
+        auth::{AdminApiAuth, UserAuth},
     },
 };
 
@@ -34,7 +34,7 @@ pub struct LinkingProcessorApi;
         (status = 401, description = "Unauthorized - Invalid or missing admin API key"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
 )]
 pub async fn get_processor_status(
     state: web::Data<AppState>,
@@ -57,7 +57,7 @@ pub async fn get_processor_status(
         (status = 401, description = "Unauthorized - Invalid or missing admin API key"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
 )]
 pub async fn set_processor_status(
     state: web::Data<AppState>,
@@ -93,7 +93,7 @@ pub async fn enqueue_entry(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconTransactionWrite),
+        UserAuth::jwt(Permission::ProfileReconTransactionWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -117,7 +117,7 @@ pub async fn enqueue_entry(
         (status = 404, description = "Entry not found"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("ApiKey" = [])),
+    security(("AdminApiKey" = [])),
 )]
 pub async fn process_entry(
     state: web::Data<AppState>,

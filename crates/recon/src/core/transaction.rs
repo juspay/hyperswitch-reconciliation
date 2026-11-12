@@ -106,7 +106,7 @@ pub async fn create_transaction(
         data: transaction_data,
         search_group: None,
         search_expectations,
-        modified_by: Some(auth.user_id.clone()),
+        modified_by: auth.user_id(),
     };
     let transaction_with_entries = transaction_creation_data.get_new_transaction_data();
 
@@ -399,7 +399,7 @@ pub async fn void_transaction(
         state,
         existing_transaction,
         request.reason,
-        Some(auth_context.user_id),
+        auth_context.user_id(),
     )
     .await?
     .ok_or(TransactionError::InvalidTransactionStatus {

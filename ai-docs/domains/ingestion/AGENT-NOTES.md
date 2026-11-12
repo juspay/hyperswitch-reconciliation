@@ -172,7 +172,7 @@ Ingestion service handles automated file retrieval from external sources (primar
   - There is deliberately **no** unscoped `find_config_and_history_by_id` variant left — an unscoped
     point lookup on this view is never safe to hand back to a caller, and removing it makes omitting
     the profile a compile error instead of a cross-tenant disclosure
-  - `JwtAuth::basic(Permission::…)` is class-level only; it never sees the `{id}`, so it cannot be
+  - `UserAuth::jwt(Permission::…)` is class-level only; it never sees the `{id}`, so it cannot be
     relied on for object-level authorization
   - Wrong profile → same `IngestionHistoryNotFound` 404 as a missing row, never 403 (a 403 turns the
     endpoint into an oracle for enumerating other tenants' record IDs)
