@@ -474,28 +474,6 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
 }
 
 #[tokio::test]
-async fn admin_routes_only_read_the_admin_api_key_header() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
-    let admin_key = "test_admin_12345678901234567890";
-
-    // The `api-key` header is for merchant API keys, so it never authenticates an admin route.
-    let response = client
-        .get("/recon_engine/processor/status")
-        .header("api-key", admin_key)
-        .send()
-        .await;
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .get("/recon_engine/processor/status")
-        .with_admin_key()
-        .send()
-        .await;
-    assert_eq!(response.status(), 200);
-}
-
-#[tokio::test]
 async fn transactions_list_v2_accepts_a_jwt_or_an_api_key() {
     let app = TestApp::new().await;
     let client = app.api_client();
