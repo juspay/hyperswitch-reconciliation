@@ -2,7 +2,7 @@ use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_utils::id_type::MerchantId;
 use diesel_models::{
-    api_key::{ApiKey, ApiKeyNew},
+    api_key::{ApiKey, ApiKeyNew, ApiKeyUpdate},
     StorageResult,
 };
 
@@ -16,6 +16,13 @@ pub trait ApiKeyInterface {
         &self,
         merchant_id: &MerchantId,
         api_key_id: &str,
+    ) -> StorageResult<ApiKey>;
+
+    async fn update_api_key(
+        &self,
+        merchant_id: &MerchantId,
+        api_key_id: &str,
+        update: ApiKeyUpdate,
     ) -> StorageResult<ApiKey>;
 
     /// Newest first.
@@ -44,6 +51,23 @@ impl ApiKeyInterface for Store {
             conn.as_async_conn(),
             merchant_id,
             api_key_id,
+        )
+        .await
+    }
+
+    async fn update_api_key(
+        &self,
+        merchant_id: &MerchantId,
+        api_key_id: &str,
+        update: ApiKeyUpdate,
+    ) -> StorageResult<ApiKey> {
+        let conn = self.get_connection().await?;
+
+        ApiKey::update_active_by_merchant_id_and_api_key_id(
+            conn.as_async_conn(),
+            merchant_id,
+            api_key_id,
+            update.into(),
         )
         .await
     }

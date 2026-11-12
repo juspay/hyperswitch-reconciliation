@@ -8,6 +8,10 @@ pub enum ApplicationResponse<R> {
         data: R,
         status: StatusCode,
     },
+    JsonNoStore {
+        data: R,
+        status: StatusCode,
+    },
     StatusOk,
     TextPlain(String),
     FileDownload {
@@ -29,6 +33,13 @@ impl<R> ApplicationResponse<R> {
     /// Create a JSON response with 201 Created status
     pub fn json_created(data: R) -> Self {
         Self::Json {
+            data,
+            status: StatusCode::CREATED,
+        }
+    }
+
+    pub fn json_created_no_store(data: R) -> Self {
+        Self::JsonNoStore {
             data,
             status: StatusCode::CREATED,
         }

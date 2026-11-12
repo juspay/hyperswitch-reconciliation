@@ -4,7 +4,7 @@ use utoipa::{
 };
 
 use crate::routes::{
-    account::AccountApi, audit_trail::AuditTrailApi, auth::AuthApi,
+    account::AccountApi, api_key::ApiKeyApi, audit_trail::AuditTrailApi, auth::AuthApi,
     business_profile::BusinessProfileApi, entry::EntryApi,
     exception_management::ExceptionManagementApi, health::HealthApi, ingestion::IngestionApi,
     link_config::LinkConfigApi, linking_processor::LinkingProcessorApi,
@@ -121,6 +121,7 @@ pub fn create_openapi() -> OpenApi {
     openapi.merge(ExceptionManagementApi::openapi());
     openapi.merge(AuditTrailApi::openapi());
     openapi.merge(SearchGroupApi::openapi());
+    openapi.merge(ApiKeyApi::openapi());
     openapi.merge(SearchEntryKeyApi::openapi());
     openapi.merge(SearchExpectationApi::openapi());
 
