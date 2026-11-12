@@ -55,7 +55,7 @@
 - `/auth/generate_token` requires existing merchant_id and profile_id (requires admin API key)
 - POST `/merchant_accounts` requires admin API key (not JWT)
 - GET `/merchant_accounts/{id}` requires JWT with matching merchant_id
-- Admin API key uses `admin-api-key` header
+- Admin API key uses `Authorization: admin-api-key=<secret>`, NOT `Bearer`
 - Admin endpoints bypass JWT validation entirely - different auth flow
 - No "super admin" concept for JWT - each JWT scoped to one merchant
 

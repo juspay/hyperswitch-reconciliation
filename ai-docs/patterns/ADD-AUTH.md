@@ -47,7 +47,7 @@ pub async fn admin_endpoint(
 ) -> impl Responder {
     let auth = AdminApiAuth;
     
-    // Validate admin API key from admin-api-key header
+    // Validate admin API key from `Authorization: admin-api-key=<secret>`
     auth.validate(&req, state.as_ref().clone())
         .await
         .map_err(|_| HttpResponse::Unauthorized().finish())?;
@@ -58,24 +58,10 @@ pub async fn admin_endpoint(
 ```
 
 ### API Key Authentication
-- `ApiKeyAuth`: `api-key: <key>` header plus a mandatory `x-profile-id`. Returns an `AuthContext` for the key's merchant and the requested profile.
-- `JwtOrApiKey::new(permission)`: accepts a JWT or a key. A `Bearer` token wins and a bad one is a 401 with no fallback to the key. The permission is checked for JWT callers only.
+- **Header:** `Authorization: api-key=<key>` plus a mandatory `x-profile-id`. Exactly one credential per request.
+- `JwtOrApiKey::new(permission)` checks `permission` only for JWT callers. API keys are not checked against any permission yet, so do not put it on a route until key scopes exist.
 - `auth_context.auth_method == AuthMethod::ApiKey` means `user_id` is `apikey:<id>`, not a Hyperswitch user.
-- API keys are not checked against any permission. See `domains/api-keys/AGENT-NOTES.md`.
-
-```rust
-// Read-only route that accepts a dashboard JWT or a merchant API key
-api::server_wrap(
-    JwtOrApiKey::new(Permission::ProfileReconTransactionRead),
-    &http_req,
-    state,
-    |state, auth| async move { core::transaction::list_transactions_v2(&state, auth, req.into_inner()).await },
-)
-.await
-```
-
-- Only use it on read routes. Keys have no scope, so any valid key passes, and `modified_by` can't be resolved for `apikey:<id>`.
-- Add an end-to-end test for the route: key accepted, missing `x-profile-id`, another merchant's profile, unknown and revoked key.
+- Admin key: `Authorization: admin-api-key=<secret>`. See `domains/api-keys/AGENT-NOTES.md`.
 
 ## Full Implementation
 ```rust
@@ -286,7 +272,7 @@ pub async fn protected_with_error_details(
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin API key documentation -->
-- **Header-based**: The key is the value of the `admin-api-key` header. `Authorization` is not used (it carries only the JWT `Bearer` token)
+- **Header-based**: `Authorization: admin-api-key=<secret>`, NOT `Bearer`
 - **No JWT validation**: Bypasses JWT token validation entirely
 - **No auth context**: Returns `()` - admin operations don't need merchant/profile scope
 - **Simple comparison**: Validates against configured admin_api_key
@@ -315,7 +301,7 @@ pub async fn protected_with_error_details(
 
 ### Admin API Key Authentication
 <!-- AI-UPDATED: 2025-01-07 - Admin auth gotchas -->
-- Sending the admin key in the `Authorization` header: that header is only for the JWT (`Bearer <token>`). The admin key goes in its own `admin-api-key` header
+- Using `Authorization: Bearer` instead of `Authorization: admin-api-key=<secret>`
 - Trying to extract AuthContext from AdminApiAuth (returns `()`)
 - Using AdminApiAuth for user-scoped operations (use JWT instead)
 - Forgetting to configure admin_api_key in environment configs

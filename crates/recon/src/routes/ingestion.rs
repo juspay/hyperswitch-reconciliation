@@ -57,7 +57,7 @@ pub struct IngestionApi;
     tag = "Ingestion",
     request_body = IngestionConfigCreateRequest,
     security(
-        ("AdminApiKey" = [])
+        ("ApiKey" = [])
     ),
     responses(
         (status = 201, description = "Ingestion config created successfully", body = IngestionConfigResponse),
@@ -198,7 +198,7 @@ pub async fn get_ingestion_config(
     ),
     request_body = IngestionConfigUpdateRequest,
     security(
-        ("AdminApiKey" = [])
+        ("ApiKey" = [])
     ),
     responses(
         (status = 200, description = "Ingestion config updated successfully", body = IngestionConfigResponse),

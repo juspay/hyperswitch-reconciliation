@@ -82,17 +82,9 @@ pub fn create_openapi() -> OpenApi {
                     utoipa::openapi::security::SecurityScheme::ApiKey(
                         utoipa::openapi::security::ApiKey::Header(
                             utoipa::openapi::security::ApiKeyValue::with_description(
-                                "api-key",
-                                "Merchant API key. Also send the `x-profile-id` header."
+                                "Authorization",
+                                "API key: `api-key=<key>`. Admin key: `admin-api-key=<secret>`. Send exactly one credential."
                             )
-                        )
-                    )
-                )
-                .security_scheme(
-                    "AdminApiKey",
-                    utoipa::openapi::security::SecurityScheme::ApiKey(
-                        utoipa::openapi::security::ApiKey::Header(
-                            utoipa::openapi::security::ApiKeyValue::new("admin-api-key")
                         )
                     )
                 )
