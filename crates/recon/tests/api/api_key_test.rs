@@ -229,7 +229,7 @@ async fn name_is_stored_as_given() {
     let response = client
         .put(&format!("/api_keys/{}", created.id))
         .with_auth(&token)
-        .json(&json!({ "name": " renamed " }))
+        .json(&json!({ "update_type": "details_update", "name": " renamed " }))
         .send()
         .await;
     let updated: ApiKeyResponse = client.expect_success(response).await;
@@ -248,7 +248,7 @@ async fn update_changes_name_and_description_only() {
     let response = client
         .put(&format!("/api_keys/{}", created.id))
         .with_auth(&token)
-        .json(&json!({ "name": "after" }))
+        .json(&json!({ "update_type": "details_update", "name": "after" }))
         .send()
         .await;
     let updated: ApiKeyResponse = client.expect_success(response).await;
@@ -262,7 +262,7 @@ async fn update_changes_name_and_description_only() {
     let response = client
         .put(&format!("/api_keys/{}", created.id))
         .with_auth(&token)
-        .json(&json!({ "description": "new description" }))
+        .json(&json!({ "update_type": "details_update", "description": "new description" }))
         .send()
         .await;
     let updated: ApiKeyResponse = client.expect_success(response).await;
@@ -273,7 +273,7 @@ async fn update_changes_name_and_description_only() {
     let response = client
         .put(&format!("/api_keys/{}", created.id))
         .with_auth(&token)
-        .json(&json!({ "expires_at": expires_in_days(300) }))
+        .json(&json!({ "update_type": "details_update", "expires_at": expires_in_days(300) }))
         .send()
         .await;
     assert_eq!(response.status(), 400);
@@ -282,7 +282,7 @@ async fn update_changes_name_and_description_only() {
     let response = client
         .put(&format!("/api_keys/{}", created.id))
         .with_auth(&token)
-        .json(&json!({}))
+        .json(&json!({ "update_type": "details_update" }))
         .send()
         .await;
     assert_eq!(response.status(), 400);
@@ -290,9 +290,18 @@ async fn update_changes_name_and_description_only() {
 
     // Invalid name and description.
     for (body, code) in [
-        (json!({ "name": "  " }), "RE_1702"),
-        (json!({ "name": "n".repeat(65) }), "RE_1703"),
-        (json!({ "description": "d".repeat(257) }), "RE_1704"),
+        (
+            json!({ "update_type": "details_update", "name": "  " }),
+            "RE_1702",
+        ),
+        (
+            json!({ "update_type": "details_update", "name": "n".repeat(65) }),
+            "RE_1703",
+        ),
+        (
+            json!({ "update_type": "details_update", "description": "d".repeat(257) }),
+            "RE_1704",
+        ),
     ] {
         let response = client
             .put(&format!("/api_keys/{}", created.id))
@@ -317,20 +326,20 @@ async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
         .api_key_details
         .id;
 
-    // Reactivation is not a thing: only `revoked` is accepted.
+    // Reactivation is not a thing: no update carries a status.
     let response = client
         .put(&format!("/api_keys/{id}"))
         .with_auth(&token)
-        .json(&json!({ "status": "active" }))
+        .json(&json!({ "update_type": "details_update", "status": "active" }))
         .send()
         .await;
-    // Not a variant of the update request, so serde rejects it before the handler.
+    // Not a field of either update, so serde rejects it before the handler.
     assert_eq!(response.status(), 400);
 
     let response = client
         .put(&format!("/api_keys/{id}"))
         .with_auth(&token)
-        .json(&json!({ "status": "revoked" }))
+        .json(&json!({ "update_type": "revoke_update" }))
         .send()
         .await;
     let revoked: ApiKeyResponse = client.expect_success(response).await;
@@ -351,10 +360,16 @@ async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
     assert!(list.api_keys.iter().all(|key| key.id != id));
 
     // A revoked key can't be revoked again, revived, or renamed.
-    for body in [
-        json!({ "status": "revoked" }),
-        json!({ "status": "active" }),
-        json!({ "name": "revive" }),
+    for (body, expected) in [
+        (json!({ "update_type": "revoke_update" }), 404),
+        (
+            json!({ "update_type": "details_update", "status": "active" }),
+            400,
+        ),
+        (
+            json!({ "update_type": "details_update", "name": "revive" }),
+            404,
+        ),
     ] {
         let response = client
             .put(&format!("/api_keys/{id}"))
@@ -362,8 +377,7 @@ async fn update_with_revoked_status_revokes_key_and_cannot_repeat() {
             .json(&body)
             .send()
             .await;
-        // `active` is rejected while parsing, everything else matches no active key.
-        let expected = if body["status"] == "active" { 400 } else { 404 };
+        // `status` is rejected while parsing, everything else matches no active key.
         assert_eq!(response.status(), expected, "{body}");
     }
 }
@@ -381,8 +395,9 @@ async fn status_cannot_be_updated_together_with_details() {
         .id;
 
     for body in [
-        json!({ "name": "final name", "status": "revoked" }),
-        json!({ "description": "final description", "status": "revoked" }),
+        json!({ "update_type": "revoke_update", "name": "final name" }),
+        json!({ "update_type": "revoke_update", "description": "final description" }),
+        json!({ "update_type": "details_update", "name": "final name", "status": "revoked" }),
     ] {
         let response = client
             .put(&format!("/api_keys/{id}"))
@@ -430,7 +445,7 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
     let response = client
         .put(&format!("/api_keys/{id}"))
         .with_auth(&token_b)
-        .json(&json!({ "name": "stolen" }))
+        .json(&json!({ "update_type": "details_update", "name": "stolen" }))
         .send()
         .await;
     assert_eq!(response.status(), 404);
@@ -438,7 +453,7 @@ async fn merchants_cannot_see_or_revoke_each_others_keys() {
     let response = client
         .put(&format!("/api_keys/{id}"))
         .with_auth(&token_b)
-        .json(&json!({ "status": "revoked" }))
+        .json(&json!({ "update_type": "revoke_update" }))
         .send()
         .await;
     assert_eq!(response.status(), 404);

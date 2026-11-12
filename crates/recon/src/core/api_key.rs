@@ -1,6 +1,6 @@
 use api_models::api_key::{
     ApiKeyResponse as ApiKeyApiResponse, CreateApiKeyRequest, CreateApiKeyResponse,
-    ListApiKeysResponse, UpdateApiKeyRequest,
+    ListApiKeysResponse, UpdateApiKeyRequest, UpdateApiKeyType,
 };
 use common_utils::{api_key::PlaintextApiKey, auth::AuthContext, date_time};
 use diesel_models::api_key::{ApiKeyNew, ApiKeyUpdate};
@@ -92,12 +92,11 @@ pub async fn update_api_key(
 ) -> ApiKeyResponse<ApiKeyApiResponse> {
     request.validate(date_time::now())?;
 
-    let update = match request {
-        UpdateApiKeyRequest::RevokeUpdate(_) => ApiKeyUpdate::RevokeUpdate,
-        UpdateApiKeyRequest::DetailsUpdate(details) => ApiKeyUpdate::DetailsUpdate {
-            name: details.name,
-            description: details.description,
-        },
+    let update = match request.update_type {
+        UpdateApiKeyType::RevokeUpdate {} => ApiKeyUpdate::RevokeUpdate,
+        UpdateApiKeyType::DetailsUpdate { name, description } => {
+            ApiKeyUpdate::DetailsUpdate { name, description }
+        }
     };
 
     let api_key = state

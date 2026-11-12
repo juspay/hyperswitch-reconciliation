@@ -1,4 +1,6 @@
-use api_models::api_key::{ApiKeyResponse, CreateApiKeyRequest, UpdateApiKeyRequest};
+use api_models::api_key::{
+    ApiKeyResponse, CreateApiKeyRequest, UpdateApiKeyRequest, UpdateApiKeyType,
+};
 use diesel_models::api_key::ApiKey;
 use error_stack::Report;
 use time::PrimitiveDateTime;
@@ -70,17 +72,17 @@ impl ApiKeyRequestValidator for CreateApiKeyRequest {
 
 impl ApiKeyRequestValidator for UpdateApiKeyRequest {
     fn validate(&self, _now: PrimitiveDateTime) -> ApiKeyResult<()> {
-        let details = match self {
-            Self::RevokeUpdate(_) => return Ok(()),
-            Self::DetailsUpdate(details) => details,
+        let (name, description) = match &self.update_type {
+            UpdateApiKeyType::RevokeUpdate {} => return Ok(()),
+            UpdateApiKeyType::DetailsUpdate { name, description } => (name, description),
         };
-        if details.name.is_none() && details.description.is_none() {
+        if name.is_none() && description.is_none() {
             return Err(Report::new(ApiKeyError::NothingToUpdate));
         }
-        if let Some(name) = &details.name {
+        if let Some(name) = name {
             validate_name(name)?;
         }
-        if let Some(description) = &details.description {
+        if let Some(description) = description {
             validate_description(description)?;
         }
         Ok(())

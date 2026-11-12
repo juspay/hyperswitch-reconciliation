@@ -1,7 +1,7 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::api_key::{
     ApiKeyResponse, CreateApiKeyRequest, CreateApiKeyResponse, ListApiKeysResponse,
-    RevokeApiKeyRequest, RevokedStatus, UpdateApiKeyDetailsRequest, UpdateApiKeyRequest,
+    UpdateApiKeyRequest, UpdateApiKeyType,
 };
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
@@ -101,7 +101,7 @@ pub async fn get_api_key(
     ),
     request_body = UpdateApiKeyRequest,
     responses(
-        (status = 200, description = "API key updated. Setting status to revoked revokes the key; it stops working on the next request and cannot be restored", body = ApiKeyResponse),
+        (status = 200, description = "API key updated. `revoke_update` revokes the key; it stops working on the next request and cannot be restored", body = ApiKeyResponse),
         (status = 400, description = "Invalid request"),
         (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
         (status = 404, description = "API key not found, revoked, or belongs to another merchant"),
@@ -139,9 +139,7 @@ pub async fn update_api_key(
         CreateApiKeyRequest,
         CreateApiKeyResponse,
         UpdateApiKeyRequest,
-        RevokeApiKeyRequest,
-        RevokedStatus,
-        UpdateApiKeyDetailsRequest,
+        UpdateApiKeyType,
         ApiKeyResponse,
         ListApiKeysResponse
     )),

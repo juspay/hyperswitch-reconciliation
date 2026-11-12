@@ -18,31 +18,21 @@ pub struct CreateApiKeyRequest {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
-#[serde(untagged)]
-pub enum UpdateApiKeyRequest {
-    RevokeUpdate(RevokeApiKeyRequest),
-    DetailsUpdate(UpdateApiKeyDetailsRequest),
+pub struct UpdateApiKeyRequest {
+    #[serde(flatten)]
+    pub update_type: UpdateApiKeyType,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct RevokeApiKeyRequest {
-    pub status: RevokedStatus,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum RevokedStatus {
-    Revoked,
-}
-
-#[derive(Debug, Deserialize, ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct UpdateApiKeyDetailsRequest {
-    #[schema(example = "Reporting integration")]
-    pub name: Option<String>,
-    #[schema(example = "Used by the nightly reporting job")]
-    pub description: Option<String>,
+#[serde(tag = "update_type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum UpdateApiKeyType {
+    RevokeUpdate {},
+    DetailsUpdate {
+        #[schema(example = "Reporting integration")]
+        name: Option<String>,
+        #[schema(example = "Used by the nightly reporting job")]
+        description: Option<String>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
