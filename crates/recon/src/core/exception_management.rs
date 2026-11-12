@@ -277,7 +277,7 @@ pub async fn force_reconcile_transaction(
             };
 
             let force_reconciled_transaction_new =
-                TransactionNew::new_versioned(transaction, update, Some(auth.user_id));
+                TransactionNew::new_versioned(transaction, update, auth.user_id);
 
             // Step 4: Insert the force reconciled transaction
             let db_transaction = force_reconciled_transaction_new
@@ -630,7 +630,7 @@ pub async fn manual_transaction_reconciliation(
                     StagingEntryVersionUpdate::ProcessedUpdate {
                         data: StagingEntryData::V2(StagingEntryDataV2::Processed),
                     },
-                    Some(auth_context.user_id.clone()),
+                    auth_context.user_id.clone(),
                 );
 
                 // Create search duplicate
@@ -888,7 +888,7 @@ pub async fn manual_transaction_reconciliation(
                     new_entries: inserted_entries,
                     data: transaction_data,
                 },
-                Some(auth_context.user_id),
+                auth_context.user_id,
             )
             .insert(&conn)
             .await
@@ -1135,7 +1135,7 @@ pub async fn manual_transaction_reconciliation_v2(
                     new_entries: inserted_entries,
                     data: transaction_data,
                 },
-                Some(user_id),
+                user_id,
             )
             .insert(&conn)
             .await

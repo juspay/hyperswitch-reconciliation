@@ -19,11 +19,7 @@ use common_types::{
         StagingEntryDataV2, StagingEntryListFiltersV2, VoidData, VoidDataV1,
     },
 };
-use common_utils::{
-    auth::{AuthContext, AuthMethod},
-    errors::ErrorSwitchFrom,
-    logging,
-};
+use common_utils::{auth::AuthContext, errors::ErrorSwitchFrom, logging};
 use diesel_models::{
     errors::DatabaseError,
     staging_entry::{
@@ -159,7 +155,7 @@ pub async fn create_staging_entry(
         request.transformation_id,
         request.transformation_history_id,
         request.order_id,
-        Some(auth_context.user_id),
+        auth_context.user_id,
         exposed_metadata,
         searchable_metadata,
     );
@@ -500,7 +496,7 @@ pub async fn void_staging_entry(
         &state,
         existing_staging_entry.clone(),
         request.reason,
-        Some(auth_context.user_id),
+        auth_context.user_id,
     )
     .await?
     .ok_or(StagingEntryError::StagingEntryNotVoidable {
@@ -777,7 +773,7 @@ pub async fn update_staging_entry(
             let new_staging_entry = StagingEntryNew::new_updated(
                 existing_staging_entry,
                 fields_update,
-                Some(auth_context.user_id),
+                auth_context.user_id,
             );
             let updated_staging_entry = new_staging_entry.insert(&txn_conn).await.map_err(|e| {
                 logging::error!("Failed to insert updated staging entry: {:?}", e);
@@ -918,12 +914,7 @@ pub async fn create_staging_entry_with_validation(
         request.transformation_id,
         request.transformation_history_id,
         validated_entry.row_data.order_id,
-        // An API key is not a Hyperswitch user: `None` also keeps `get_modified_by` from calling
-        // the user client for it.
-        match auth_context.auth_method {
-            AuthMethod::Jwt => Some(auth_context.user_id),
-            AuthMethod::ApiKey => None,
-        },
+        auth_context.user_id,
         validated_entry.row_data.exposed_metadata,
         validated_entry.row_data.searchable_metadata,
     );

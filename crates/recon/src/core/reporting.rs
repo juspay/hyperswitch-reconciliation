@@ -1,6 +1,6 @@
 use api_models::reporting::{ExceptionReportFilters, TransactionReportFilters};
 use common_utils::{auth::AuthContext, date_time};
-use error_stack::ResultExt;
+use error_stack::{Report, ResultExt};
 use external_services::user::interfaces::UserInterface;
 use std::collections::HashSet;
 use storage_impl::recon_rule::ReconRuleInterface;
@@ -39,7 +39,10 @@ pub async fn generate_transaction_report(
         .get_user_by_id(
             auth.merchant_id.clone(),
             auth.profile_id.clone(),
-            auth.user_id.clone(),
+            auth.user_id.clone().ok_or_else(|| {
+                Report::new(ReportError::InternalServerError)
+                    .attach("Report requested without a user")
+            })?,
         )
         .await
         .change_context(ReportError::InternalServerError)?
@@ -99,7 +102,10 @@ pub async fn generate_exception_report(
         .get_user_by_id(
             auth.merchant_id.clone(),
             auth.profile_id.clone(),
-            auth.user_id.clone(),
+            auth.user_id.clone().ok_or_else(|| {
+                Report::new(ReportError::InternalServerError)
+                    .attach("Report requested without a user")
+            })?,
         )
         .await
         .change_context(ReportError::InternalServerError)?
