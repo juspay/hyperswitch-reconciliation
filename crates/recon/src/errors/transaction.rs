@@ -42,9 +42,6 @@ pub enum TransactionError {
     #[error("Start time cannot be greater than End Time")]
     TimeRangeValidationError,
 
-    #[error("Filtering by status '{status}' is not supported")]
-    UnsupportedStatusFilter { status: String },
-
     #[error("Invalid transaction status. Expected statuses: {expected_statuses:?}")]
     InvalidTransactionStatus {
         expected_statuses: Vec<DieselTransactionStatus>,
@@ -121,7 +118,6 @@ impl From<TransactionError> for ReconAppError {
             | TransactionError::EntryCurrencyMismatch
             | TransactionError::InvalidRuleId
             | TransactionError::TimeRangeValidationError
-            | TransactionError::UnsupportedStatusFilter { .. }
             | TransactionError::InvalidTransactionStatus { .. }
             | TransactionError::EmptyStagingEntryList
             | TransactionError::StagingEntryNotLinkable { .. }
@@ -252,12 +248,6 @@ impl ErrorSwitchFrom<TransactionError> for ApiErrorPayload {
                 format!("Recon rule not found: {rule_id}"),
                 None,
             )),
-            TransactionError::UnsupportedStatusFilter { status } => Self::BadRequest(ApiError::new(
-                "RE",
-                618,
-                format!("Filtering by status '{status}' is not supported"),
-                None,
-            )),
             TransactionError::TransformationConfigNotFound { config_id } => Self::NotFound(ApiError::new(
                 "RE",
                 619,
@@ -307,11 +297,6 @@ impl ErrorSwitchFrom<TransactionListFilterValidationError> for TransactionError 
         match error {
             TransactionListFilterValidationError::InvalidTimeRange => {
                 Self::TimeRangeValidationError
-            }
-            TransactionListFilterValidationError::UnsupportedStatus { status } => {
-                Self::UnsupportedStatusFilter {
-                    status: status.to_string(),
-                }
             }
         }
     }
