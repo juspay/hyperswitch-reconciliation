@@ -33,3 +33,18 @@ impl ExceptionReportFilters {
         self.time_range.validate()
     }
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
+pub struct TransactionFlowReportFilters {
+    #[serde(flatten)]
+    pub time_range: TimeRange,
+    pub rule_id: String,
+    #[serde(default)]
+    pub emails: HashSet<String>,
+}
+
+impl TransactionFlowReportFilters {
+    pub fn validate(&self) -> Result<(), String> {
+        self.time_range.validate()
+    }
+}
