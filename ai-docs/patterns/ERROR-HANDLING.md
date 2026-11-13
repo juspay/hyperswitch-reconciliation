@@ -48,15 +48,26 @@ pub enum AccountError {
     InternalServerError,
 }
 
-// 2. Implement error code mapping
-impl AccountError {
-    pub fn error_code(&self) -> &'static str {
-        match self {
-            Self::AccountNotFound => "ACCOUNT_NOT_FOUND",
-            Self::AccountNameEmpty => "INVALID_ACCOUNT_NAME",
-            Self::InsufficientBalance => "INSUFFICIENT_BALANCE",
-            Self::CurrencyMismatch { .. } => "CURRENCY_MISMATCH",
-            Self::InternalServerError => "INTERNAL_ERROR",
+// 2. Map each variant to an HTTP status (the payload variant) and its code
+use api_models::errors::{ApiError, ApiErrorResponse as ApiErrorPayload};
+use common_utils::errors::ErrorSwitchFrom;
+
+impl ErrorSwitchFrom<AccountError> for ApiErrorPayload {
+    fn switch_from(error: &AccountError) -> Self {
+        match error {
+            AccountError::InternalServerError => Self::InternalServerError(ApiError::new(
+                "RE",
+                300,
+                "An internal error occurred while processing account request",
+                None,
+            )),
+            AccountError::AccountNotFound => {
+                Self::NotFound(ApiError::new("RE", 302, "Account not found", None))
+            }
+            AccountError::AccountNameEmpty => {
+                Self::BadRequest(ApiError::new("RE", 304, "Account name cannot be empty", None))
+            }
+            // ...one arm per variant, each with its own code in block 3 (see Error Codes)
         }
     }
 }
@@ -156,47 +167,7 @@ pub async fn transfer_between_accounts(
     Ok(TransferResponse::from(transfer))
 }
 
-// 5. Error response formatting for API
-#[derive(Serialize, ToSchema)]
-pub struct ErrorResponse {
-    pub error_code: String,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<serde_json::Value>,
-}
-
-impl From<&AccountError> for ErrorResponse {
-    fn from(error: &AccountError) -> Self {
-        Self {
-            error_code: error.error_code().to_string(),
-            message: error.to_string(),
-            details: match error {
-                AccountError::CurrencyMismatch { expected, actual } => {
-                    Some(serde_json::json!({
-                        "expected_currency": expected,
-                        "actual_currency": actual,
-                    }))
-                }
-                _ => None,
-            },
-        }
-    }
-}
-
-// 6. HTTP status code mapping
-impl AccountError {
-    pub fn status_code(&self) -> StatusCode {
-        match self {
-            Self::AccountNotFound => StatusCode::NOT_FOUND,
-            Self::AccountNameEmpty => StatusCode::BAD_REQUEST,
-            Self::InsufficientBalance => StatusCode::BAD_REQUEST,
-            Self::CurrencyMismatch { .. } => StatusCode::BAD_REQUEST,
-            Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
-}
-
-// 7. Using in route handler with server_wrap
+// 5. Using in route handler with server_wrap
 pub async fn handle_transfer(
     state: web::Data<AppState>,
     body: web::Json<TransferRequest>,
@@ -212,6 +183,27 @@ pub async fn handle_transfer(
     .await
 }
 ```
+
+## Error Codes
+- `ApiError::new("RE", 302, …)` renders as `RE_302`: `{prefix}_{number}`, zero-padded to two digits (`RE_01`). The number is `block × 100 + local`. All error types live in `crates/recon/src/errors/`.
+- **Each error type owns one block, unique across prefixes.** The prefix doesn't namespace the number, so the number alone identifies the error type. A new error type takes the next free block, 22.
+- **Local numbers only grow; never renumber or reuse one.** Anything matching on a code would silently get a different error. An unused number inside a block is a retired code.
+
+| Block | Error type | Block | Error type |
+|---|---|---|---|
+| 0 | `ReconAppError` | 11 | `MetadataSchemaError` |
+| 1 | `MerchantAccountError` | 12 | `AuditTrailError` |
+| 2 | `BusinessProfileError` | 13 | `SearchGroupError` |
+| 3 | `AccountError` | 14 | `BulkOperationError` |
+| 4 | `StagingEntryError` | 15 | `SearchExpectationError` |
+| 5 | `EntryError` | 16 | `OverviewError` |
+| 6 | `TransactionError` | 17 | `SearchEntryError` |
+| 7 | `ReconRuleError` (`RR`) | 18 | `ReportError` (`RP`) |
+| 8 | `ReconEngineError` | 19 | `LinkConfigError` (`LC`) |
+| 9 | `IngestionError` (`IE`) | 20 | `LinkingProcessorError` (`LP`) |
+| 10 | `TransformationError` (`TR`) | 21 | `ApiKeyError` |
+
+The prefix is `RE` unless shown.
 
 ## Key Points
 - **Use error-stack** - Provides rich error context and chaining

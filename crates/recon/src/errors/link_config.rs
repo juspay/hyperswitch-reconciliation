@@ -38,19 +38,19 @@ impl ErrorSwitchFrom<LinkConfigError> for ApiErrorPayload {
     fn switch_from(error: &LinkConfigError) -> Self {
         match error {
             LinkConfigError::InternalServerError => {
-                Self::InternalServerError(ApiError::new("LC", 900, "Internal server error", None))
+                Self::InternalServerError(ApiError::new("LC", 1900, "Internal server error", None))
             }
             LinkConfigError::LinkConfigNotFound { .. } => {
-                Self::NotFound(ApiError::new("LC", 901, error.to_string(), None))
+                Self::NotFound(ApiError::new("LC", 1901, error.to_string(), None))
             }
             LinkConfigError::AccountNotFound { .. } => {
-                Self::NotFound(ApiError::new("LC", 902, error.to_string(), None))
+                Self::NotFound(ApiError::new("LC", 1902, error.to_string(), None))
             }
             LinkConfigError::RuleNotFound { .. } => {
-                Self::NotFound(ApiError::new("LC", 903, error.to_string(), None))
+                Self::NotFound(ApiError::new("LC", 1903, error.to_string(), None))
             }
             LinkConfigError::InvalidLinkConfig { .. } => {
-                Self::BadRequest(ApiError::new("LC", 904, error.to_string(), None))
+                Self::BadRequest(ApiError::new("LC", 1904, error.to_string(), None))
             }
         }
     }

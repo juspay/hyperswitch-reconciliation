@@ -271,10 +271,10 @@
   - Status changes update account debit/credit components (pending→posted)
 <!-- AI-UPDATED: 2026-05-13 - filter+rename+auth changes; empty list is 200, not 404 -->
 - **`GET /search_expectations/primary_transaction/{primary_transaction_id}`**:
-  - **Auth + tenant isolation**: JWT-authenticated with `Permission::ProfileReconTransactionRead`. search_expectation rows have no `profile_id` column of their own, so isolation is enforced **indirectly** — the core first calls `Transaction::find_by_id_and_profile(primary_transaction_id, auth.profile_id)` and returns `SearchExpectationError::TransactionNotFound` (RE-1501, 404) if that lookup fails. Only after the owning transaction is verified does it list the expectations.
+  - **Auth + tenant isolation**: JWT-authenticated with `Permission::ProfileReconTransactionRead`. search_expectation rows have no `profile_id` column of their own, so isolation is enforced **indirectly** — the core first calls `Transaction::find_by_id_and_profile(primary_transaction_id, auth.profile_id)` and returns `SearchExpectationError::TransactionNotFound` (RE_1501, 404) if that lookup fails. Only after the owning transaction is verified does it list the expectations.
   - Returns `Vec<SearchExpectationResponse>` for the *exact* `primary_transaction_id` (per-version, not the logical `transaction_id`). Use `transaction.id` from a recent transaction response — querying an old version's id is legal but only surfaces rows linked to that version.
   - Returns **only `status = Expected`** rows — Archived expectations are filtered at the DB layer (`SearchExpectation::list_expected_by_primary_transaction_id`). A transaction with no live expectations responds `200 []`, not 404.
-  - **Error variants**: only `TransactionNotFound` (RE-1501, HTTP 404) — transaction doesn't exist OR belongs to another profile (intentionally indistinguishable to prevent profile-id enumeration). There is no `SearchExpectationNotFound` — an empty result is a success, not an error.
+  - **Error variants**: only `TransactionNotFound` (RE_1501, HTTP 404) — transaction doesn't exist OR belongs to another profile (intentionally indistinguishable to prevent profile-id enumeration). There is no `SearchExpectationNotFound` — an empty result is a success, not an error.
   - **Pattern to copy for similar profile-less child resources**: do a transaction-by-profile lookup, `change_context` the error to a parent-not-found variant, then proceed to the child query. Avoids leaking child-resource existence across tenants.
 
 ## Recon Rules Core Architecture
@@ -773,7 +773,7 @@
   - **Non-Voidable Statuses**: `Processed`, `Void`, and `Archived` statuses cannot be voided (finalized states)
 - **Validation Integration**: Void validation occurs in `void_staging_entry()` core function BEFORE database operations
   - **Error Type**: Returns `StagingEntryNotVoidable` error with staging entry ID for clear user feedback
-  - **API Error Code**: Maps to 400 Bad Request with error code "RE-410" for client-side handling
+  - **API Error Code**: Maps to 400 Bad Request with error code "RE_410" for client-side handling
   - **Security**: Validation happens after existence and profile ownership checks but before expensive versioning operations
 <!-- AI-UPDATED: 2025-10-16 - Search duplicates status column for lifecycle management -->
 - **Search Duplicates Status Management**: Added `status` column for proper duplicate lifecycle tracking
