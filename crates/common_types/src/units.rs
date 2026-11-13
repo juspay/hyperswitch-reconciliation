@@ -13,8 +13,7 @@ use diesel::{
     deserialize::{self, FromSql},
     expression::AsExpression,
     serialize::{Output, ToSql},
-    sql_types::{self},
-    Queryable,
+    sql_types, Queryable,
 };
 
 use rust_decimal::{prelude::FromPrimitive, Decimal};
