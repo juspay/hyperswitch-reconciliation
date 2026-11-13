@@ -641,9 +641,7 @@ impl Transaction {
             }
         }
 
-        query = query
-            .filter(dsl::profile_id.eq(profile_id.to_owned()))
-            .filter(dsl::status.ne(DieselTransactionStatus::Archived));
+        query = query.filter(dsl::profile_id.eq(profile_id.to_owned()));
 
         if let Some(transaction_id) = filters.transaction_id {
             query = query.filter(dsl::transaction_id.eq(transaction_id));
