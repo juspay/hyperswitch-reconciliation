@@ -4,6 +4,17 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.13.1
+
+### Bug Fixes
+
+- **auth:** Add recon merchant API key permissions ([#44](https://github.com/juspay/hyperswitch-reconciliation/pull/44)) ([`aac1397`](https://github.com/juspay/hyperswitch-reconciliation/commit/aac13977e959dec5325ebcaa9461cb394918d37e))
+- **imports:** Remove redundant self imports ([#43](https://github.com/juspay/hyperswitch-reconciliation/pull/43)) ([`3a9bcf6`](https://github.com/juspay/hyperswitch-reconciliation/commit/3a9bcf6cd399ae0427cc4b9e9c399a211bb527a5))
+
+**Full Changelog:** [`2026.11.13.0...2026.11.13.1`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.13.0...2026.11.13.1)
+
+- - -
+
 ## 2026.11.13.0
 
 ### Features
