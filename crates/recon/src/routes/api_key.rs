@@ -1,3 +1,6 @@
+//! Merchant-scoped API-key management: ReconApiKeyView permits list/get,
+//! while ReconApiKeyManage is required to create, edit or revoke a key.
+
 use actix_web::{web, HttpRequest, Responder};
 use api_models::api_key::{
     ApiKeyResponse, CreateApiKeyRequest, CreateApiKeyResponse, ListApiKeysResponse,
@@ -31,7 +34,7 @@ pub async fn create_api_key(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantAccountWrite),
+        JwtAuth::basic(Permission::MerchantReconApiKeyWrite),
         &http_req,
         state,
         |state, auth| async move {
@@ -54,7 +57,7 @@ pub async fn create_api_key(
 )]
 pub async fn list_api_keys(state: web::Data<AppState>, http_req: HttpRequest) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantAccountRead),
+        JwtAuth::basic(Permission::MerchantReconApiKeyRead),
         &http_req,
         state,
         |state, auth| async move { core::api_key::list_api_keys(state, auth).await },
@@ -84,7 +87,7 @@ pub async fn get_api_key(
 ) -> impl Responder {
     let api_key_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantAccountRead),
+        JwtAuth::basic(Permission::MerchantReconApiKeyRead),
         &http_req,
         state,
         |state, auth| async move { core::api_key::get_api_key(state, &api_key_id, auth).await },
@@ -117,7 +120,7 @@ pub async fn update_api_key(
 ) -> impl Responder {
     let api_key_id = path.into_inner();
     api::server_wrap(
-        JwtAuth::basic(Permission::MerchantAccountWrite),
+        JwtAuth::basic(Permission::MerchantReconApiKeyWrite),
         &http_req,
         state,
         |state, auth| async move {
