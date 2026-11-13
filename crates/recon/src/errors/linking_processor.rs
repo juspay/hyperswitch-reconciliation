@@ -33,15 +33,15 @@ impl ErrorSwitchFrom<LinkingProcessorError> for ApiErrorPayload {
         match error {
             LinkingProcessorError::InternalServerError => Self::InternalServerError(ApiError::new(
                 "LP",
-                800,
+                2000,
                 "An internal error occurred",
                 None,
             )),
             LinkingProcessorError::EntryNotFound => {
-                Self::NotFound(ApiError::new("LP", 801, "Entry not found", None))
+                Self::NotFound(ApiError::new("LP", 2001, "Entry not found", None))
             }
             LinkingProcessorError::InvalidEntryLinkingStatus { .. } => {
-                Self::BadRequest(ApiError::new("LP", 802, error.to_string(), None))
+                Self::BadRequest(ApiError::new("LP", 2002, error.to_string(), None))
             }
         }
     }
