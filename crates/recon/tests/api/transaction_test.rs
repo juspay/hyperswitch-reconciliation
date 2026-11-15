@@ -2000,20 +2000,19 @@ async fn test_list_transactions_v2_transaction_id_filter_returns_full_history() 
                 transaction_id: Some(fixture.superseded.transaction_id.clone()),
                 ..Default::default()
             },
-            TransactionListSortField::Id { id: None },
+            TransactionListSortField::Version { cursor_value: None },
             Some(10),
             CursorDirection::Next,
-            SortOrder::Desc,
+            SortOrder::Asc,
         ),
     )
     .await;
 
-    let mut history: Vec<_> = page
+    let history: Vec<_> = page
         .items
         .iter()
         .map(|item| (item.version, item.id.clone(), item.status.clone()))
         .collect();
-    history.sort_by_key(|(version, _, _)| *version);
     assert_eq!(
         history,
         vec![
@@ -2029,6 +2028,68 @@ async fn test_list_transactions_v2_transaction_id_filter_returns_full_history() 
             ),
         ]
     );
+}
+
+#[actix_web::test]
+async fn test_list_transactions_v2_paginates_by_version_cursor() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_transactions_for_v2_listing(&client).await;
+    let history_filter = ApiTransactionListFiltersV2 {
+        transaction_id: Some(fixture.superseded.transaction_id.clone()),
+        ..Default::default()
+    };
+
+    let first_page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            history_filter.clone(),
+            TransactionListSortField::Version { cursor_value: None },
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(
+        transaction_ids(&first_page),
+        vec![fixture.voided.id.clone()]
+    );
+    assert!(first_page.prev_cursor.is_none());
+
+    let second_page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            history_filter.clone(),
+            first_page
+                .next_cursor
+                .expect("first page should include a next cursor"),
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(transaction_ids(&second_page), vec![fixture.superseded.id]);
+    assert!(second_page.next_cursor.is_none());
+
+    let previous_page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            history_filter,
+            second_page
+                .prev_cursor
+                .expect("second page should include a previous cursor"),
+            Some(1),
+            CursorDirection::Previous,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(transaction_ids(&previous_page), vec![fixture.voided.id]);
 }
 
 #[actix_web::test]
