@@ -15,7 +15,9 @@ use api_models::{
 use common_types::{
     pagination::{CursorDirection, SortOrder},
     permissions::Permission,
-    staging_entry::{StagingEntryEffectiveAtSortField, StagingEntryListSortField},
+    staging_entry::{
+        StagingEntryEffectiveAtSortField, StagingEntryListSortField, StagingEntryVersionSortField,
+    },
 };
 use utoipa::OpenApi;
 
@@ -50,6 +52,7 @@ use crate::{
             ListLinkableStagingEntriesV2Request,
             StagingEntryListSortField,
             StagingEntryEffectiveAtSortField,
+            StagingEntryVersionSortField,
             SortOrder,
             CursorDirection,
             LinkableStagingEntryListV2Page,

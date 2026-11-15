@@ -1341,22 +1341,27 @@ async fn test_list_staging_entries_v2_staging_entry_id_filter_returns_full_histo
     let client = app.api_client();
     let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
 
-    let page = list_staging_entries_v2_with_filters(
+    let page = list_staging_entries_v2(
         &client,
         &fixture.token,
-        ApiStagingEntryListFiltersV2 {
-            staging_entry_id: Some(fixture.superseded.staging_entry_id.clone()),
-            ..Default::default()
-        },
+        list_staging_entries_v2_request(
+            ApiStagingEntryListFiltersV2 {
+                staging_entry_id: Some(fixture.superseded.staging_entry_id.clone()),
+                ..Default::default()
+            },
+            StagingEntryListSortField::Version { cursor_value: None },
+            Some(10),
+            CursorDirection::Next,
+            SortOrder::Asc,
+        ),
     )
     .await;
 
-    let mut history: Vec<_> = page
+    let history: Vec<_> = page
         .items
         .iter()
         .map(|item| (item.version, item.id.clone(), item.status))
         .collect();
-    history.sort_by_key(|(version, _, _)| *version);
     assert_eq!(
         history,
         vec![
@@ -1372,6 +1377,68 @@ async fn test_list_staging_entries_v2_staging_entry_id_filter_returns_full_histo
             ),
         ]
     );
+}
+
+#[actix_web::test]
+async fn test_list_staging_entries_v2_paginates_by_version_cursor() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
+    let history_filter = ApiStagingEntryListFiltersV2 {
+        staging_entry_id: Some(fixture.superseded.staging_entry_id.clone()),
+        ..Default::default()
+    };
+
+    let first_page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            history_filter.clone(),
+            StagingEntryListSortField::Version { cursor_value: None },
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(
+        staging_entry_ids(&first_page),
+        vec![fixture.voided.id.clone()]
+    );
+    assert!(first_page.prev_cursor.is_none());
+
+    let second_page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            history_filter.clone(),
+            first_page
+                .next_cursor
+                .expect("first page should include a next cursor"),
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(staging_entry_ids(&second_page), vec![fixture.superseded.id]);
+    assert!(second_page.next_cursor.is_none());
+
+    let previous_page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            history_filter,
+            second_page
+                .prev_cursor
+                .expect("second page should include a previous cursor"),
+            Some(1),
+            CursorDirection::Previous,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(staging_entry_ids(&previous_page), vec![fixture.voided.id]);
 }
 
 #[actix_web::test]

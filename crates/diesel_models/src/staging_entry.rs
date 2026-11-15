@@ -6,7 +6,7 @@ use common_types::{
     pagination::CursorSort,
     staging_entry::{
         EditedData, EditedDataV1, PendingData, PendingDataV1, StagingEntryData, StagingEntryDataV2,
-        StagingEntryEffectiveAtSortField, StagingEntryListSortField,
+        StagingEntryEffectiveAtSortField, StagingEntryListSortField, StagingEntryVersionSortField,
     },
     units::MinorUnit,
 };
@@ -317,6 +317,12 @@ impl CursorSort<StagingEntryAccountView> for StagingEntryListSortField {
                     id: item.staging_entry.id.clone(),
                 }),
             },
+            Self::Version { .. } => Self::Version {
+                cursor_value: Some(StagingEntryVersionSortField {
+                    version: item.staging_entry.version,
+                    id: item.staging_entry.id.clone(),
+                }),
+            },
         }
     }
 
@@ -324,6 +330,7 @@ impl CursorSort<StagingEntryAccountView> for StagingEntryListSortField {
         match self {
             Self::Id { id } => id.is_some(),
             Self::EffectiveAt { cursor_value } => cursor_value.is_some(),
+            Self::Version { cursor_value } => cursor_value.is_some(),
         }
     }
 }

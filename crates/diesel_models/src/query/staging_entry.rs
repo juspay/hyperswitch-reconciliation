@@ -272,6 +272,29 @@ impl StagingEntry {
                     query.order((dsl::effective_at.desc(), dsl::id.desc()))
                 }
             }
+            StagingEntryListSortField::Version { cursor_value } => {
+                if let Some(cursor) = cursor_value {
+                    query = if ascending {
+                        query.filter(
+                            dsl::version.gt(cursor.version).or(dsl::version
+                                .eq(cursor.version)
+                                .and(dsl::id.gt(cursor.id.clone()))),
+                        )
+                    } else {
+                        query.filter(
+                            dsl::version.lt(cursor.version).or(dsl::version
+                                .eq(cursor.version)
+                                .and(dsl::id.lt(cursor.id.clone()))),
+                        )
+                    };
+                }
+
+                if ascending {
+                    query.order((dsl::version.asc(), dsl::id.asc()))
+                } else {
+                    query.order((dsl::version.desc(), dsl::id.desc()))
+                }
+            }
         };
 
         query = query.limit(i64::from(pagination.fetch_limit + 1));
