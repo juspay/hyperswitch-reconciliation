@@ -304,30 +304,6 @@ impl ApiStagingEntryListFiltersV2 {
             .transpose()
             .map_err(|_| StagingEntryListFilterValidationError::InvalidTimeRange)?;
 
-        if let Some(status) = self
-            .status
-            .iter()
-            .flatten()
-            .find(|status| matches!(status, ApiStagingEntryCoarseStatus::Archived))
-        {
-            return Err(StagingEntryListFilterValidationError::UnsupportedStatus {
-                status: *status,
-            });
-        }
-
-        if let Some(status) = self
-            .detailed_status
-            .iter()
-            .flatten()
-            .find(|status| matches!(status, ApiStagingEntryStatus::Archived))
-        {
-            return Err(
-                StagingEntryListFilterValidationError::UnsupportedDetailedStatus {
-                    status: *status,
-                },
-            );
-        }
-
         Ok(())
     }
 }
@@ -335,8 +311,6 @@ impl ApiStagingEntryListFiltersV2 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StagingEntryListFilterValidationError {
     InvalidTimeRange,
-    UnsupportedStatus { status: ApiStagingEntryCoarseStatus },
-    UnsupportedDetailedStatus { status: ApiStagingEntryStatus },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

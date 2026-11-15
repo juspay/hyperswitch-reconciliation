@@ -181,8 +181,7 @@ impl StagingEntry {
 
         query = query
             .filter(dsl::profile_id.eq(profile_id.to_owned()))
-            .filter(transformation_config::profile_id.eq(profile_id.to_owned()))
-            .filter(dsl::status.ne(DieselStagingEntryStatus::Archived));
+            .filter(transformation_config::profile_id.eq(profile_id.to_owned()));
 
         if let Some(status) = filters.status {
             query = query.filter(dsl::status.eq_any(status));
