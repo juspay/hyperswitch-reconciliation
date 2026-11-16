@@ -22,7 +22,10 @@ use utoipa::OpenApi;
 use super::AppState;
 use crate::{
     core,
-    services::{api, auth::JwtAuth},
+    services::{
+        api,
+        auth::{JwtAuth, JwtOrApiKey},
+    },
 };
 
 /// OpenAPI documentation for staging entry endpoints
@@ -312,11 +315,11 @@ pub async fn void_staging_entry(
     responses(
         (status = 201, description = "Staging entry created successfully with validation", body = GetStagingEntryResponse),
         (status = 400, description = "Bad request - Validation error or invalid metadata schema"),
-        (status = 401, description = "Unauthorized - Invalid or missing JWT token"),
+        (status = 401, description = "Unauthorized - Invalid or missing JWT token or API key"),
         (status = 404, description = "Account or metadata schema not found"),
         (status = 500, description = "Internal server error"),
     ),
-    security(("Bearer" = []))
+    security(("Bearer" = []), ("ApiKey" = []))
 )]
 pub async fn create_staging_entry_with_validation(
     state: web::Data<AppState>,
@@ -324,7 +327,7 @@ pub async fn create_staging_entry_with_validation(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic(Permission::ProfileReconStagingEntryWrite),
+        JwtOrApiKey::new(Permission::ProfileReconStagingEntryWrite),
         &http_req,
         state,
         |state, auth| async move {

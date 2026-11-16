@@ -19,6 +19,7 @@ mod kw {
 #[derive(Debug, strum::EnumString, strum::EnumIter, strum::Display)]
 enum EntityType {
     Profile,
+    Merchant,
 }
 
 #[derive(Debug, strum::EnumString, strum::EnumIter, strum::Display)]

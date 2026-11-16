@@ -11,7 +11,10 @@ use super::{
 };
 use crate::{
     domain::recon_engine::ProcessingError,
-    errors::{search_expectation::SearchExpectationError, search_group::SearchGroupError},
+    errors::{
+        api_key::ApiKeyError, search_expectation::SearchExpectationError,
+        search_group::SearchGroupError,
+    },
 };
 
 pub trait StorageErrorExt<T, E> {
@@ -416,6 +419,28 @@ impl<T> StorageErrorExt<T, LinkConfigError> for Result<T, Report<DatabaseError>>
         self.map_err(|error| match error.current_context() {
             DatabaseError::UniqueViolation => error.change_context(context()),
             _ => error.change_context(LinkConfigError::InternalServerError),
+        })
+    }
+}
+
+impl<T> StorageErrorExt<T, ApiKeyError> for Result<T, Report<DatabaseError>> {
+    fn to_not_found_response(
+        self,
+        context: impl FnOnce() -> ApiKeyError,
+    ) -> Result<T, Report<ApiKeyError>> {
+        self.map_err(|error| match error.current_context() {
+            DatabaseError::NotFound => error.change_context(context()),
+            _ => error.change_context(ApiKeyError::InternalServerError),
+        })
+    }
+
+    fn to_duplicate_response(
+        self,
+        context: impl FnOnce() -> ApiKeyError,
+    ) -> Result<T, Report<ApiKeyError>> {
+        self.map_err(|error| match error.current_context() {
+            DatabaseError::UniqueViolation => error.change_context(context()),
+            _ => error.change_context(ApiKeyError::InternalServerError),
         })
     }
 }

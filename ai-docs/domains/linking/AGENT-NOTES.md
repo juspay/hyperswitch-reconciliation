@@ -114,7 +114,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 - Server initialization spawns a separate linking processor, initially `Stopped`. Starting the recon processor does not start linking.
 - Admin endpoints: `GET /linking_processor/status` returns `{"status":"stopped"}` or `{"status":"running"}`; `POST` to the same path accepts that shape and returns HTTP 200.
-- Status-control authentication is `AdminApiAuth` with the `api-key` header. Status lives in an in-process watch channel, is not persisted, and controls that application instance. Enqueue uses JWT authentication instead (see below).
+- Status-control authentication is `AdminApiAuth` (`Authorization: admin-api-key=<secret>`). Status lives in an in-process watch channel, is not persisted, and controls that application instance. Enqueue uses JWT authentication instead (see below).
 - Current processing fetches one pending entry at a time, ordered by `(created_at ASC, id ASC)`. It sleeps five seconds on an empty queue or a failed queue query.
 - **Future concurrency must partition by account.** No two workers may process entries belonging to the same account concurrently; processing within an account remains serialized. Since a link config is scoped to one account, this keeps both sides of a match under one worker.
 - Account ownership must remain exclusive across application instances and worker handoffs. This partitioning is planned, not implemented by the current global pending query. `BATCH_SIZE = 1` is only local serialization.
@@ -122,7 +122,7 @@ Example composite identifier stored in `link_search_identifier`:
 
 ## Inline Processing
 
-- `POST /linking_processor/{entry_id}/process` accepts a physical entry ID with no body and uses `AdminApiAuth` (`api-key`), not a profile JWT. It has no JWT profile ownership check; a JWT alone cannot authorize it.
+- `POST /linking_processor/{entry_id}/process` accepts a physical entry ID with no body and uses `AdminApiAuth` (`admin-api-key`), not a profile JWT. It has no JWT profile ownership check; a JWT alone cannot authorize it.
 - Only `entry.linking_status = Pending` is eligible. Any Failed reason and Processed return 400 `LP_802`; an unknown entry returns 404 `LP_801`. To retry a Failed entry, fix the cause and use JWT enqueue before processing.
 - The request runs the same core pipeline inline, even when the background processor is Stopped, and does not change processor status. HTTP 200 can contain JSON `"success"` or `{"failure":"<reason>"}`: recorded processing failures are successful HTTP responses. Success can mean a searchable key was created without a counterpart.
 - Direct infrastructure/data-integrity errors still propagate as HTTP 500 and can leave the entry Pending; see [failure policy](#failure-policy). The entry response does not expose linking state, and an empty linked-entry list alone cannot distinguish pending, failed, or processed-without-match entries.

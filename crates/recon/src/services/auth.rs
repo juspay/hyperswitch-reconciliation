@@ -1,7 +1,10 @@
 use actix_web::{http::header::HeaderMap, HttpRequest};
 use common_types::permissions::Permission;
-use common_utils::{auth::AuthContext, errors::ReportSwitchExt, id_type::MerchantId};
-use error_stack::ResultExt;
+use common_utils::{
+    api_key::PlaintextApiKey, auth::AuthContext, date_time, errors::ReportSwitchExt,
+    id_type::MerchantId,
+};
+use error_stack::{Report, ResultExt};
 use external_services::user::{
     interfaces::UserInterface, types::request::AuthorizeUserTokenRequest,
 };
@@ -10,7 +13,8 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use masking::{PeekInterface, Secret};
 use serde::{Deserialize, Serialize};
 use storage_impl::{
-    business_profile::BusinessProfileInterface, merchant_account::MerchantAccountInterface,
+    api_key::ApiKeyInterface, business_profile::BusinessProfileInterface,
+    merchant_account::MerchantAccountInterface,
 };
 
 use super::option_ext::OptionExt;
@@ -20,11 +24,15 @@ use crate::{
     routes::AppState,
 };
 
-type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
+type Result<T, E> = core::result::Result<T, Report<E>>;
 
 pub mod auth_headers {
     pub const X_INTERNAL_API_KEY: &str = "x-internal-api-key";
+    pub const X_PROFILE_ID: &str = "x-profile-id";
 }
+
+const API_KEY_PREFIX: &str = "api-key=";
+const ADMIN_API_KEY_PREFIX: &str = "admin-api-key=";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -80,12 +88,17 @@ impl AuthValidator for AdminApiAuth {
         req: &HttpRequest,
         state: AppState,
     ) -> Result<Self::AuthData, ReconAppError> {
-        let request_admin_api_key =
-            get_api_key(req.headers()).change_context(ReconAppError::Unauthorized)?;
+        let request_admin_api_key = get_authorization_header(req.headers())?
+            .strip_prefix(ADMIN_API_KEY_PREFIX)
+            .map(str::trim)
+            .filter(|key| !key.is_empty())
+            .ok_or_else(|| {
+                Report::new(ReconAppError::Unauthorized).attach("Unable to parse admin_api_key")
+            })?;
         let admin_api_key = &state.config.auth.get_inner().admin_api_key;
 
         if request_admin_api_key != admin_api_key.peek() {
-            Err(error_stack::Report::new(ReconAppError::Unauthorized).attach("Admin Auth Failure"))?;
+            Err(Report::new(ReconAppError::Unauthorized).attach("Admin Auth Failure"))?;
         }
 
         Ok(())
@@ -108,8 +121,7 @@ impl AuthValidator for InternalApiKeyAuth {
         let internal_api_key = &state.config.auth.get_inner().internal_api_key;
 
         if request_internal_api_key != internal_api_key.peek() {
-            Err(error_stack::Report::new(ReconAppError::Unauthorized)
-                .attach("Internal API key auth failure"))?;
+            Err(Report::new(ReconAppError::Unauthorized).attach("Internal API key auth failure"))?;
         }
 
         Ok(())
@@ -179,7 +191,7 @@ impl AuthValidator for JwtAuth {
         state: AppState,
     ) -> Result<Self::AuthData, ReconAppError> {
         let token = extract_token_from_header(req)
-            .ok_or_else(|| error_stack::Report::new(ReconAppError::Unauthorized))?;
+            .ok_or_else(|| Report::new(ReconAppError::Unauthorized))?;
 
         let decoding_key =
             DecodingKey::from_secret(state.config.auth.get_inner().jwt_secret.peek().as_ref());
@@ -192,37 +204,24 @@ impl AuthValidator for JwtAuth {
         let profile_id = claims.profile_id;
 
         if user_id.is_empty() {
-            return Err(error_stack::Report::new(ReconAppError::Unauthorized)
-                .attach("Missing user_id in JWT claims"));
+            return Err(
+                Report::new(ReconAppError::Unauthorized).attach("Missing user_id in JWT claims")
+            );
         }
 
         if let Some(expected_merchant_id) = &self.merchant_id {
             if merchant_id != *expected_merchant_id {
-                return Err(error_stack::Report::new(ReconAppError::Unauthorized));
+                return Err(Report::new(ReconAppError::Unauthorized));
             }
         }
 
         if let Some(expected_profile_id) = &self.profile_id {
             if profile_id != *expected_profile_id {
-                return Err(error_stack::Report::new(ReconAppError::Unauthorized));
+                return Err(Report::new(ReconAppError::Unauthorized));
             }
         }
 
-        state
-            .store
-            .find_merchant_account_by_id(&merchant_id)
-            .await
-            .to_not_found_response(|| ReconAppError::Unauthorized)?;
-
-        let business_profile = state
-            .store
-            .find_business_profile_by_id(&profile_id)
-            .await
-            .to_not_found_response(|| ReconAppError::Unauthorized)?;
-
-        if business_profile.merchant_id != merchant_id {
-            return Err(error_stack::Report::new(ReconAppError::Unauthorized));
-        }
+        validate_merchant_and_profile(&state, &merchant_id, &profile_id).await?;
 
         if let Some(permission) = self.permission {
             state
@@ -240,22 +239,128 @@ impl AuthValidator for JwtAuth {
         }
 
         Ok(AuthContext {
-            user_id,
+            user_id: Some(user_id),
             merchant_id,
             profile_id,
         })
     }
 }
 
-pub fn extract_api_key_from_header(req: &HttpRequest) -> Option<String> {
-    req.headers()
-        .get("api-key")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.to_string())
+async fn validate_merchant_and_profile(
+    state: &AppState,
+    merchant_id: &MerchantId,
+    profile_id: &str,
+) -> Result<(), ReconAppError> {
+    state
+        .store
+        .find_merchant_account_by_id(merchant_id)
+        .await
+        .to_not_found_response(|| ReconAppError::Unauthorized)?;
+
+    let business_profile = state
+        .store
+        .find_business_profile_by_id(profile_id)
+        .await
+        .to_not_found_response(|| ReconAppError::Unauthorized)?;
+
+    if business_profile.merchant_id != *merchant_id {
+        return Err(Report::new(ReconAppError::Unauthorized));
+    }
+
+    Ok(())
 }
 
-pub fn get_api_key(headers: &HeaderMap) -> Result<&str, ReconAppError> {
-    get_header_value_by_key("api-key".into(), headers)?.get_required_value("api_key")
+/// Every failure is the same `Unauthorized`. Logged reasons may carry the key `id`, never a header
+/// value.
+pub struct ApiKeyAuth;
+
+impl AuthValidator for ApiKeyAuth {
+    type AuthData = AuthContext;
+
+    async fn validate(
+        &self,
+        req: &HttpRequest,
+        state: AppState,
+    ) -> Result<Self::AuthData, ReconAppError> {
+        let request_api_key = get_authorization_header(req.headers())?
+            .strip_prefix(API_KEY_PREFIX)
+            .filter(|key| !key.trim().is_empty())
+            .ok_or_else(|| {
+                Report::new(ReconAppError::Unauthorized).attach("Unable to parse api_key")
+            })?;
+        let hashed_api_key =
+            PlaintextApiKey::from_request(request_api_key).hash(&state.api_key_hash_key);
+
+        let api_key = state
+            .store
+            .find_active_api_key_by_hash(hashed_api_key.peek())
+            .await
+            .to_not_found_response(|| ReconAppError::Unauthorized)?;
+        let key_id = &api_key.id;
+
+        // No `expires_at` means the key never expires.
+        if api_key
+            .expires_at
+            .is_some_and(|expires_at| expires_at <= date_time::now())
+        {
+            return Err(Report::new(ReconAppError::Unauthorized)
+                .attach(format!("API key {key_id} has expired")));
+        }
+
+        let profile_id = get_header_value_by_key(auth_headers::X_PROFILE_ID.into(), req.headers())
+            .change_context(ReconAppError::Unauthorized)?
+            .get_required_value(auth_headers::X_PROFILE_ID)?
+            .to_string();
+
+        validate_merchant_and_profile(&state, &api_key.merchant_id, &profile_id)
+            .await
+            .attach_with(|| format!("API key {key_id} used with an invalid profile"))?;
+
+        Ok(AuthContext {
+            user_id: None,
+            merchant_id: api_key.merchant_id,
+            profile_id,
+        })
+    }
+}
+
+/// Picks the validator by the `Authorization` scheme: `Bearer` is a JWT, anything else must be an
+/// API key. There is no fallback from one to the other.
+pub struct JwtOrApiKey {
+    jwt: JwtAuth,
+    api_key: ApiKeyAuth,
+}
+
+impl JwtOrApiKey {
+    pub fn new(permission: Permission) -> Self {
+        Self {
+            jwt: JwtAuth::basic(permission),
+            api_key: ApiKeyAuth,
+        }
+    }
+}
+
+impl AuthValidator for JwtOrApiKey {
+    type AuthData = AuthContext;
+
+    async fn validate(
+        &self,
+        req: &HttpRequest,
+        state: AppState,
+    ) -> Result<Self::AuthData, ReconAppError> {
+        if get_authorization_header(req.headers())?.starts_with("Bearer ") {
+            self.jwt.validate(req, state).await
+        } else {
+            self.api_key.validate(req, state).await
+        }
+    }
+}
+
+pub fn get_authorization_header(headers: &HeaderMap) -> Result<&str, ReconAppError> {
+    get_header_value_by_key(header::AUTHORIZATION.as_str().into(), headers)
+        .change_context(ReconAppError::Unauthorized)?
+        .get_required_value("authorization")
+        .map(str::trim)
 }
 
 pub fn get_internal_api_key(headers: &HeaderMap) -> Result<&str, ReconAppError> {

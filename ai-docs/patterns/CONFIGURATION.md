@@ -32,7 +32,7 @@ Use `RUN_ENV` to control which config file is loaded:
 - `RUN_ENV=sandbox` → loads `config/sandbox.toml` (same shape as `prod.toml` but sandbox-named DB/bucket values, so a missed override can't point at production)
 - `RUN_ENV=development` or unset → loads `config/config.toml`
 
-`RUN_ENV` also sets the API key prefix via `env::prefix_for_env()`: `dev`, `sbx`, `prd`. In deployed environments the config file is optional (`required(false)`); values are supplied as `RECON__SECTION__KEY` variables, which override the file. Example: `RECON__API_KEYS__HASH_KEY`.
+`RUN_ENV` also sets the API key prefix via `env::which().prefix()`: `dev`, `sbx`, `prd`. In deployed environments the config file is optional (`required(false)`); values are supplied as `RECON__SECTION__KEY` variables, which override the file. Example: `RECON__API_KEYS__HASH_KEY`.
 
 ### Command Line Options
 

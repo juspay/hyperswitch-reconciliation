@@ -54,12 +54,6 @@ pub fn which() -> Env {
     std::env::var(vars::RUN_ENV).map_or_else(|_| default_env, |v| v.parse().unwrap_or(default_env))
 }
 
-/// Three letter (lowercase) prefix corresponding to the current environment.
-/// One of `dev`, `sbx` or `prd`.
-pub fn prefix_for_env() -> &'static str {
-    which().prefix()
-}
-
 /// Path to the root directory of the cargo workspace.
 /// It is recommended that this be used by the application as the base path to build other paths
 /// such as configuration and logs directories.
