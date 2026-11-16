@@ -169,7 +169,10 @@ pub async fn generate_transaction_flow_report(
         .get_user_by_id(
             auth.merchant_id.clone(),
             auth.profile_id.clone(),
-            auth.user_id.clone(),
+            auth.user_id.clone().ok_or_else(|| {
+                Report::new(ReportError::InternalServerError)
+                    .attach("Report requested without a user")
+            })?,
         )
         .await
         .change_context(ReportError::InternalServerError)?

@@ -6,10 +6,8 @@ edition = "2021"
 [features]
 
 [dependencies]
-actix-web = "4.11.0"
 async-trait = "0.1.92"
 bytes = "1.11.1"
-dyn-clone = "1.0.19"
 error-stack = "0.8.0"
 http = "0.2.12"
 mime = "0.3.17"
