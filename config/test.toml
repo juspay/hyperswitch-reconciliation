@@ -52,6 +52,7 @@ create_directories = true
 [reporting_service]
 transaction_report_function = "noop-transaction-report"
 exception_report_function = "noop-exception-report"
+transaction_flow_report_function = "noop-transaction-flow-report"
 
 [proxy]
 bypass_proxy_hosts = "localhost"

@@ -469,6 +469,10 @@ impl Report {
                 web::resource("/exceptions")
                     .route(web::post().to(reporting::trigger_exception_report)),
             )
+            .service(
+                web::resource("/transaction_flows")
+                    .route(web::post().to(reporting::trigger_transaction_flow_report)),
+            )
     }
 }
 

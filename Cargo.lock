@@ -1259,17 +1259,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cfb"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d38f2da7a0a2c4ccf0065be06397cc26a81f4e528be095826eee9d4adbb8c60f"
-dependencies = [
- "byteorder",
- "fnv",
- "uuid",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1430,14 +1419,12 @@ dependencies = [
 name = "common_utils"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "base64 0.22.1",
  "blake3",
  "bytes",
  "diesel",
  "error-stack",
  "fake",
- "futures",
  "globset",
  "hex",
  "http 0.2.12",
@@ -1974,12 +1961,6 @@ name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
-
-[[package]]
-name = "dyn-clone"
-version = "1.0.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "ecdsa"
@@ -2816,15 +2797,6 @@ dependencies = [
  "equivalent",
  "hashbrown 0.15.5",
  "serde",
-]
-
-[[package]]
-name = "infer"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc150e5ce2330295b8616ce0e3f53250e53af31759a9dbedad1621ba29151847"
-dependencies = [
- "cfb",
 ]
 
 [[package]]
@@ -3945,7 +3917,6 @@ dependencies = [
  "hmac 0.12.1",
  "http 0.2.12",
  "hyperswitch_masking",
- "infer",
  "jsonwebtoken",
  "mime",
  "pretty_assertions",
@@ -4012,11 +3983,9 @@ dependencies = [
 name = "recon_interfaces"
 version = "0.1.0"
 dependencies = [
- "actix-web",
  "async-trait",
  "bytes",
  "common_utils",
- "dyn-clone",
  "error-stack",
  "http 0.2.12",
  "hyperswitch_masking",
