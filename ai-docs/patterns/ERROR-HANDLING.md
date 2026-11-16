@@ -186,19 +186,19 @@ pub async fn handle_transfer(
 
 ## Error Codes
 - `ApiError::new("RE", 302, …)` renders as `RE_302`: `{prefix}_{number}`, zero-padded to two digits (`RE_01`). The number is `block × 100 + local`. All error types live in `crates/recon/src/errors/`.
-- **Each error type owns one block, unique across prefixes.** The prefix doesn't namespace the number, so the number alone identifies the error type. A new error type takes the next free block, 22.
+- **Each error type owns one block, unique across prefixes.** The prefix doesn't namespace the number, so the number alone identifies the error type. The one exception is block 0: `ReportError` (`RP_01`–`RP_05`) shares it with `ReconAppError` (`RE_01`–`RE_09`). Both are already in use, so neither moves, and in block 0 only the prefix tells them apart. A new error type takes the lowest free block, 18.
 - **Local numbers only grow; never renumber or reuse one.** Anything matching on a code would silently get a different error. An unused number inside a block is a retired code.
 
 | Block | Error type | Block | Error type |
 |---|---|---|---|
-| 0 | `ReconAppError` | 11 | `MetadataSchemaError` |
+| 0 | `ReconAppError`, `ReportError` (`RP`) | 11 | `MetadataSchemaError` |
 | 1 | `MerchantAccountError` | 12 | `AuditTrailError` |
 | 2 | `BusinessProfileError` | 13 | `SearchGroupError` |
 | 3 | `AccountError` | 14 | `BulkOperationError` |
 | 4 | `StagingEntryError` | 15 | `SearchExpectationError` |
 | 5 | `EntryError` | 16 | `OverviewError` |
 | 6 | `TransactionError` | 17 | `SearchEntryError` |
-| 7 | `ReconRuleError` (`RR`) | 18 | `ReportError` (`RP`) |
+| 7 | `ReconRuleError` (`RR`) | 18 | *free* |
 | 8 | `ReconEngineError` | 19 | `LinkConfigError` (`LC`) |
 | 9 | `IngestionError` (`IE`) | 20 | `LinkingProcessorError` (`LP`) |
 | 10 | `TransformationError` (`TR`) | 21 | `ApiKeyError` |
