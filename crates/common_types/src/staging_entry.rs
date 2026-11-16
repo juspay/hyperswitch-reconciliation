@@ -45,6 +45,9 @@ pub enum StagingEntryListSortField {
     EffectiveAt {
         cursor_value: Option<StagingEntryEffectiveAtSortField>,
     },
+    Version {
+        cursor_value: Option<StagingEntryVersionSortField>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
@@ -52,5 +55,11 @@ pub struct StagingEntryEffectiveAtSortField {
     #[schema(value_type = String)]
     #[serde(with = "common_utils::custom_serde::iso8601_micros")]
     pub effective_at: PrimitiveDateTime,
+    pub id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct StagingEntryVersionSortField {
+    pub version: i32,
     pub id: String,
 }

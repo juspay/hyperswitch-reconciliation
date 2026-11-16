@@ -45,6 +45,7 @@ use pretty_assertions::assert_eq;
 use recon::utils::staging_entry::DomainStagingEntryStatusExt;
 use rstest::rstest;
 use serde_json::json;
+use strum::IntoEnumIterator;
 
 // Helper function to create a recon rule
 /// # Panics
@@ -1005,42 +1006,6 @@ async fn test_list_staging_entries_v2_rejects_invalid_filters() {
         .await;
 
     assert_eq!(invalid_time_response.status(), 400);
-
-    let archived_status_response = client
-        .post("/staging_entries/v2/list")
-        .with_auth(&token)
-        .json(&list_staging_entries_v2_request(
-            ApiStagingEntryListFiltersV2 {
-                status: Some(vec![ApiStagingEntryCoarseStatus::Archived]),
-                ..Default::default()
-            },
-            StagingEntryListSortField::Id { id: None },
-            Some(10),
-            CursorDirection::Next,
-            SortOrder::Desc,
-        ))
-        .send()
-        .await;
-
-    assert_eq!(archived_status_response.status(), 400);
-
-    let archived_detailed_status_response = client
-        .post("/staging_entries/v2/list")
-        .with_auth(&token)
-        .json(&list_staging_entries_v2_request(
-            ApiStagingEntryListFiltersV2 {
-                detailed_status: Some(vec![ApiStagingEntryStatus::Archived]),
-                ..Default::default()
-            },
-            StagingEntryListSortField::Id { id: None },
-            Some(10),
-            CursorDirection::Next,
-            SortOrder::Desc,
-        ))
-        .send()
-        .await;
-
-    assert_eq!(archived_detailed_status_response.status(), 400);
 }
 
 #[actix_web::test]
@@ -1193,68 +1158,287 @@ async fn test_list_staging_entries_v2_filters_by_detailed_status() {
     assert!(coarse_ids.contains(&no_rules_found.id));
 }
 
-#[actix_web::test]
-async fn test_list_staging_entries_v2_excludes_archived_entries() {
-    let app = TestApp::new().await;
-    let client = app.api_client();
+struct VersionedStagingEntriesForV2Listing {
+    token: String,
+    superseded: GetStagingEntryResponse,
+    voided: GetStagingEntryResponse,
+    untouched: GetStagingEntryResponse,
+}
+
+async fn setup_versioned_staging_entries_for_v2_listing(
+    client: &crate::common::TestClient,
+) -> VersionedStagingEntriesForV2Listing {
     let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
     let account_id =
-        create_test_account(&client, &token, "Test Account", BalanceDirection::Credit).await;
+        create_test_account(client, &token, "Test Account", BalanceDirection::Credit).await;
 
-    let original_entry = create_staging_entry_for_v2_listing(
+    let superseded = create_staging_entry_for_v2_listing(
         &profile_id,
         &merchant_id,
-        &client,
+        client,
         &token,
         &account_id,
         BalanceDirection::Credit,
         100.0,
         Currency::USD,
-        "v2_archived_order",
+        "v2_superseded_order",
+        common_utils::date_time::now(),
+        None,
+    )
+    .await;
+    let untouched = create_staging_entry_for_v2_listing(
+        &profile_id,
+        &merchant_id,
+        client,
+        &token,
+        &account_id,
+        BalanceDirection::Credit,
+        100.0,
+        Currency::USD,
+        "v2_untouched_order",
         common_utils::date_time::now(),
         None,
     )
     .await;
 
     let void_response = client
-        .put(&format!("/staging_entries/{}/void", original_entry.id))
+        .put(&format!("/staging_entries/{}/void", superseded.id))
         .with_auth(&token)
         .json(&VoidStagingEntryRequest {
-            reason: Some("archived v2 list exclusion test".to_string()),
+            reason: Some("Supersede for v2 listing".to_string()),
         })
         .send()
         .await;
-
     assert_eq!(void_response.status(), 200);
-    let voided_entry: GetStagingEntryResponse = void_response.json().await.unwrap();
-    assert_eq!(voided_entry.status, ApiStagingEntryCoarseStatus::Void);
+    let voided: GetStagingEntryResponse = void_response.json().await.unwrap();
 
-    let archived_response = client
-        .get(&format!("/staging_entries/{}", original_entry.id))
-        .with_auth(&token)
-        .send()
-        .await;
+    VersionedStagingEntriesForV2Listing {
+        token,
+        superseded,
+        voided,
+        untouched,
+    }
+}
 
-    assert_eq!(archived_response.status(), 200);
-    let archived_entry: GetStagingEntryResponse = archived_response.json().await.unwrap();
-    assert_eq!(archived_entry.status, ApiStagingEntryCoarseStatus::Archived);
-
-    let page = list_staging_entries_v2(
-        &client,
-        &token,
+async fn list_staging_entries_v2_with_filters(
+    client: &crate::common::TestClient,
+    token: &str,
+    filters: ApiStagingEntryListFiltersV2,
+) -> StagingEntryListV2Page {
+    list_staging_entries_v2(
+        client,
+        token,
         list_staging_entries_v2_request(
-            ApiStagingEntryListFiltersV2::default(),
+            filters,
             StagingEntryListSortField::Id { id: None },
             Some(10),
             CursorDirection::Next,
             SortOrder::Desc,
         ),
     )
+    .await
+}
+
+fn sorted(mut ids: Vec<String>) -> Vec<String> {
+    ids.sort();
+    ids
+}
+
+#[actix_web::test]
+async fn test_list_staging_entries_v2_without_status_filter_includes_archived_versions() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
+
+    let page = list_staging_entries_v2_with_filters(
+        &client,
+        &fixture.token,
+        ApiStagingEntryListFiltersV2::default(),
+    )
     .await;
 
-    let page_ids = staging_entry_ids(&page);
-    assert!(!page_ids.contains(&original_entry.id));
-    assert!(page_ids.contains(&voided_entry.id));
+    assert_eq!(
+        sorted(staging_entry_ids(&page)),
+        sorted(vec![
+            fixture.superseded.id.clone(),
+            fixture.voided.id.clone(),
+            fixture.untouched.id.clone(),
+        ])
+    );
+    let archived = page
+        .items
+        .iter()
+        .find(|item| item.id == fixture.superseded.id)
+        .unwrap();
+    assert_eq!(archived.status, ApiStagingEntryCoarseStatus::Archived);
+    assert_eq!(archived.detailed_status, ApiStagingEntryStatus::Archived);
+}
+
+#[actix_web::test]
+async fn test_list_staging_entries_v2_filters_archived_status() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
+
+    let coarse_page = list_staging_entries_v2_with_filters(
+        &client,
+        &fixture.token,
+        ApiStagingEntryListFiltersV2 {
+            status: Some(vec![ApiStagingEntryCoarseStatus::Archived]),
+            ..Default::default()
+        },
+    )
+    .await;
+    let detailed_page = list_staging_entries_v2_with_filters(
+        &client,
+        &fixture.token,
+        ApiStagingEntryListFiltersV2 {
+            detailed_status: Some(vec![ApiStagingEntryStatus::Archived]),
+            ..Default::default()
+        },
+    )
+    .await;
+
+    assert_eq!(
+        staging_entry_ids(&coarse_page),
+        vec![fixture.superseded.id.clone()]
+    );
+    assert_eq!(
+        staging_entry_ids(&detailed_page),
+        vec![fixture.superseded.id]
+    );
+}
+
+#[actix_web::test]
+async fn test_list_staging_entries_v2_non_archived_statuses_return_one_version_per_entry() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
+
+    let page = list_staging_entries_v2_with_filters(
+        &client,
+        &fixture.token,
+        ApiStagingEntryListFiltersV2 {
+            status: Some(
+                ApiStagingEntryCoarseStatus::iter()
+                    .filter(|status| *status != ApiStagingEntryCoarseStatus::Archived)
+                    .collect(),
+            ),
+            ..Default::default()
+        },
+    )
+    .await;
+
+    assert_eq!(
+        sorted(staging_entry_ids(&page)),
+        sorted(vec![fixture.voided.id, fixture.untouched.id])
+    );
+}
+
+#[actix_web::test]
+async fn test_list_staging_entries_v2_staging_entry_id_filter_returns_full_history() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
+
+    let page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            ApiStagingEntryListFiltersV2 {
+                staging_entry_id: Some(fixture.superseded.staging_entry_id.clone()),
+                ..Default::default()
+            },
+            StagingEntryListSortField::Version { cursor_value: None },
+            Some(10),
+            CursorDirection::Next,
+            SortOrder::Asc,
+        ),
+    )
+    .await;
+
+    let history: Vec<_> = page
+        .items
+        .iter()
+        .map(|item| (item.version, item.id.clone(), item.status))
+        .collect();
+    assert_eq!(
+        history,
+        vec![
+            (
+                fixture.superseded.version,
+                fixture.superseded.id,
+                ApiStagingEntryCoarseStatus::Archived
+            ),
+            (
+                fixture.voided.version,
+                fixture.voided.id,
+                ApiStagingEntryCoarseStatus::Void
+            ),
+        ]
+    );
+}
+
+#[actix_web::test]
+async fn test_list_staging_entries_v2_paginates_by_version_cursor() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
+    let history_filter = ApiStagingEntryListFiltersV2 {
+        staging_entry_id: Some(fixture.superseded.staging_entry_id.clone()),
+        ..Default::default()
+    };
+
+    let first_page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            history_filter.clone(),
+            StagingEntryListSortField::Version { cursor_value: None },
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(
+        staging_entry_ids(&first_page),
+        vec![fixture.voided.id.clone()]
+    );
+    assert!(first_page.prev_cursor.is_none());
+
+    let second_page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            history_filter.clone(),
+            first_page
+                .next_cursor
+                .expect("first page should include a next cursor"),
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(staging_entry_ids(&second_page), vec![fixture.superseded.id]);
+    assert!(second_page.next_cursor.is_none());
+
+    let previous_page = list_staging_entries_v2(
+        &client,
+        &fixture.token,
+        list_staging_entries_v2_request(
+            history_filter,
+            second_page
+                .prev_cursor
+                .expect("second page should include a previous cursor"),
+            Some(1),
+            CursorDirection::Previous,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(staging_entry_ids(&previous_page), vec![fixture.voided.id]);
 }
 
 #[actix_web::test]
