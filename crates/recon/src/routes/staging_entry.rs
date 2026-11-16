@@ -15,7 +15,9 @@ use common_types::{
     date_time::TimeRange,
     pagination::{CursorDirection, SortOrder},
     permissions::Permission,
-    staging_entry::{StagingEntryEffectiveAtSortField, StagingEntryListSortField},
+    staging_entry::{
+        StagingEntryEffectiveAtSortField, StagingEntryListSortField, StagingEntryVersionSortField,
+    },
 };
 use utoipa::OpenApi;
 
@@ -52,6 +54,7 @@ use crate::{
             ListStagingEntriesV2Request,
             StagingEntryListSortField,
             StagingEntryEffectiveAtSortField,
+            StagingEntryVersionSortField,
             SortOrder,
             CursorDirection,
             StagingEntryListV2Page,
