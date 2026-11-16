@@ -4,6 +4,24 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.16.0
+
+### Features
+
+- **reporting:** Add endpoint to generate transaction-flows report ([#26](https://github.com/juspay/hyperswitch-reconciliation/pull/26)) ([`a768921`](https://github.com/juspay/hyperswitch-reconciliation/commit/a768921a97af64ad7d525fa8d3a4f48123fa577f))
+- **staging-entry:**
+  - Enable archived versions from v2 staging entry list ([#47](https://github.com/juspay/hyperswitch-reconciliation/pull/47)) ([`2894878`](https://github.com/juspay/hyperswitch-reconciliation/commit/28948780919ff0d0eec6f6163fb079306c0bd8b6))
+  - Replace coarse statuses with granular ones ([#49](https://github.com/juspay/hyperswitch-reconciliation/pull/49)) ([`419a811`](https://github.com/juspay/hyperswitch-reconciliation/commit/419a8110b631da9121478aa27e627b961ce3ae90))
+- **transaction:** Enable archived versions from the v2 transaction list ([#45](https://github.com/juspay/hyperswitch-reconciliation/pull/45)) ([`2b5769a`](https://github.com/juspay/hyperswitch-reconciliation/commit/2b5769ae998c081dc5dd17a4eb8ba0fc01b2740f))
+
+### Bug Fixes
+
+- **errors:** Give every error type its own code block ([#46](https://github.com/juspay/hyperswitch-reconciliation/pull/46)) ([`5317a08`](https://github.com/juspay/hyperswitch-reconciliation/commit/5317a0865ba54a381d19091ce0172d0f2bcbdb51))
+
+**Full Changelog:** [`2026.11.13.1...2026.11.16.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.13.1...2026.11.16.0)
+
+- - -
+
 ## 2026.11.13.1
 
 ### Bug Fixes
