@@ -25,8 +25,8 @@ use api_models::{
     },
     search_entry_key::{SearchEntryKeyListRequest, SearchEntryKeyResponse},
     staging_entry::{
-        ApiStagingEntryCoarseStatus, ApiStagingEntryListFiltersV2, ApiStagingEntryStatus,
-        GetStagingEntryResponse, StagingEntryCreateRequest,
+        ApiStagingEntryListFiltersV2, ApiStagingEntryStatus, GetStagingEntryResponse,
+        StagingEntryCreateRequest,
     },
     transaction::{
         ApiTransactionFilterStatus, ApiTransactionListFiltersV2, ApiTransactionStatus,
@@ -3896,7 +3896,9 @@ async fn test_search_duplicate_for_composite_unique_constraint() {
         .expect("duplicate composite-key entry should be NeedsManualReview/DuplicateEntry");
     assert_eq!(
         duplicate_entry.status,
-        ApiStagingEntryCoarseStatus::NeedsManualReview
+        ApiStagingEntryStatus::NeedsManualReview(Some(
+            StagingEntryManualReviewData::DuplicateEntry
+        ))
     );
     assert_eq!(
         duplicate_entry.detailed_status,

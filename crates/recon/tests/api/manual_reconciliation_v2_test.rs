@@ -18,8 +18,7 @@ use api_models::{
     metadata_schema::{FieldType, MetadataExposeConfig},
     search_entry_key::{SearchEntryKeyListRequest, SearchEntryKeyResponse},
     staging_entry::{
-        ApiStagingEntryCoarseStatus, GetStagingEntryResponse, NeedsManualReviewData,
-        StagingEntryData,
+        ApiStagingEntryStatus, GetStagingEntryResponse, NeedsManualReviewData, StagingEntryData,
     },
     transaction::{
         ApiTransactionStatus, DirectTransactionEntry, EntryOp, EntryOverrides,
@@ -1083,7 +1082,7 @@ async fn v2_create_with_staging_entry_links_and_processes_it() {
     assert_eq!(keys[0].primary_transaction_id, reconciled.id);
 
     let processed = latest_staging_entry(&client, &token, &staging.staging_entry_id).await;
-    assert_eq!(processed.status, ApiStagingEntryCoarseStatus::Processed);
+    assert_eq!(processed.status, ApiStagingEntryStatus::Processed);
 }
 
 /// `replace_with_staging_entry` drops the named entry and adds the staging-sourced one in the same
@@ -1176,7 +1175,7 @@ async fn v2_replace_with_staging_entry_swaps_the_entry() {
     assert!(replacement.staging_entry_id.is_some());
 
     let processed = latest_staging_entry(&client, &token, &staging.staging_entry_id).await;
-    assert_eq!(processed.status, ApiStagingEntryCoarseStatus::Processed);
+    assert_eq!(processed.status, ApiStagingEntryStatus::Processed);
 }
 
 // ================================================================================================
@@ -1711,7 +1710,7 @@ async fn v2_validates_staging_entry_links() {
                 latest_staging_entry(&client, &token, &staging_entry.staging_entry_id).await;
             assert_ne!(
                 latest.status,
-                ApiStagingEntryCoarseStatus::Processed,
+                ApiStagingEntryStatus::Processed,
                 "{description}: a refused link must not consume the staging entry"
             );
         }

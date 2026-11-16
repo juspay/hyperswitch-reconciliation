@@ -2,12 +2,11 @@ use actix_web::{web, HttpRequest, Responder};
 use api_models::overview::{
     AccountStagingEntriesOverview, AccountStatusOverview, AccountTransactionStatusAmount,
     OverviewFilters, RuleAccountsOverview, RuleAccountsOverviewResponse, RuleTransactionsOverview,
-    RuleTransactionsTimeSeries, StagingEntriesOverviewResponse, StagingEntryDetailedStatusAmount,
-    StagingEntryOverviewFilters, StagingEntryStatusAmount, TimeSeriesFilters,
-    TransactionStatusAmount, TransactionTimeBucket, TransactionsOverviewResponse,
-    TransactionsTimeSeriesResponse,
+    RuleTransactionsTimeSeries, StagingEntriesOverviewResponse, StagingEntryOverviewFilters,
+    StagingEntryStatusAmount, TimeSeriesFilters, TransactionStatusAmount, TransactionTimeBucket,
+    TransactionsOverviewResponse, TransactionsTimeSeriesResponse,
 };
-use api_models::staging_entry::{ApiStagingEntryCoarseStatus, ApiStagingEntryStatus};
+use api_models::staging_entry::ApiStagingEntryStatus;
 use api_models::transaction::ApiTransactionFilterStatus;
 use common_enums::{BalanceDirection, Currency, Granularity, ReconRuleAccountType};
 use common_types::{date_time::TimeRange, permissions::Permission};
@@ -46,9 +45,7 @@ use crate::{
             StagingEntryOverviewFilters,
             AccountStagingEntriesOverview,
             StagingEntryStatusAmount,
-            StagingEntryDetailedStatusAmount,
             ApiStagingEntryStatus,
-            ApiStagingEntryCoarseStatus,
             BalanceDirection,
             ReconRuleAccountType,
         )

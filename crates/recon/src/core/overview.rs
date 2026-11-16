@@ -1,19 +1,11 @@
 use std::collections::HashMap;
 
-use api_models::{
-    overview::{
-        AccountStagingEntriesOverview, AccountStatusOverview, AccountTransactionStatusAmount,
-        OverviewFilters, RuleAccountsOverview, RuleAccountsOverviewResponse,
-        RuleTransactionsOverview, RuleTransactionsTimeSeries, StagingEntriesOverviewResponse,
-        StagingEntryDetailedStatusAmount, StagingEntryOverviewFilters, StagingEntryStatusAmount,
-        TimeSeriesFilters, TransactionStatusAmount, TransactionTimeBucket,
-        TransactionsOverviewResponse, TransactionsTimeSeriesResponse,
-    },
-    staging_entry::ApiStagingEntryCoarseStatus,
-};
-use common_enums::Currency;
-use common_types::{
-    amount::AmountResponse, staging_entry::status::DomainStagingEntryStatus, units::MinorUnit,
+use api_models::overview::{
+    AccountStagingEntriesOverview, AccountStatusOverview, AccountTransactionStatusAmount,
+    OverviewFilters, RuleAccountsOverview, RuleAccountsOverviewResponse, RuleTransactionsOverview,
+    RuleTransactionsTimeSeries, StagingEntriesOverviewResponse, StagingEntryOverviewFilters,
+    StagingEntryStatusAmount, TimeSeriesFilters, TransactionStatusAmount, TransactionTimeBucket,
+    TransactionsOverviewResponse, TransactionsTimeSeriesResponse,
 };
 use common_utils::{auth::AuthContext, date_time};
 use diesel_models::staging_entry::StagingEntryOverviewRow;
@@ -30,12 +22,8 @@ use crate::{
     utils::{
         overview::{OverviewAmount, OverviewTimeBuckets},
         recon_rule::RuleAccountExt,
-        staging_entry::DomainStagingEntryStatusExt,
     },
 };
-
-type CoarseStatusKey = (ApiStagingEntryCoarseStatus, Currency);
-type CoarseStatusTotals = (i64, MinorUnit, MinorUnit);
 
 pub async fn get_transactions_overview(
     state: &AppState,
@@ -377,76 +365,37 @@ pub async fn get_staging_entries_overview(
     }
     .change_context(OverviewError::InternalServerError)?;
 
-    let (mut coarse_totals_by_account, mut detailed_rows_by_account) = aggregates.into_iter().fold(
-        (
-            HashMap::<String, HashMap<CoarseStatusKey, CoarseStatusTotals>>::new(),
-            HashMap::<String, Vec<StagingEntryOverviewRow>>::new(),
-        ),
-        |(mut coarse, mut detailed), row| {
-            let totals = coarse
-                .entry(row.account_id.clone())
-                .or_default()
-                .entry((
-                    DomainStagingEntryStatus::from(row.status)
-                        .to_api_response()
-                        .coarse(),
-                    row.currency,
-                ))
-                .or_insert((0, MinorUnit::zero(), MinorUnit::zero()));
-            totals.0 += row.count;
-            totals.1 = totals.1 + row.credit_sum;
-            totals.2 = totals.2 + row.debit_sum;
-
-            detailed
+    let mut rows_by_account = aggregates.into_iter().fold(
+        HashMap::<String, Vec<StagingEntryOverviewRow>>::new(),
+        |mut rows_by_account, row| {
+            rows_by_account
                 .entry(row.account_id.clone())
                 .or_default()
                 .push(row);
-
-            (coarse, detailed)
+            rows_by_account
         },
     );
 
     let response: StagingEntriesOverviewResponse = accounts
         .into_iter()
         .map(|account| {
-            let status_breakdown = coarse_totals_by_account
+            let status_breakdown = rows_by_account
                 .remove(&account.id)
                 .unwrap_or_default()
                 .into_iter()
-                .map(|((status, currency), (count, credit_sum, debit_sum))| {
-                    Ok(StagingEntryStatusAmount {
-                        status,
-                        count,
-                        credit_amount: AmountResponse::from_minor_unit(credit_sum, currency)
-                            .change_context(OverviewError::InternalServerError)?,
-                        debit_amount: AmountResponse::from_minor_unit(debit_sum, currency)
-                            .change_context(OverviewError::InternalServerError)?,
-                    })
-                })
+                .map(StagingEntryStatusAmount::foreign_try_from)
                 .collect::<OverviewResult<Vec<_>>>()?;
             let status_breakdown = OverviewAmount::zero_filled_staging_entry_status_breakdown(
                 status_breakdown,
                 account.currency,
             )?;
 
-            let detailed_status_breakdown = detailed_rows_by_account
-                .remove(&account.id)
-                .unwrap_or_default()
-                .into_iter()
-                .map(StagingEntryDetailedStatusAmount::foreign_try_from)
-                .collect::<OverviewResult<Vec<_>>>()?;
-            let detailed_status_breakdown =
-                OverviewAmount::zero_filled_staging_entry_detailed_status_breakdown(
-                    detailed_status_breakdown,
-                    account.currency,
-                )?;
-
             Ok(AccountStagingEntriesOverview {
                 account_id: account.id,
                 account_name: account.name,
                 account_type: account.balance_direction,
-                status_breakdown,
-                detailed_status_breakdown,
+                status_breakdown: status_breakdown.clone(),
+                detailed_status_breakdown: status_breakdown,
             })
         })
         .collect::<OverviewResult<_>>()?;

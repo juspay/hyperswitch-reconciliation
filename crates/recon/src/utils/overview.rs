@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
 use api_models::overview::{
-    AccountTransactionStatusAmount, StagingEntryDetailedStatusAmount, StagingEntryStatusAmount,
-    TransactionStatusAmount,
+    AccountTransactionStatusAmount, StagingEntryStatusAmount, TransactionStatusAmount,
 };
-use api_models::staging_entry::ApiStagingEntryCoarseStatus;
 use api_models::transaction::ApiTransactionFilterStatus;
 use common_enums::{Currency, DieselStagingEntryStatus, Granularity};
 use common_types::{
@@ -246,50 +244,15 @@ impl OverviewAmount {
             .map(|status_amount| (status_amount.status, status_amount))
             .collect::<HashMap<_, _>>();
 
-        ApiStagingEntryCoarseStatus::iter()
-            .filter(|status| *status != ApiStagingEntryCoarseStatus::Archived)
+        DieselStagingEntryStatus::iter()
+            .filter(|status| *status != DieselStagingEntryStatus::Archived)
+            .map(DomainStagingEntryStatus::from)
+            .map(DomainStagingEntryStatus::to_api_response)
             .map(|status| {
                 status_map.remove(&status).map_or_else(
                     || {
                         Ok(StagingEntryStatusAmount {
                             status,
-                            count: 0,
-                            credit_amount: AmountResponse::from_minor_unit(
-                                MinorUnit::zero(),
-                                currency,
-                            )
-                            .change_context(OverviewError::InternalServerError)?,
-                            debit_amount: AmountResponse::from_minor_unit(
-                                MinorUnit::zero(),
-                                currency,
-                            )
-                            .change_context(OverviewError::InternalServerError)?,
-                        })
-                    },
-                    Ok,
-                )
-            })
-            .collect()
-    }
-
-    pub fn zero_filled_staging_entry_detailed_status_breakdown(
-        detailed_status_breakdown: Vec<StagingEntryDetailedStatusAmount>,
-        currency: Currency,
-    ) -> OverviewResult<Vec<StagingEntryDetailedStatusAmount>> {
-        let mut status_map = detailed_status_breakdown
-            .into_iter()
-            .map(|status_amount| (status_amount.detailed_status, status_amount))
-            .collect::<HashMap<_, _>>();
-
-        DieselStagingEntryStatus::iter()
-            .filter(|status| *status != DieselStagingEntryStatus::Archived)
-            .map(DomainStagingEntryStatus::from)
-            .map(DomainStagingEntryStatus::to_api_response)
-            .map(|detailed_status| {
-                status_map.remove(&detailed_status).map_or_else(
-                    || {
-                        Ok(StagingEntryDetailedStatusAmount {
-                            detailed_status,
                             count: 0,
                             credit_amount: AmountResponse::from_minor_unit(
                                 MinorUnit::zero(),
@@ -406,12 +369,12 @@ impl ForeignTryFrom<RuleAccountTransactionOverviewRow> for Vec<AccountTransactio
     }
 }
 
-impl ForeignTryFrom<StagingEntryOverviewRow> for StagingEntryDetailedStatusAmount {
+impl ForeignTryFrom<StagingEntryOverviewRow> for StagingEntryStatusAmount {
     type Error = Report<OverviewError>;
 
     fn foreign_try_from(row: StagingEntryOverviewRow) -> Result<Self, Self::Error> {
         Ok(Self {
-            detailed_status: DomainStagingEntryStatus::from(row.status).to_api_response(),
+            status: DomainStagingEntryStatus::from(row.status).to_api_response(),
             count: row.count,
             credit_amount: AmountResponse::from_minor_unit(row.credit_sum, row.currency)
                 .change_context(OverviewError::InternalServerError)?,
