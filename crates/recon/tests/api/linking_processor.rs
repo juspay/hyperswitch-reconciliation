@@ -418,7 +418,7 @@ async fn linking_matches_both_arrival_orders(
             .with_auth(&token),
     ] {
         let response = request.send().await;
-        assert_api_error(response, 400, "LP_802").await;
+        assert_api_error(response, 400, "LP_2002").await;
     }
     assert_eq!(
         serde_json::to_value(linked_entries(&client, &token, &first.entry_id).await).unwrap(),
@@ -615,7 +615,7 @@ async fn failed_linking_can_be_fixed_and_enqueued_once() {
     assert_api_error(
         client.post(&process_path).with_admin_key().send().await,
         400,
-        "LP_802",
+        "LP_2002",
     )
     .await;
     let config = create_config(&client, &token, &setup.config).await;
@@ -632,7 +632,7 @@ async fn failed_linking_can_be_fixed_and_enqueued_once() {
     assert_api_error(
         client.post(&enqueue_path).with_auth(&token).send().await,
         400,
-        "LP_802",
+        "LP_2002",
     )
     .await;
     process_success(&client, &token, &entry).await;
@@ -919,7 +919,7 @@ async fn expected_entries_record_linking_failure_and_can_be_retried() {
                 .with_auth(&token)
                 .send()
                 .await;
-            assert_api_error(response, 400, "LP_802").await;
+            assert_api_error(response, 400, "LP_2002").await;
             process_failure(&client, &token, &entry, "Expected entries cannot be linked").await;
 
             let response = client
@@ -927,7 +927,7 @@ async fn expected_entries_record_linking_failure_and_can_be_retried() {
                 .with_admin_key()
                 .send()
                 .await;
-            assert_api_error(response, 400, "LP_802").await;
+            assert_api_error(response, 400, "LP_2002").await;
 
             // Failed(Expected) is retryable, but processing must record the
             // same failure again without creating links.
@@ -945,7 +945,7 @@ async fn expected_entries_record_linking_failure_and_can_be_retried() {
                 .with_auth(&token)
                 .send()
                 .await;
-            assert_api_error(response, 400, "LP_802").await;
+            assert_api_error(response, 400, "LP_2002").await;
             process_success(&client, &token, &entry).await;
         }
     }

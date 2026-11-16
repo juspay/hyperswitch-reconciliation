@@ -123,10 +123,10 @@ async fn create_rejects_invalid_expiry_and_name() {
     long_description["description"] = json!("d".repeat(257));
 
     for (body, code) in [
-        (create_body("past", -1), "RE_1705"),
-        (create_body("   ", 30), "RE_1702"),
-        (create_body(&"n".repeat(65), 30), "RE_1703"),
-        (long_description, "RE_1704"),
+        (create_body("past", -1), "RE_2105"),
+        (create_body("   ", 30), "RE_2102"),
+        (create_body(&"n".repeat(65), 30), "RE_2103"),
+        (long_description, "RE_2104"),
     ] {
         let response = client
             .post("/api_keys")
@@ -301,21 +301,21 @@ async fn update_changes_name_and_description_only() {
         .send()
         .await;
     assert_eq!(response.status(), 400);
-    assert_eq!(error_code(response).await, "RE_1708");
+    assert_eq!(error_code(response).await, "RE_2108");
 
     // Invalid name and description.
     for (body, code) in [
         (
             json!({ "update_type": "details_update", "name": "  " }),
-            "RE_1702",
+            "RE_2102",
         ),
         (
             json!({ "update_type": "details_update", "name": "n".repeat(65) }),
-            "RE_1703",
+            "RE_2103",
         ),
         (
             json!({ "update_type": "details_update", "description": "d".repeat(257) }),
-            "RE_1704",
+            "RE_2104",
         ),
     ] {
         let response = client

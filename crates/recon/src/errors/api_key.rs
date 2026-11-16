@@ -51,27 +51,27 @@ impl ErrorSwitchFrom<ApiKeyError> for ApiErrorPayload {
         match error {
             ApiKeyError::InternalServerError => Self::InternalServerError(ApiError::new(
                 "RE",
-                1700,
+                2100,
                 "An internal error occurred while processing API key request",
                 None,
             )),
             ApiKeyError::ApiKeyNotFound => {
-                Self::NotFound(ApiError::new("RE", 1701, "API key not found", None))
+                Self::NotFound(ApiError::new("RE", 2101, "API key not found", None))
             }
             ApiKeyError::NameEmpty => {
-                Self::BadRequest(ApiError::new("RE", 1702, error.to_string(), None))
+                Self::BadRequest(ApiError::new("RE", 2102, error.to_string(), None))
             }
             ApiKeyError::NameTooLong { .. } => {
-                Self::BadRequest(ApiError::new("RE", 1703, error.to_string(), None))
+                Self::BadRequest(ApiError::new("RE", 2103, error.to_string(), None))
             }
             ApiKeyError::DescriptionTooLong { .. } => {
-                Self::BadRequest(ApiError::new("RE", 1704, error.to_string(), None))
+                Self::BadRequest(ApiError::new("RE", 2104, error.to_string(), None))
             }
             ApiKeyError::ExpiryInPast => {
-                Self::BadRequest(ApiError::new("RE", 1705, error.to_string(), None))
+                Self::BadRequest(ApiError::new("RE", 2105, error.to_string(), None))
             }
             ApiKeyError::NothingToUpdate => {
-                Self::BadRequest(ApiError::new("RE", 1708, error.to_string(), None))
+                Self::BadRequest(ApiError::new("RE", 2108, error.to_string(), None))
             }
         }
     }
