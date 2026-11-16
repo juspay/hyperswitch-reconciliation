@@ -35,7 +35,7 @@ use common_types::{
         TransactionAccountFilters, TransactionData as DieselTransactionData, TransactionDataV3,
         TransactionEffectiveAtSortField, TransactionListEntryFilters, TransactionListFiltersV2,
         TransactionListMetadataFilters, TransactionListSortField, TransactionListStatusFilter,
-        VoidData, VoidDataV1,
+        TransactionVersionSortField, VoidData, VoidDataV1,
     },
     units::{FloatMajorUnit, MinorUnit},
 };
@@ -687,6 +687,12 @@ impl CursorSort<GroupedTransactionViews> for TransactionListSortField {
                     id: item.transaction.id.clone(),
                 }),
             },
+            Self::Version { .. } => Self::Version {
+                cursor_value: Some(TransactionVersionSortField {
+                    version: item.transaction.version,
+                    id: item.transaction.id.clone(),
+                }),
+            },
         }
     }
 
@@ -694,6 +700,7 @@ impl CursorSort<GroupedTransactionViews> for TransactionListSortField {
         match self {
             Self::Id { id } => id.is_some(),
             Self::EffectiveAt { cursor_value } => cursor_value.is_some(),
+            Self::Version { cursor_value } => cursor_value.is_some(),
         }
     }
 }

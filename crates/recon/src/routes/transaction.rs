@@ -15,7 +15,9 @@ use common_types::{
     date_time::TimeRange,
     pagination::{CursorDirection, SortOrder},
     permissions::Permission,
-    transaction::{TransactionEffectiveAtSortField, TransactionListSortField},
+    transaction::{
+        TransactionEffectiveAtSortField, TransactionListSortField, TransactionVersionSortField,
+    },
 };
 use utoipa::OpenApi;
 
@@ -56,6 +58,7 @@ use crate::{
             ListTransactionsV2Request,
             TransactionListSortField,
             TransactionEffectiveAtSortField,
+            TransactionVersionSortField,
             SortOrder,
             CursorDirection,
             TransactionListV2Page,

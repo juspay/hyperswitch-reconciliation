@@ -106,6 +106,9 @@ pub enum TransactionListSortField {
     EffectiveAt {
         cursor_value: Option<TransactionEffectiveAtSortField>,
     },
+    Version {
+        cursor_value: Option<TransactionVersionSortField>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
@@ -113,6 +116,12 @@ pub struct TransactionEffectiveAtSortField {
     #[schema(value_type = String)]
     #[serde(with = "common_utils::custom_serde::iso8601_micros")]
     pub effective_at: PrimitiveDateTime,
+    pub id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct TransactionVersionSortField {
+    pub version: i32,
     pub id: String,
 }
 
