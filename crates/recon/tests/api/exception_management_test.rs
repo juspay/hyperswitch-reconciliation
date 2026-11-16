@@ -4,7 +4,7 @@
     clippy::too_many_arguments,
     clippy::panic
 )]
-use api_models::staging_entry::ApiStagingEntryCoarseStatus;
+use api_models::staging_entry::ApiStagingEntryStatus;
 
 use std::collections::HashMap;
 
@@ -969,10 +969,7 @@ async fn test_manual_reconciliation_success() {
         .max_by_key(|entry| entry.version)
         .unwrap();
 
-    assert_eq!(
-        final_staging_entry.status,
-        ApiStagingEntryCoarseStatus::Processed
-    );
+    assert_eq!(final_staging_entry.status, ApiStagingEntryStatus::Processed);
 }
 
 #[test]

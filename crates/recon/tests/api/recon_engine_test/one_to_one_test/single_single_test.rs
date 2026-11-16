@@ -1,4 +1,4 @@
-use api_models::staging_entry::ApiStagingEntryCoarseStatus;
+use api_models::staging_entry::ApiStagingEntryStatus;
 use api_models::transaction::ApiTransactionStatus;
 use common_enums::{BalanceDirection, EntryStatus, StagingEntryProcessingMode};
 use common_types::{
@@ -33,7 +33,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -43,7 +43,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Matched, 100.00, BalanceDirection::Credit), (EntryStatus::Matched, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Matched(TransactionMatchedData::Auto))
                 .expected_search_expectations(vec![])
@@ -60,7 +60,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -70,7 +70,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(1000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 10.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::UnderAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -87,7 +87,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -97,7 +97,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(15000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 150.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::OverAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -114,7 +114,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -124,7 +124,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("invalid_metadata_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::DataMismatch)
                 .expected_search_expectations(vec![])
@@ -141,7 +141,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -151,7 +151,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 100.00, BalanceDirection::Credit)])
                 .expected_transaction_status(ApiTransactionStatus::UnderAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -168,7 +168,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(5000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 50.00, BalanceDirection::Debit), (EntryStatus::Expected, 50.00, BalanceDirection::Credit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -178,7 +178,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(5000, BalanceDirection::Credit, vec![("transaction_id", Some("psp_refund_001")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Matched, 50.00, BalanceDirection::Debit), (EntryStatus::Matched, 50.00, BalanceDirection::Credit)])
                 .expected_transaction_status(ApiTransactionStatus::Matched(TransactionMatchedData::Auto))
                 .expected_search_expectations(vec![])
@@ -195,7 +195,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -205,7 +205,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(8000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("wrong_metadata"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 80.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::UnderAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -222,7 +222,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(1, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 0.01, BalanceDirection::Credit), (EntryStatus::Expected, 0.01, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -232,7 +232,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(1, BalanceDirection::Debit, vec![("transaction_id", Some("micro_psp")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Matched, 0.01, BalanceDirection::Credit), (EntryStatus::Matched, 0.01, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Matched(TransactionMatchedData::Auto))
                 .expected_search_expectations(vec![])
@@ -249,7 +249,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(100000000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 1000000.00, BalanceDirection::Credit), (EntryStatus::Expected, 1000000.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -259,7 +259,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(100000000, BalanceDirection::Debit, vec![("transaction_id", Some("large_psp")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Matched, 1000000.00, BalanceDirection::Credit), (EntryStatus::Matched, 1000000.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Matched(TransactionMatchedData::Auto))
                 .expected_search_expectations(vec![])
@@ -276,7 +276,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -286,7 +286,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(12000, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("wrong_metadata"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 120.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::OverAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -303,7 +303,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("acc_id", Some("ACC-001")), ("region", Some("US")), ("match_rules_field_1", Some("match_rules_value")), ("transaction_id", Some("test_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "ACC-001|US")])
@@ -313,7 +313,7 @@ use crate::api::recon_engine_test::types::{
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Debit, vec![("acc_ref", Some("ACC-001")), ("region_ref", Some("US")), ("match_rules_field_2", Some("match_rules_value")), ("transaction_id", Some("test_value_1"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Matched, 100.00, BalanceDirection::Credit), (EntryStatus::Matched, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Matched(TransactionMatchedData::Auto))
                 .build(),
@@ -354,7 +354,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -364,7 +364,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(9900, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 99.00, BalanceDirection::Debit),
@@ -386,7 +386,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -396,7 +396,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10100, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 101.00, BalanceDirection::Debit),
@@ -418,7 +418,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -428,7 +428,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(9800, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 98.00, BalanceDirection::Debit),
@@ -450,7 +450,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -460,7 +460,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10200, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 102.00, BalanceDirection::Debit),
@@ -482,7 +482,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -492,7 +492,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(9500, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 95.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::UnderAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -510,7 +510,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -520,7 +520,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10500, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("match_rules_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 105.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::OverAmount(TransactionAmountMismatchData::Mismatch))
                 .expected_search_expectations(vec![])
@@ -538,7 +538,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -548,7 +548,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10100, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("invalid_metadata_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 101.00, BalanceDirection::Debit), (EntryStatus::Pending, 1.00, BalanceDirection::Credit)])
                 .expected_transaction_status(ApiTransactionStatus::DataMismatch)
                 .expected_search_expectations(vec![])
@@ -566,7 +566,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(10000, BalanceDirection::Credit, vec![("transaction_id", Some("test_value")), ("match_rules_field_1", Some("match_rules_value"))], StagingEntryProcessingMode::Transaction),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_expectations(vec![ExpectedSearchExpectation::new("psp", "order_123")])
@@ -576,7 +576,7 @@ fn valid_200_tolerance_config() -> ToleranceConfig {
         ReconTestEntry::new(
             StagingEntryData::recon_staging_entry(9900, BalanceDirection::Debit, vec![("transaction_id", Some("test_value_1")), ("reference_id", Some("order_123")), ("match_rules_field_2", Some("invalid_metadata_value"))], StagingEntryProcessingMode::Confirmation),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 100.00, BalanceDirection::Credit), (EntryStatus::Mismatched, 99.00, BalanceDirection::Debit), (EntryStatus::Pending, 1.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::DataMismatch)
                 .expected_search_expectations(vec![])

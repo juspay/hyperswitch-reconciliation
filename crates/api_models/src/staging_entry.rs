@@ -14,11 +14,13 @@ use common_utils::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use strum::{Display, EnumIter, EnumString};
+use strum::{Display, EnumString};
 use time::PrimitiveDateTime;
 use utoipa::{IntoParams, ToSchema};
 
-#[derive(Clone, Copy, Debug, Display, PartialEq, Eq, Hash, Deserialize, Serialize, ToSchema)]
+#[derive(
+    Clone, Copy, Debug, Display, EnumString, PartialEq, Eq, Hash, Deserialize, Serialize, ToSchema,
+)]
 #[serde(tag = "status", content = "sub_status", rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ApiStagingEntryStatus {
@@ -30,54 +32,6 @@ pub enum ApiStagingEntryStatus {
     Processed,
     Void,
     Archived,
-}
-// TODO: delete once the frontend has moved onto `detailed_status`.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Display,
-    EnumString,
-    EnumIter,
-    PartialEq,
-    Eq,
-    Hash,
-    Deserialize,
-    Serialize,
-    ToSchema,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum ApiStagingEntryCoarseStatus {
-    Pending,
-    NeedsManualReview,
-    Processed,
-    Void,
-    Archived,
-}
-
-impl ApiStagingEntryStatus {
-    pub fn coarse(self) -> ApiStagingEntryCoarseStatus {
-        match self {
-            Self::Pending => ApiStagingEntryCoarseStatus::Pending,
-            Self::NeedsManualReview(_) => ApiStagingEntryCoarseStatus::NeedsManualReview,
-            Self::Processed => ApiStagingEntryCoarseStatus::Processed,
-            Self::Void => ApiStagingEntryCoarseStatus::Void,
-            Self::Archived => ApiStagingEntryCoarseStatus::Archived,
-        }
-    }
-}
-
-impl ApiStagingEntryCoarseStatus {
-    pub fn to_detailed(self) -> ApiStagingEntryStatus {
-        match self {
-            Self::Pending => ApiStagingEntryStatus::Pending,
-            Self::NeedsManualReview => ApiStagingEntryStatus::NeedsManualReview(None),
-            Self::Processed => ApiStagingEntryStatus::Processed,
-            Self::Void => ApiStagingEntryStatus::Void,
-            Self::Archived => ApiStagingEntryStatus::Archived,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -111,7 +65,8 @@ pub struct GetStagingEntryResponse {
     pub account: AccountData,
     pub entry_type: BalanceDirection,
     pub amount: AmountResponse,
-    pub status: ApiStagingEntryCoarseStatus,
+    #[serde(flatten)]
+    pub status: ApiStagingEntryStatus,
     pub detailed_status: ApiStagingEntryStatus,
     pub processing_mode: StagingEntryProcessingMode,
     #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
@@ -132,7 +87,7 @@ pub struct GetStagingEntryResponse {
     #[schema(value_type = Option<String>, example = "2024-01-01T00:00:00Z")]
     #[serde(with = "common_utils::custom_serde::iso8601::option")]
     pub discarded_at: Option<PrimitiveDateTime>,
-    pub discarded_status: Option<ApiStagingEntryCoarseStatus>,
+    pub discarded_status: Option<ApiStagingEntryStatus>,
     pub detailed_discarded_status: Option<ApiStagingEntryStatus>,
     pub discarded_data: Option<StagingEntryData>,
     #[schema(example = "order_123456")]
@@ -234,8 +189,9 @@ pub struct StagingEntryUpdateRequest {
 #[derive(Debug, Serialize, Deserialize, IntoParams, ToSchema)]
 pub struct ApiListStagingEntriesFilters {
     #[serde(default, deserialize_with = "parse_comma_separated")]
-    #[param(example = "pending,processed", value_type = Vec<ApiStagingEntryCoarseStatus>)]
-    pub status: Option<Vec<ApiStagingEntryCoarseStatus>>,
+    #[param(example = "pending,processed", value_type = Vec<String>)]
+    #[schema(value_type = Option<Vec<String>>, example = "pending,processed")]
+    pub status: Option<Vec<ApiStagingEntryStatus>>,
 
     #[serde(default, deserialize_with = "parse_comma_separated")]
     #[param(example = "credit,debit", value_type = Vec<BalanceDirection>)]
@@ -271,9 +227,8 @@ impl ApiListStagingEntriesFilters {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, ToSchema)]
 pub struct ApiStagingEntryListFiltersV2 {
-    // TODO: drop `status` once the frontend sends `detailed_status`.
     #[serde(default)]
-    pub status: Option<Vec<ApiStagingEntryCoarseStatus>>,
+    pub status: Option<Vec<ApiStagingEntryStatus>>,
     #[serde(default)]
     pub detailed_status: Option<Vec<ApiStagingEntryStatus>>,
     #[serde(default)]

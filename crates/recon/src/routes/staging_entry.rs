@@ -5,10 +5,10 @@ use api_models::{
         StagingEntryBulkSelection,
     },
     staging_entry::{
-        ApiListStagingEntriesFilters, ApiStagingEntryCoarseStatus, ApiStagingEntryListFiltersV2,
-        ApiStagingEntryStatus, GetStagingEntryResponse, ListStagingEntriesV2Request,
-        StagingEntryCreateRequest, StagingEntryCreateRequestV2, StagingEntryListV2Page,
-        StagingEntryUpdateRequest, VoidStagingEntryRequest,
+        ApiListStagingEntriesFilters, ApiStagingEntryListFiltersV2, ApiStagingEntryStatus,
+        GetStagingEntryResponse, ListStagingEntriesV2Request, StagingEntryCreateRequest,
+        StagingEntryCreateRequestV2, StagingEntryListV2Page, StagingEntryUpdateRequest,
+        VoidStagingEntryRequest,
     },
 };
 use common_types::{
@@ -61,7 +61,6 @@ use crate::{
             common_types::amount::AmountResponse,
             common_enums::BalanceDirection,
             ApiStagingEntryStatus,
-            ApiStagingEntryCoarseStatus,
             common_types::staging_entry::status::StagingEntryManualReviewData,
             common_enums::StagingEntryProcessingMode,
             common_enums::Currency,
