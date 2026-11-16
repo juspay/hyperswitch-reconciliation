@@ -1,7 +1,8 @@
 use api_models::recon_engine::{ProcessorStatusResponse, ReconTriggerResponse};
 use common_enums::{DieselStagingEntryStatus, ReconProcessorStatus};
 use common_types::staging_entry::status::DomainStagingEntryStatus;
-use common_utils::{auth::AuthContext, logging};
+use common_utils::auth::AuthContext;
+use recon_env::logging;
 use tokio::sync::watch;
 
 use crate::{

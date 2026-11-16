@@ -49,7 +49,7 @@ use common_types::{
     },
     units::{FloatMajorUnit, MinorUnit},
 };
-use common_utils::{id_type::MerchantId, logging};
+use common_utils::id_type::MerchantId;
 use diesel_models::{
     entry::EntryNew,
     errors::DatabaseError,
@@ -78,6 +78,7 @@ use recon_domain_models::{
         TransactionUpdateData,
     },
 };
+use recon_env::logging;
 
 pub struct OneToOneTransactionContext {
     staging_entry_archive: (DomainStagingEntry, StagingEntryUpdateInternal),

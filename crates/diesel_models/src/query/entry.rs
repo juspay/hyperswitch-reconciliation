@@ -1,8 +1,9 @@
 use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
-use common_utils::{chunking::chunked, date_time, logging};
+use common_utils::{chunking::chunked, date_time};
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 use futures::future;
+use recon_env::logging;
 
 use crate::{
     entry::{Entry, EntryNew, EntryPage, EntryUpdateInternal, ExpectedEntryUpdateInternal},

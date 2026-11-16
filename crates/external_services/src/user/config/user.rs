@@ -29,4 +29,11 @@ impl UserConfig {
             }
         }
     }
+
+    pub fn validate(&self) -> Result<(), String> {
+        match self {
+            Self::MockUserClient => Ok(()),
+            Self::Hyperswitch { hyperswitch_config } => hyperswitch_config.validate(),
+        }
+    }
 }

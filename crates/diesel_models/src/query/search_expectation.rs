@@ -1,9 +1,9 @@
 use async_bb8_diesel::AsyncRunQueryDsl;
 use common_enums::ExpectationStatus;
 use common_types::field_path_key::FieldPathKey;
-use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
+use recon_env::logging;
 
 use crate::{
     errors::DatabaseError,

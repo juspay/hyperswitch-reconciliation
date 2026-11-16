@@ -8,7 +8,6 @@ use common_types::{
     pagination::PaginationQuery,
     transaction::{TransactionAccountFilters, TransactionListFiltersV2, TransactionListSortField},
 };
-use common_utils::logging;
 use diesel_models::{
     entry::{Entry, EntryNew, EntryUpdate},
     errors::DatabaseError,
@@ -25,6 +24,7 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 use futures::future;
+use recon_env::logging;
 use time::PrimitiveDateTime;
 
 use super::Store;

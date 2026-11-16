@@ -12,7 +12,6 @@ pub mod fp_utils;
 pub mod id_generation;
 pub mod id_type;
 pub mod keymanager;
-pub mod logging;
 pub mod macros;
 pub mod pii;
 pub mod request;

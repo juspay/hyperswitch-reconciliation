@@ -4,8 +4,9 @@ use crate::encryption::implementations::{
     keymanager_service::KeymanagerServiceEncryption, local_encryption::LocalEncryption,
 };
 use async_trait::async_trait;
+use base64::Engine;
 use common_utils::{
-    consts::DEFAULT_TENANT_ID,
+    consts::{BASE64_ENGINE, DEFAULT_TENANT_ID},
     errors::{CustomResult, KeyManagerClientError},
     id_type::MerchantId,
     types::keymanager::{Identifier, KeyManagerState},
@@ -162,6 +163,64 @@ impl ApplicationEncryptionConfig {
 
                 let client = KeymanagerServiceEncryption::new(keymanager_state);
                 Ok(ApplicationEncryptionClient::KeymanagerService(client))
+            }
+        }
+    }
+
+    /// Validates the encryption configuration
+    pub fn validate(&self) -> core::result::Result<(), String> {
+        match self {
+            Self::LocalEncryption { local_encryption } => {
+                let key_str = local_encryption.master_key.peek().trim();
+
+                // Check if master key is empty
+                if key_str.is_empty() {
+                    return Err("Master key cannot be empty for LocalEncryption variant".into());
+                }
+
+                // Validate base64 format
+                match BASE64_ENGINE.decode(key_str) {
+                    Ok(decoded) => {
+                        // Check key length (should be 32 bytes for AES-256)
+                        if decoded.len() != 32 {
+                            return Err(format!(
+                                "Master key must be exactly 32 bytes when decoded, got {} bytes",
+                                decoded.len()
+                            ));
+                        }
+
+                        // Check if key is all zeros (weak key)
+                        if decoded.iter().all(|&b| b == 0) {
+                            return Err("Master key cannot be all zeros (weak key)".into());
+                        }
+                    }
+                    Err(_) => {
+                        return Err("Master key must be valid base64 encoded string".into());
+                    }
+                }
+
+                Ok(())
+            }
+            Self::KeyManager { key_manager } => {
+                // Validate KeyManager configuration
+                if !key_manager.enabled {
+                    return Err("KeyManager must be enabled for KeyManager variant".into());
+                }
+
+                if key_manager.url.trim().is_empty() {
+                    return Err("KeyManager URL cannot be empty for KeyManager variant".into());
+                }
+
+                if key_manager.cert.peek().trim().is_empty()
+                    || key_manager.ca.peek().trim().is_empty()
+                {
+                    return Err(
+                        "KeyManager certificates (cert and ca) are required for KeyManager variant"
+                            .into(),
+                    );
+                }
+
+                Ok(())
             }
         }
     }

@@ -1436,6 +1436,7 @@ dependencies = [
  "proptest",
  "quick-xml 0.42.0",
  "rand 0.8.6",
+ "recon_env",
  "regex",
  "reqwest 0.13.5",
  "ring",
@@ -1448,8 +1449,6 @@ dependencies = [
  "thiserror 2.0.17",
  "time",
  "tracing",
- "tracing-log",
- "tracing-subscriber",
  "utoipa 4.2.3",
 ]
 
@@ -1869,6 +1868,7 @@ dependencies = [
  "error-stack",
  "futures",
  "hyperswitch_masking",
+ "recon_env",
  "rstest 0.25.0",
  "serde",
  "serde_json",
@@ -3921,6 +3921,7 @@ dependencies = [
  "mime",
  "pretty_assertions",
  "recon_domain_models",
+ "recon_env",
  "recon_interfaces",
  "regex",
  "reqwest 0.13.5",
@@ -3940,7 +3941,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-actix-web",
- "tracing-futures",
  "utoipa 6.0.0",
  "utoipa-swagger-ui",
  "uuid",
@@ -3977,6 +3977,24 @@ dependencies = [
  "thiserror 2.0.17",
  "time",
  "tracing",
+]
+
+[[package]]
+name = "recon_env"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "config",
+ "error-stack",
+ "futures",
+ "http 0.2.12",
+ "serde",
+ "strum 0.27.2",
+ "tracing",
+ "tracing-actix-web",
+ "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4862,6 +4880,7 @@ dependencies = [
  "error-stack",
  "futures",
  "hyperswitch_masking",
+ "recon_env",
  "time",
 ]
 

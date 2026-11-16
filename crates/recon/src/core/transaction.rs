@@ -34,7 +34,7 @@ use common_types::{
         TransactionDataV3, VoidData, VoidDataV1,
     },
 };
-use common_utils::{auth::AuthContext, date_time, errors::ErrorSwitchFrom, logging};
+use common_utils::{auth::AuthContext, date_time, errors::ErrorSwitchFrom};
 use diesel_models::{
     entry::EntryNew,
     transaction::{Transaction, TransactionNew},
@@ -46,6 +46,7 @@ use recon_domain_models::{
     behaviour::{Conversion, ReverseConversion},
     transaction::{DomainTransaction, TransactionCreationData},
 };
+use recon_env::logging;
 use strum::IntoEnumIterator;
 
 const TXN_LIST_DEFAULT_LIMIT: u16 = 10;
