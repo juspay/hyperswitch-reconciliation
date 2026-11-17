@@ -45,6 +45,8 @@ async fn config_request(client: &TestClient, token: &str) -> LinkConfigCreateReq
         }],
     };
     LinkConfigCreateRequest {
+        name: "Payment linking".to_owned(),
+        description: "Link payments to their confirmations".to_owned(),
         account_id,
         transaction_rule_id: rule_ids[0].clone(),
         confirmation_rule_id: rule_ids[1].clone(),
@@ -186,6 +188,8 @@ async fn link_config_create_and_update_preserve_omitted_fields() {
     let replacement = config_request(&client, &token).await;
     let mut full_update = serde_json::to_value(replacement).unwrap();
     full_update.as_object_mut().unwrap().remove("account_id");
+    full_update["name"] = json!("Updated linking config");
+    full_update["description"] = json!("Updated linking description");
     full_update["priority"] = json!(255);
     full_update["is_active"] = json!(true);
     full_update["transaction_trigger"] = json!({
@@ -213,6 +217,43 @@ async fn link_config_create_and_update_preserve_omitted_fields() {
         update_config(&client, &token, id, &json!({})).await,
         updated
     );
+}
+
+#[actix_web::test]
+async fn link_config_details_updates_preserve_omitted_fields() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (_, _, token) = client.bootstrap("Details owner", "Details profile").await;
+    let request = config_request(&client, &token).await;
+    let created = create_config(&client, &token, &request).await;
+    let id = created["link_config_id"].as_str().unwrap();
+
+    let renamed = update_config(&client, &token, id, &json!({"name": "Renamed"})).await;
+    let mut expected = created.clone();
+    expected["name"] = json!("Renamed");
+    expected["last_modified_at"] = renamed["last_modified_at"].clone();
+    assert_eq!(renamed, expected);
+
+    let updated = update_config(&client, &token, id, &json!({"description": ""})).await;
+    expected["description"] = json!("");
+    expected["last_modified_at"] = updated["last_modified_at"].clone();
+    assert_eq!(updated, expected);
+    assert_eq!(
+        update_config(&client, &token, id, &json!({})).await,
+        updated
+    );
+
+    let response = client
+        .get(&format!("/link_configs/{id}"))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.json::<Value>().await.unwrap(), updated);
+
+    let response = client.get("/link_configs").with_auth(&token).send().await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.json::<Value>().await.unwrap(), json!([updated]));
 }
 
 #[actix_web::test]

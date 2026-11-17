@@ -97,6 +97,8 @@ async fn setup_linking(
     };
     LinkingSetup {
         config: LinkConfigCreateRequest {
+            name: "Payment linking".to_owned(),
+            description: "Link payments to their confirmations".to_owned(),
             account_id,
             transaction_rule_id: rules[0].clone(),
             confirmation_rule_id: rules[1].clone(),
