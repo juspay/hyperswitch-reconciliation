@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.17.1
+
+### Features
+
+- **linking:** Add profile-scoped linking processor status endpoint ([#51](https://github.com/juspay/hyperswitch-reconciliation/pull/51)) ([`5fa4bda`](https://github.com/juspay/hyperswitch-reconciliation/commit/5fa4bda315048a435ef14b4d2bab6e48d6ab43ae))
+
+**Full Changelog:** [`2026.11.17.0...2026.11.17.1`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.17.0...2026.11.17.1)
+
+- - -
+
 ## 2026.11.17.0
 
 ### Features
