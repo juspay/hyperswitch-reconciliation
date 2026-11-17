@@ -21,12 +21,16 @@ pub struct LinkConfig {
     pub is_active: bool,
     pub created_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Clone, Debug, Insertable)]
 #[diesel(table_name = link_config)]
 pub struct LinkConfigNew {
     pub id: String,
+    pub name: String,
+    pub description: String,
     pub profile_id: String,
     pub account_id: String,
     pub transaction_rule_id: String,
@@ -43,6 +47,8 @@ pub struct LinkConfigNew {
 impl LinkConfigNew {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        name: String,
+        description: String,
         profile_id: String,
         account_id: String,
         transaction_rule_id: String,
@@ -54,6 +60,8 @@ impl LinkConfigNew {
     ) -> Self {
         let now = date_time::now();
         Self {
+            name,
+            description,
             id: generate_id_with_default_len("link_config"),
             profile_id,
             account_id,
@@ -73,6 +81,8 @@ impl LinkConfigNew {
 #[derive(Debug, AsChangeset)]
 #[diesel(table_name = link_config)]
 pub struct LinkConfigUpdateInternal {
+    pub name: Option<String>,
+    pub description: Option<String>,
     pub transaction_rule_id: Option<String>,
     pub confirmation_rule_id: Option<String>,
     pub transaction_trigger: Option<LinkTrigger>,
@@ -85,6 +95,10 @@ pub struct LinkConfigUpdateInternal {
 
 #[derive(Debug, Clone)]
 pub enum LinkConfigUpdate {
+    DetailsUpdate {
+        name: Option<String>,
+        description: Option<String>,
+    },
     RuleIdsUpdate {
         transaction_rule_id: Option<String>,
         confirmation_rule_id: Option<String>,
@@ -109,10 +123,24 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
         let last_modified_at = date_time::now();
 
         match update {
+            LinkConfigUpdate::DetailsUpdate { name, description } => Self {
+                name,
+                description,
+                transaction_rule_id: None,
+                confirmation_rule_id: None,
+                transaction_trigger: None,
+                confirmation_trigger: None,
+                link_search_identifier: None,
+                priority: None,
+                is_active: None,
+                last_modified_at,
+            },
             LinkConfigUpdate::RuleIdsUpdate {
                 transaction_rule_id,
                 confirmation_rule_id,
             } => Self {
+                name: None,
+                description: None,
                 transaction_rule_id,
                 confirmation_rule_id,
                 transaction_trigger: None,
@@ -126,6 +154,8 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
                 transaction_trigger,
                 confirmation_trigger,
             } => Self {
+                name: None,
+                description: None,
                 transaction_rule_id: None,
                 confirmation_rule_id: None,
                 transaction_trigger,
@@ -138,6 +168,8 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
             LinkConfigUpdate::SearchIdentifierUpdate {
                 link_search_identifier,
             } => Self {
+                name: None,
+                description: None,
                 transaction_rule_id: None,
                 confirmation_rule_id: None,
                 transaction_trigger: None,
@@ -148,6 +180,8 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
                 last_modified_at,
             },
             LinkConfigUpdate::PriorityUpdate { priority } => Self {
+                name: None,
+                description: None,
                 transaction_rule_id: None,
                 confirmation_rule_id: None,
                 transaction_trigger: None,
@@ -158,6 +192,8 @@ impl From<LinkConfigUpdate> for LinkConfigUpdateInternal {
                 last_modified_at,
             },
             LinkConfigUpdate::ActiveUpdate { is_active } => Self {
+                name: None,
+                description: None,
                 transaction_rule_id: None,
                 confirmation_rule_id: None,
                 transaction_trigger: None,

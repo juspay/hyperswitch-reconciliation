@@ -149,6 +149,8 @@ pub trait LinkConfigExt {
 impl LinkConfigExt for LinkConfig {
     fn to_api_response(self) -> GetLinkConfigResponse {
         GetLinkConfigResponse {
+            name: self.name,
+            description: self.description,
             link_config_id: self.id,
             profile_id: self.profile_id,
             account_id: self.account_id,

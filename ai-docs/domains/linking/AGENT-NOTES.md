@@ -62,7 +62,7 @@ Example stored trigger value for either config side (the API omits `trigger_vers
 - Profile ownership does not prove rule/account compatibility: validation does not check that either rule uses the config's account or has the intended processing side. Config authors must align these with the entries that will be processed.
 - API triggers and identifiers omit the storage tags `trigger_version` and `link_search_version`; conversion adds the V1 wrappers. Empty composite keys return 400; duplicate fields are accepted. Trigger validation checks non-empty groups and conditions, without restricting condition values. API priority is `u8` (0-255), although responses/storage use `i16`.
 - Priority validation checks all configs for the same profile/account and excludes the config being updated, so retaining its own priority is valid. A detected conflict returns HTTP 400 `LC_1904`. The database unique index also enforces uniqueness; a write-time conflict after the precheck follows the storage-error path and returns 500.
-- **A multi-field PUT is not atomic.** Validation runs first, then separate writes apply rule IDs, triggers, identifier, priority, and active status, in that order. A later storage failure can leave earlier changes applied; processing can observe intermediate configurations.
+- **A multi-field PUT is not atomic.** Validation runs first, then separate writes apply name/description, rule IDs, triggers, identifier, priority, and active status, in that order. A later storage failure can leave earlier changes applied; processing can observe intermediate configurations.
 - Omitted fields are preserved; `{}` returns the existing config without changing `last_modified_at`. Updates do not rebuild keys/links or requeue entries, so changing identifiers or rules can leave historical keys based on the previous config semantics.
 
 ## Matching Keys and Direction
@@ -162,6 +162,9 @@ There are two deliberate error paths, following the recon engine's separation be
 - Failed entries are not automatically retried; explicit enqueue resets their linking state to Pending while preserving existing keys and links.
 
 ## Storage and Migration Gotchas
+
+<!-- AI-UPDATED: 2026-11-17 - Link-config details migration and column ordering -->
+- Migration `2026-11-06-100100` adds required `name` (`VARCHAR(255)`) and `description` (`TEXT`) without defaults or backfill; it assumes `link_config` is empty. Keep these fields at the end of the `Queryable` model: `just test` regenerates the Diesel schema from PostgreSQL's physical column order, where added columns are appended. Manually moving schema fields after `id` hides a model-order mismatch until the next migration run.
 
 <!-- AI-UPDATED: 2026-11-04 - Separate flat Diesel and hierarchical domain linking status -->
 - `entry.linking_status` uses `DieselEntryLinkingStatus`: Pending, Processed, and six `Failed<Reason>` variants. `DomainEntryLinkingStatus` uses `Failed(EntryLinkingFailureReason)` and serializes as status/sub_status. Conversions are total in both directions; messages and missing-field details stay in versioned JSONB `linking_data`.
