@@ -22,6 +22,7 @@ use recon_interfaces::secrets_interface::{
     SecretManagementInterface, SecretsManagementError,
 };
 use serde::Deserialize;
+use std::result::Result as StdResult;
 
 type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 /// Configuration for local encryption
@@ -168,7 +169,7 @@ impl ApplicationEncryptionConfig {
     }
 
     /// Validates the encryption configuration
-    pub fn validate(&self) -> core::result::Result<(), String> {
+    pub fn validate(&self) -> StdResult<(), String> {
         match self {
             Self::LocalEncryption { local_encryption } => {
                 let key_str = local_encryption.master_key.peek().trim();

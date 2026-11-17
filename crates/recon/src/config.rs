@@ -6,7 +6,7 @@ use common_utils::{
     errors::{CryptoError, CustomResult},
 };
 use config::{Environment, File};
-use error_stack::ResultExt;
+use error_stack::{Report, ResultExt};
 use external_services::{
     faas::FaasConfig, file_storage::FileStorageConfig, secrets::SecretsManagementConfig,
     ApplicationEncryptionConfig, UserConfig,
@@ -19,7 +19,7 @@ use recon_interfaces::{
 };
 use serde::Deserialize;
 
-pub type ApplicationResult<T> = Result<T, error_stack::Report<ReconAppError>>;
+pub type ApplicationResult<T> = Result<T, Report<ReconAppError>>;
 
 #[derive(clap::Parser, Default)]
 pub struct CmdLineConf {
@@ -64,22 +64,22 @@ impl DatabaseConfig {
 
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.username.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database username must not be empty".into(),
             )));
         }
         if self.password.peek().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database password must not be empty".into(),
             )));
         }
         if self.host.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database host must not be empty".into(),
             )));
         }
         if self.dbname.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database name must not be empty".into(),
             )));
         }
@@ -109,12 +109,12 @@ impl Default for ServerConfig {
 impl ServerConfig {
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.host.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Server host must not be empty".into(),
             )));
         }
         if self.workers == 0 {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Server workers must be greater than 0".into(),
             )));
         }
@@ -160,7 +160,7 @@ impl ApiKeysConfig {
     /// Emptiness only: this runs before decryption, when the value is ciphertext under KMS.
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.hash_key.peek().trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "api_keys.hash_key must not be empty".into(),
             )));
         }
@@ -176,7 +176,7 @@ impl ApiKeysConfig {
 impl AuthConfig {
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.internal_api_key.peek().trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "auth.internal_api_key must not be empty".into(),
             )));
         }
@@ -225,17 +225,17 @@ impl ReportConfig {
 
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.transaction_report_function.trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "report.transaction_report_function must not be empty".into(),
             )));
         }
         if self.exception_report_function.trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "report.exception_report_function must not be empty".into(),
             )));
         }
         if self.transaction_flow_report_function.trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "report.transaction_flow_report_function must not be empty".into(),
             )));
         }
@@ -307,11 +307,11 @@ impl Config<SecuredSecret> {
         self.application_encryption
             .get_inner()
             .validate()
-            .map_err(|message| error_stack::Report::new(ReconAppError::ValidationError(message)))?;
+            .map_err(|message| Report::new(ReconAppError::ValidationError(message)))?;
         self.user_client
             .get_inner()
             .validate()
-            .map_err(|message| error_stack::Report::new(ReconAppError::ValidationError(message)))?;
+            .map_err(|message| Report::new(ReconAppError::ValidationError(message)))?;
         self.reporting_service.validate()?;
         Ok(())
     }
