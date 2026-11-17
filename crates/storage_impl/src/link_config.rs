@@ -5,13 +5,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait LinkConfigInterface {
-    async fn insert_link_config(&self, link_config: LinkConfigNew) -> StorageResult<LinkConfig>;
-
+pub trait LinkConfigReadInterface {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
@@ -24,13 +21,6 @@ pub trait LinkConfigInterface {
         link_config_id: &str,
     ) -> StorageResult<LinkConfig>;
 
-    async fn update_link_config_by_profile_id_and_link_config_id(
-        &self,
-        profile_id: &str,
-        link_config_id: &str,
-        update: LinkConfigUpdate,
-    ) -> StorageResult<LinkConfig>;
-
     async fn list_active_link_configs_by_acc_rule_profile(
         &self,
         account_id: &str,
@@ -41,7 +31,19 @@ pub trait LinkConfigInterface {
 }
 
 #[async_trait]
-impl LinkConfigInterface for Store {
+pub trait LinkConfigWriteInterface {
+    async fn insert_link_config(&self, link_config: LinkConfigNew) -> StorageResult<LinkConfig>;
+
+    async fn update_link_config_by_profile_id_and_link_config_id(
+        &self,
+        profile_id: &str,
+        link_config_id: &str,
+        update: LinkConfigUpdate,
+    ) -> StorageResult<LinkConfig>;
+}
+
+#[async_trait]
+impl<T: DatabaseRead> LinkConfigReadInterface for T {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
@@ -60,6 +62,23 @@ impl LinkConfigInterface for Store {
         LinkConfig::find_by_profile_id_and_link_config_id(&conn, profile_id, link_config_id).await
     }
 
+    async fn list_active_link_configs_by_acc_rule_profile(
+        &self,
+        account_id: &str,
+        rule_id: &str,
+        profile_id: &str,
+        link_side: &EntryLinkSide,
+    ) -> StorageResult<Vec<LinkConfig>> {
+        let conn = self.read_conn().await?;
+        LinkConfig::list_active_by_acc_rule_profile(
+            &conn, account_id, rule_id, profile_id, link_side,
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> LinkConfigWriteInterface for T {
     async fn update_link_config_by_profile_id_and_link_config_id(
         &self,
         profile_id: &str,
@@ -79,19 +98,5 @@ impl LinkConfigInterface for Store {
     async fn insert_link_config(&self, link_config: LinkConfigNew) -> StorageResult<LinkConfig> {
         let conn = self.write_conn().await?;
         link_config.insert(&conn).await
-    }
-
-    async fn list_active_link_configs_by_acc_rule_profile(
-        &self,
-        account_id: &str,
-        rule_id: &str,
-        profile_id: &str,
-        link_side: &EntryLinkSide,
-    ) -> StorageResult<Vec<LinkConfig>> {
-        let conn = self.read_conn().await?;
-        LinkConfig::list_active_by_acc_rule_profile(
-            &conn, account_id, rule_id, profile_id, link_side,
-        )
-        .await
     }
 }

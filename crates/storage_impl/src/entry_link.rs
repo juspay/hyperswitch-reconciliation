@@ -1,11 +1,10 @@
 use async_trait::async_trait;
 use diesel_models::{entry::Entry, entry_link::EntryLink, StorageResult};
 
-use super::Store;
 use crate::database::connection::DatabaseRead;
 
 #[async_trait]
-pub trait EntryLinkInterface {
+pub trait EntryLinkReadInterface {
     async fn list_linked_entries_by_entry_id_and_profile_id(
         &self,
         entry_id: &str,
@@ -14,7 +13,7 @@ pub trait EntryLinkInterface {
 }
 
 #[async_trait]
-impl EntryLinkInterface for Store {
+impl<T: DatabaseRead> EntryLinkReadInterface for T {
     async fn list_linked_entries_by_entry_id_and_profile_id(
         &self,
         entry_id: &str,

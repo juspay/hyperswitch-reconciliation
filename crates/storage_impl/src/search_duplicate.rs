@@ -6,16 +6,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait SearchDuplicateInterface {
-    async fn insert_search_duplicate(
-        &self,
-        search_duplicate: SearchDuplicateNew,
-    ) -> StorageResult<SearchDuplicate>;
-
+pub trait SearchDuplicateReadInterface {
     async fn find_by_id(&self, search_duplicate_id: String) -> StorageResult<SearchDuplicate>;
 
     async fn list_by_staging_entry_id(
@@ -34,15 +28,15 @@ pub trait SearchDuplicateInterface {
 }
 
 #[async_trait]
-impl SearchDuplicateInterface for Store {
+pub trait SearchDuplicateWriteInterface {
     async fn insert_search_duplicate(
         &self,
         search_duplicate: SearchDuplicateNew,
-    ) -> StorageResult<SearchDuplicate> {
-        let conn = self.write_conn().await?;
-        search_duplicate.insert(&conn).await
-    }
+    ) -> StorageResult<SearchDuplicate>;
+}
 
+#[async_trait]
+impl<T: DatabaseRead> SearchDuplicateReadInterface for T {
     async fn find_by_id(&self, search_duplicate_id: String) -> StorageResult<SearchDuplicate> {
         let conn = self.read_conn().await?;
         SearchDuplicate::find_by_id(&conn, search_duplicate_id).await
@@ -73,5 +67,16 @@ impl SearchDuplicateInterface for Store {
             status,
         )
         .await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> SearchDuplicateWriteInterface for T {
+    async fn insert_search_duplicate(
+        &self,
+        search_duplicate: SearchDuplicateNew,
+    ) -> StorageResult<SearchDuplicate> {
+        let conn = self.write_conn().await?;
+        search_duplicate.insert(&conn).await
     }
 }

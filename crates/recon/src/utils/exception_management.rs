@@ -6,7 +6,7 @@ use common_types::amount::AmountType;
 use common_utils::auth::AuthContext;
 use diesel_models::{recon_rule::ReconRule, transaction::Transaction};
 use error_stack::ResultExt;
-use storage_impl::account::AccountInterface;
+use storage_impl::account::AccountReadInterface;
 
 use crate::{
     domain::{

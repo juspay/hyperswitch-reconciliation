@@ -7,16 +7,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait MetadataSchemaInterface {
-    async fn insert_metadata_schema(
-        &self,
-        metadata_schema: MetadataSchemaNew,
-    ) -> StorageResult<MetadataSchema>;
-
+pub trait MetadataSchemaReadInterface {
     async fn find_metadata_schema_by_id_and_profile_id(
         &self,
         id: &str,
@@ -34,6 +28,14 @@ pub trait MetadataSchemaInterface {
         profile_id: &str,
         filters: ListMetadataSchemasFilters,
     ) -> StorageResult<Vec<MetadataSchema>>;
+}
+
+#[async_trait]
+pub trait MetadataSchemaWriteInterface {
+    async fn insert_metadata_schema(
+        &self,
+        metadata_schema: MetadataSchemaNew,
+    ) -> StorageResult<MetadataSchema>;
 
     /// Create a new metadata schema version with incremented version number
     async fn create_new_metadata_schema_version(
@@ -50,15 +52,7 @@ pub trait MetadataSchemaInterface {
 }
 
 #[async_trait]
-impl MetadataSchemaInterface for Store {
-    async fn insert_metadata_schema(
-        &self,
-        metadata_schema: MetadataSchemaNew,
-    ) -> StorageResult<MetadataSchema> {
-        let conn = self.write_conn().await?;
-        metadata_schema.insert(&conn).await
-    }
-
+impl<T: DatabaseRead> MetadataSchemaReadInterface for T {
     async fn find_metadata_schema_by_id_and_profile_id(
         &self,
         id: &str,
@@ -84,6 +78,17 @@ impl MetadataSchemaInterface for Store {
     ) -> StorageResult<Vec<MetadataSchema>> {
         let conn = self.read_conn().await?;
         MetadataSchema::list_by_profile_id(&conn, profile_id, filters).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> MetadataSchemaWriteInterface for T {
+    async fn insert_metadata_schema(
+        &self,
+        metadata_schema: MetadataSchemaNew,
+    ) -> StorageResult<MetadataSchema> {
+        let conn = self.write_conn().await?;
+        metadata_schema.insert(&conn).await
     }
 
     async fn create_new_metadata_schema_version(

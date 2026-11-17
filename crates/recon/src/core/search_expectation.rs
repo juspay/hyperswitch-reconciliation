@@ -6,7 +6,7 @@ use recon_domain_models::{
     behaviour::ReverseConversion, search_expectation::DomainSearchExpectation,
 };
 use storage_impl::{
-    search_expectation::SearchExpectationInterface, transaction::TransactionReadInterface,
+    search_expectation::SearchExpectationReadInterface, transaction::TransactionReadInterface,
 };
 
 use crate::{

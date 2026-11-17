@@ -5,7 +5,6 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 pub struct SearchCriteria {
@@ -15,12 +14,7 @@ pub struct SearchCriteria {
 }
 
 #[async_trait]
-pub trait SearchExpectationInterface {
-    async fn insert_search_expectation(
-        &self,
-        search_expectation: SearchExpectationNew,
-    ) -> StorageResult<SearchExpectation>;
-
+pub trait SearchExpectationReadInterface {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchExpectation>;
 
     async fn list_by_target_account_id_rule_id_target_key_hashed_source_value(
@@ -37,12 +31,6 @@ pub trait SearchExpectationInterface {
         search_criteria: Vec<SearchCriteria>,
     ) -> StorageResult<Vec<SearchExpectation>>;
 
-    async fn batch_update_status_by_primary_transaction_ids(
-        &self,
-        primary_transaction_ids: Vec<String>,
-        search_expectation_update: SearchExpectationUpdate,
-    ) -> StorageResult<Vec<SearchExpectation>>;
-
     async fn find_expected_expectations_by_primary_transaction_id_and_target_account_id(
         &self,
         primary_transaction_id: &str,
@@ -56,15 +44,21 @@ pub trait SearchExpectationInterface {
 }
 
 #[async_trait]
-impl SearchExpectationInterface for Store {
+pub trait SearchExpectationWriteInterface {
     async fn insert_search_expectation(
         &self,
         search_expectation: SearchExpectationNew,
-    ) -> StorageResult<SearchExpectation> {
-        let conn = self.write_conn().await?;
-        search_expectation.insert(&conn).await
-    }
+    ) -> StorageResult<SearchExpectation>;
 
+    async fn batch_update_status_by_primary_transaction_ids(
+        &self,
+        primary_transaction_ids: Vec<String>,
+        search_expectation_update: SearchExpectationUpdate,
+    ) -> StorageResult<Vec<SearchExpectation>>;
+}
+
+#[async_trait]
+impl<T: DatabaseRead> SearchExpectationReadInterface for T {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchExpectation> {
         let conn = self.read_conn().await?;
         SearchExpectation::find_by_id(&conn, id.to_string()).await
@@ -113,21 +107,6 @@ impl SearchExpectationInterface for Store {
         .await
     }
 
-    async fn batch_update_status_by_primary_transaction_ids(
-        &self,
-        primary_transaction_ids: Vec<String>,
-        search_expectation_update: SearchExpectationUpdate,
-    ) -> StorageResult<Vec<SearchExpectation>> {
-        let conn = self.write_conn().await?;
-        let search_expectation_update_internal = search_expectation_update.into();
-        SearchExpectation::batch_update_status_by_primary_transaction_ids(
-            &conn,
-            primary_transaction_ids,
-            search_expectation_update_internal,
-        )
-        .await
-    }
-
     async fn find_expected_expectations_by_primary_transaction_id_and_target_account_id(
         &self,
         primary_transaction_id: &str,
@@ -149,5 +128,31 @@ impl SearchExpectationInterface for Store {
         let conn = self.read_conn().await?;
         SearchExpectation::list_expected_by_primary_transaction_id(&conn, primary_transaction_id)
             .await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> SearchExpectationWriteInterface for T {
+    async fn insert_search_expectation(
+        &self,
+        search_expectation: SearchExpectationNew,
+    ) -> StorageResult<SearchExpectation> {
+        let conn = self.write_conn().await?;
+        search_expectation.insert(&conn).await
+    }
+
+    async fn batch_update_status_by_primary_transaction_ids(
+        &self,
+        primary_transaction_ids: Vec<String>,
+        search_expectation_update: SearchExpectationUpdate,
+    ) -> StorageResult<Vec<SearchExpectation>> {
+        let conn = self.write_conn().await?;
+        let search_expectation_update_internal = search_expectation_update.into();
+        SearchExpectation::batch_update_status_by_primary_transaction_ids(
+            &conn,
+            primary_transaction_ids,
+            search_expectation_update_internal,
+        )
+        .await
     }
 }

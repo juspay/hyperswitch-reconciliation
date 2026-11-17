@@ -34,8 +34,8 @@ use futures::future;
 use masking::ExposeInterface;
 use recon_domain_models::{behaviour::ReverseConversion, staging_entry::DomainStagingEntry};
 use storage_impl::{
-    account::AccountInterface, metadata_schema::MetadataSchemaInterface,
-    transformation::TransformationConfigInterface,
+    account::AccountReadInterface, metadata_schema::MetadataSchemaReadInterface,
+    transformation::TransformationConfigReadInterface,
 };
 
 use crate::{

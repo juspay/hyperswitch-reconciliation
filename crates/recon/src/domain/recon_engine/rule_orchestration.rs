@@ -9,8 +9,8 @@ use recon_domain_models::{
     staging_entry::DomainStagingEntry,
 };
 use storage_impl::{
-    recon_rule::ReconRuleInterface, recon_rule_account::ReconRuleAccountInterface,
-    search_expectation::SearchExpectationInterface,
+    recon_rule::ReconRuleReadInterface, recon_rule_account::ReconRuleAccountReadInterface,
+    search_expectation::SearchExpectationReadInterface,
 };
 
 use crate::{

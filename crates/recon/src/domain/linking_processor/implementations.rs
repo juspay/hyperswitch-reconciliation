@@ -14,7 +14,7 @@ use masking::Secret;
 use recon_domain_models::entry::DomainEntry;
 use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::search_entry_link_key::{
-    SearchEntryLinkKeyInterface, SearchEntryLinkSearchCriteria,
+    SearchEntryLinkKeyReadInterface, SearchEntryLinkSearchCriteria,
 };
 
 use crate::{

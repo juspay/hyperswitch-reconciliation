@@ -1,4 +1,4 @@
-use storage_impl::account::AccountInterface;
+use storage_impl::account::AccountReadInterface;
 
 use crate::{
     errors::{ReconRuleError, ReconRuleResult},

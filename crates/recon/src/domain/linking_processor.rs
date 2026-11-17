@@ -20,8 +20,9 @@ use storage_impl::database::connection::DatabaseWrite;
 use thiserror::Error;
 
 use storage_impl::{
-    metadata_schema::MetadataSchemaInterface, search_entry_link_key::SearchEntryLinkSearchCriteria,
-    transaction::TransactionReadInterface, transformation::TransformationConfigInterface,
+    metadata_schema::MetadataSchemaReadInterface,
+    search_entry_link_key::SearchEntryLinkSearchCriteria, transaction::TransactionReadInterface,
+    transformation::TransformationConfigReadInterface,
 };
 
 use crate::{

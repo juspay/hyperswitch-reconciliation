@@ -6,7 +6,7 @@ use common_utils::{api_key::PlaintextApiKey, auth::AuthContext, date_time};
 use diesel_models::api_key::{ApiKeyNew, ApiKeyUpdate};
 use error_stack::ResultExt;
 use masking::StrongSecret;
-use storage_impl::api_key::ApiKeyInterface;
+use storage_impl::api_key::{ApiKeyReadInterface, ApiKeyWriteInterface};
 
 use crate::{
     env,

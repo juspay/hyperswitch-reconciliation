@@ -27,10 +27,7 @@ use error_stack::ResultExt;
 use futures::future;
 use time::PrimitiveDateTime;
 
-use crate::database::{
-    connection::{DatabaseRead, DatabaseWrite},
-    store::Store,
-};
+use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
 pub trait TransactionReadInterface {
@@ -277,8 +274,9 @@ impl<T: DatabaseRead> TransactionReadInterface for T {
     }
 }
 
+/// Any store that can hand out write connections can write transactions.
 #[async_trait]
-impl TransactionWriteInterface for Store {
+impl<T: DatabaseWrite> TransactionWriteInterface for T {
     async fn insert_transaction(&self, transaction: TransactionNew) -> StorageResult<Transaction> {
         let conn = self.write_conn().await?;
         transaction.insert(&conn).await

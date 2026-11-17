@@ -5,16 +5,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait MerchantAccountInterface {
-    async fn insert_merchant_account(
-        &self,
-        merchant_account: MerchantAccountNew,
-    ) -> StorageResult<MerchantAccount>;
-
+pub trait MerchantAccountReadInterface {
     async fn find_merchant_account_by_id(
         &self,
         merchant_id: &MerchantId,
@@ -22,16 +16,15 @@ pub trait MerchantAccountInterface {
 }
 
 #[async_trait]
-impl MerchantAccountInterface for Store {
+pub trait MerchantAccountWriteInterface {
     async fn insert_merchant_account(
         &self,
         merchant_account: MerchantAccountNew,
-    ) -> StorageResult<MerchantAccount> {
-        let conn = self.write_conn().await?;
+    ) -> StorageResult<MerchantAccount>;
+}
 
-        merchant_account.insert(&conn).await
-    }
-
+#[async_trait]
+impl<T: DatabaseRead> MerchantAccountReadInterface for T {
     async fn find_merchant_account_by_id(
         &self,
         merchant_id: &MerchantId,
@@ -39,5 +32,17 @@ impl MerchantAccountInterface for Store {
         let conn = self.read_conn().await?;
 
         MerchantAccount::find_by_merchant_id(&conn, merchant_id).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> MerchantAccountWriteInterface for T {
+    async fn insert_merchant_account(
+        &self,
+        merchant_account: MerchantAccountNew,
+    ) -> StorageResult<MerchantAccount> {
+        let conn = self.write_conn().await?;
+
+        merchant_account.insert(&conn).await
     }
 }

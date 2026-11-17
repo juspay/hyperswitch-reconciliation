@@ -49,11 +49,11 @@ use recon_domain_models::{
     ApplicationEncryptionInterface, EncryptionHandler,
 };
 use storage_impl::{
-    account::AccountInterface,
+    account::AccountReadInterface,
     database::connection::DatabaseWrite,
-    entry::EntryInterface,
+    entry::EntryReadInterface,
     search_expectation::SearchCriteria,
-    search_group::SearchGroupInterface,
+    search_group::SearchGroupReadInterface,
     transaction::{TransactionReadInterface, TransactionWriteInterface},
 };
 

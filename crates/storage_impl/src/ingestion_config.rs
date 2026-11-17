@@ -7,16 +7,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait IngestionConfigInterface {
-    async fn insert_ingestion_config(
-        &self,
-        ingestion_config: IngestionConfigNew,
-    ) -> StorageResult<IngestionConfig>;
-
+pub trait IngestionConfigReadInterface {
     async fn find_ingestion_config_by_id(
         &self,
         ingestion_id: &str,
@@ -33,6 +27,14 @@ pub trait IngestionConfigInterface {
         profile_id: &str,
         filters: ListIngestionConfigsFilters,
     ) -> StorageResult<Vec<IngestionConfig>>;
+}
+
+#[async_trait]
+pub trait IngestionConfigWriteInterface {
+    async fn insert_ingestion_config(
+        &self,
+        ingestion_config: IngestionConfigNew,
+    ) -> StorageResult<IngestionConfig>;
 
     async fn update_ingestion_config_by_id(
         &self,
@@ -42,15 +44,7 @@ pub trait IngestionConfigInterface {
 }
 
 #[async_trait]
-impl IngestionConfigInterface for Store {
-    async fn insert_ingestion_config(
-        &self,
-        ingestion_config: IngestionConfigNew,
-    ) -> StorageResult<IngestionConfig> {
-        let conn = self.write_conn().await?;
-        IngestionConfig::insert(&conn, ingestion_config).await
-    }
-
+impl<T: DatabaseRead> IngestionConfigReadInterface for T {
     async fn find_ingestion_config_by_id(
         &self,
         ingestion_id: &str,
@@ -75,6 +69,17 @@ impl IngestionConfigInterface for Store {
     ) -> StorageResult<Vec<IngestionConfig>> {
         let conn = self.read_conn().await?;
         IngestionConfig::list_by_profile_id(&conn, profile_id, filters).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> IngestionConfigWriteInterface for T {
+    async fn insert_ingestion_config(
+        &self,
+        ingestion_config: IngestionConfigNew,
+    ) -> StorageResult<IngestionConfig> {
+        let conn = self.write_conn().await?;
+        IngestionConfig::insert(&conn, ingestion_config).await
     }
 
     async fn update_ingestion_config_by_id(

@@ -22,10 +22,13 @@ use diesel_models::{
 use error_stack::ResultExt;
 use futures::future;
 use storage_impl::{
-    account::AccountInterface,
-    ingestion_config::IngestionConfigInterface,
-    metadata_schema::MetadataSchemaInterface,
-    transformation::{TransformationConfigInterface, TransformationHistoryInterface},
+    account::AccountReadInterface,
+    ingestion_config::IngestionConfigReadInterface,
+    metadata_schema::{MetadataSchemaReadInterface, MetadataSchemaWriteInterface},
+    transformation::{
+        TransformationConfigReadInterface, TransformationConfigWriteInterface,
+        TransformationHistoryReadInterface, TransformationHistoryWriteInterface,
+    },
 };
 
 use crate::{

@@ -9,16 +9,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait IngestionHistoryInterface {
-    async fn insert_ingestion_history(
-        &self,
-        ingestion_history: IngestionHistoryNew,
-    ) -> StorageResult<IngestionHistory>;
-
+pub trait IngestionHistoryReadInterface {
     async fn find_ingestion_history_by_id_and_profile(
         &self,
         id: &str,
@@ -43,17 +37,25 @@ pub trait IngestionHistoryInterface {
         limit: Option<i64>,
     ) -> StorageResult<Vec<IngestionHistory>>;
 
-    async fn update_ingestion_history_by_id(
-        &self,
-        id: &str,
-        update: IngestionHistoryUpdate,
-    ) -> StorageResult<IngestionHistory>;
-
     async fn list_history_with_config_by_profile_id(
         &self,
         profile_id: &str,
         filters: ListIngestionHistoryFilters,
     ) -> StorageResult<Vec<IngestionConfigHistoryView>>;
+}
+
+#[async_trait]
+pub trait IngestionHistoryWriteInterface {
+    async fn insert_ingestion_history(
+        &self,
+        ingestion_history: IngestionHistoryNew,
+    ) -> StorageResult<IngestionHistory>;
+
+    async fn update_ingestion_history_by_id(
+        &self,
+        id: &str,
+        update: IngestionHistoryUpdate,
+    ) -> StorageResult<IngestionHistory>;
 
     /// Create a new ingestion history version and discard the previous version atomically
     async fn create_ingestion_history_version_and_discard_previous(
@@ -64,15 +66,7 @@ pub trait IngestionHistoryInterface {
 }
 
 #[async_trait]
-impl IngestionHistoryInterface for Store {
-    async fn insert_ingestion_history(
-        &self,
-        ingestion_history: IngestionHistoryNew,
-    ) -> StorageResult<IngestionHistory> {
-        let conn = self.write_conn().await?;
-        ingestion_history.insert(&conn).await
-    }
-
+impl<T: DatabaseRead> IngestionHistoryReadInterface for T {
     async fn find_ingestion_history_by_id_and_profile(
         &self,
         id: &str,
@@ -109,6 +103,26 @@ impl IngestionHistoryInterface for Store {
         IngestionHistory::list_by_ingestion_id(&conn, ingestion_id, limit).await
     }
 
+    async fn list_history_with_config_by_profile_id(
+        &self,
+        profile_id: &str,
+        filters: ListIngestionHistoryFilters,
+    ) -> StorageResult<Vec<IngestionConfigHistoryView>> {
+        let conn = self.read_conn().await?;
+        IngestionHistory::list_config_and_history_by_profile_id(&conn, profile_id, filters).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> IngestionHistoryWriteInterface for T {
+    async fn insert_ingestion_history(
+        &self,
+        ingestion_history: IngestionHistoryNew,
+    ) -> StorageResult<IngestionHistory> {
+        let conn = self.write_conn().await?;
+        ingestion_history.insert(&conn).await
+    }
+
     async fn update_ingestion_history_by_id(
         &self,
         id: &str,
@@ -117,15 +131,6 @@ impl IngestionHistoryInterface for Store {
         let conn = self.write_conn().await?;
         let update_internal = IngestionHistoryUpdateInternal::from(update);
         IngestionHistory::update_by_id(&conn, id, update_internal).await
-    }
-
-    async fn list_history_with_config_by_profile_id(
-        &self,
-        profile_id: &str,
-        filters: ListIngestionHistoryFilters,
-    ) -> StorageResult<Vec<IngestionConfigHistoryView>> {
-        let conn = self.read_conn().await?;
-        IngestionHistory::list_config_and_history_by_profile_id(&conn, profile_id, filters).await
     }
 
     async fn create_ingestion_history_version_and_discard_previous(

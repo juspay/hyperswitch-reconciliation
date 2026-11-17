@@ -21,7 +21,7 @@ use recon_domain_models::{
 };
 use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::{
-    metadata_schema::MetadataSchemaInterface, transformation::TransformationConfigInterface,
+    metadata_schema::MetadataSchemaReadInterface, transformation::TransformationConfigReadInterface,
 };
 use thiserror::Error;
 

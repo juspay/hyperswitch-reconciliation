@@ -7,7 +7,6 @@ use diesel_models::{
 };
 use masking::{PeekInterface, Secret};
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[derive(Clone, Debug)]
@@ -20,13 +19,7 @@ pub struct SearchEntryLinkSearchCriteria {
 }
 
 #[async_trait]
-pub trait SearchEntryLinkKeyInterface {
-    async fn bulk_update_search_entry_link_keys_by_ids(
-        &self,
-        ids: Vec<String>,
-        search_entry_link_key_update: SearchEntryLinkKeyUpdate,
-    ) -> StorageResult<Vec<SearchEntryLinkKey>>;
-
+pub trait SearchEntryLinkKeyReadInterface {
     async fn list_search_entry_link_keys_for_linking(
         &self,
         search_criteria: &SearchEntryLinkSearchCriteria,
@@ -34,17 +27,16 @@ pub trait SearchEntryLinkKeyInterface {
 }
 
 #[async_trait]
-impl SearchEntryLinkKeyInterface for Store {
+pub trait SearchEntryLinkKeyWriteInterface {
     async fn bulk_update_search_entry_link_keys_by_ids(
         &self,
         ids: Vec<String>,
         search_entry_link_key_update: SearchEntryLinkKeyUpdate,
-    ) -> StorageResult<Vec<SearchEntryLinkKey>> {
-        let conn = self.write_conn().await?;
-        SearchEntryLinkKey::bulk_update_by_ids(&conn, ids, search_entry_link_key_update.into())
-            .await
-    }
+    ) -> StorageResult<Vec<SearchEntryLinkKey>>;
+}
 
+#[async_trait]
+impl<T: DatabaseRead> SearchEntryLinkKeyReadInterface for T {
     async fn list_search_entry_link_keys_for_linking(
         &self,
         search_criteria: &SearchEntryLinkSearchCriteria,
@@ -59,5 +51,18 @@ impl SearchEntryLinkKeyInterface for Store {
             search_criteria.statuses.to_vec(),
         )
         .await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> SearchEntryLinkKeyWriteInterface for T {
+    async fn bulk_update_search_entry_link_keys_by_ids(
+        &self,
+        ids: Vec<String>,
+        search_entry_link_key_update: SearchEntryLinkKeyUpdate,
+    ) -> StorageResult<Vec<SearchEntryLinkKey>> {
+        let conn = self.write_conn().await?;
+        SearchEntryLinkKey::bulk_update_by_ids(&conn, ids, search_entry_link_key_update.into())
+            .await
     }
 }

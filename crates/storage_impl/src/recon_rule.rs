@@ -8,33 +8,41 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait ReconRuleInterface {
-    async fn insert_recon_rule(&self, recon_rule: ReconRuleNew) -> StorageResult<ReconRule>;
+pub trait ReconRuleReadInterface {
     async fn find_recon_rule_by_id(&self, rule_id: &str) -> StorageResult<ReconRule>;
+
     async fn find_recon_rule_by_profile_id_and_rule_id(
         &self,
         profile_id: &str,
         rule_id: &str,
     ) -> StorageResult<ReconRule>;
+
     async fn list_recon_rules_by_profile_id(
         &self,
         profile_id: &str,
         is_active: Option<bool>,
     ) -> StorageResult<Vec<ReconRule>>;
-    async fn create_recon_rule_with_sources_and_targets(
-        &self,
-        recon_rule: ReconRuleNew,
-        accounts: Vec<ReconRuleAccountNew>,
-    ) -> StorageResult<(ReconRule, Vec<ReconRuleAccount>)>;
+
     async fn list_recon_rules_by_ids(
         &self,
         profile_id: &str,
         rule_ids: Vec<String>,
     ) -> StorageResult<Vec<ReconRule>>;
+}
+
+#[async_trait]
+pub trait ReconRuleWriteInterface {
+    async fn insert_recon_rule(&self, recon_rule: ReconRuleNew) -> StorageResult<ReconRule>;
+
+    async fn create_recon_rule_with_sources_and_targets(
+        &self,
+        recon_rule: ReconRuleNew,
+        accounts: Vec<ReconRuleAccountNew>,
+    ) -> StorageResult<(ReconRule, Vec<ReconRuleAccount>)>;
+
     async fn update_recon_rule_by_id(
         &self,
         rule_id: &str,
@@ -43,12 +51,7 @@ pub trait ReconRuleInterface {
 }
 
 #[async_trait]
-impl ReconRuleInterface for Store {
-    async fn insert_recon_rule(&self, recon_rule: ReconRuleNew) -> StorageResult<ReconRule> {
-        let conn = self.write_conn().await?;
-        recon_rule.insert(&conn).await
-    }
-
+impl<T: DatabaseRead> ReconRuleReadInterface for T {
     async fn find_recon_rule_by_id(&self, rule_id: &str) -> StorageResult<ReconRule> {
         let conn = self.read_conn().await?;
         ReconRule::find_by_rule_id(&conn, rule_id).await
@@ -70,6 +73,23 @@ impl ReconRuleInterface for Store {
     ) -> StorageResult<Vec<ReconRule>> {
         let conn = self.read_conn().await?;
         ReconRule::list_by_profile_id(&conn, profile_id, is_active).await
+    }
+
+    async fn list_recon_rules_by_ids(
+        &self,
+        profile_id: &str,
+        rule_ids: Vec<String>,
+    ) -> StorageResult<Vec<ReconRule>> {
+        let conn = self.read_conn().await?;
+        ReconRule::list_by_rule_ids(&conn, profile_id, rule_ids).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> ReconRuleWriteInterface for T {
+    async fn insert_recon_rule(&self, recon_rule: ReconRuleNew) -> StorageResult<ReconRule> {
+        let conn = self.write_conn().await?;
+        recon_rule.insert(&conn).await
     }
 
     async fn create_recon_rule_with_sources_and_targets(
@@ -101,15 +121,6 @@ impl ReconRuleInterface for Store {
         .await
         .change_context(DatabaseError::Others)
         .attach("Failed to create recon rule with sources and targets in transaction")
-    }
-
-    async fn list_recon_rules_by_ids(
-        &self,
-        profile_id: &str,
-        rule_ids: Vec<String>,
-    ) -> StorageResult<Vec<ReconRule>> {
-        let conn = self.read_conn().await?;
-        ReconRule::list_by_rule_ids(&conn, profile_id, rule_ids).await
     }
 
     async fn update_recon_rule_by_id(

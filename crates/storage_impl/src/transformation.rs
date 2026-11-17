@@ -17,16 +17,10 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait TransformationConfigInterface {
-    async fn insert_transformation_config(
-        &self,
-        transformation_config: TransformationConfigNew,
-    ) -> StorageResult<TransformationConfig>;
-
+pub trait TransformationConfigReadInterface {
     async fn find_transformation_config_by_id_and_profile_id(
         &self,
         id: &str,
@@ -51,6 +45,14 @@ pub trait TransformationConfigInterface {
         ingestion_id: &str,
         is_active: Option<bool>,
     ) -> StorageResult<Vec<TransformationConfig>>;
+}
+
+#[async_trait]
+pub trait TransformationConfigWriteInterface {
+    async fn insert_transformation_config(
+        &self,
+        transformation_config: TransformationConfigNew,
+    ) -> StorageResult<TransformationConfig>;
 
     // Create transformation config with metadata schema in transaction
     async fn insert_transformation_config_with_metadata_schema(
@@ -67,23 +69,12 @@ pub trait TransformationConfigInterface {
 }
 
 #[async_trait]
-pub trait TransformationHistoryInterface {
-    async fn insert_transformation_history(
-        &self,
-        transformation_history: TransformationHistoryNew,
-    ) -> StorageResult<TransformationHistory>;
-
+pub trait TransformationHistoryReadInterface {
     async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<TransformationConfigHistoryView>;
-
-    async fn update_transformation_history_by_id(
-        &self,
-        id: &str,
-        update: TransformationHistoryUpdate,
-    ) -> StorageResult<TransformationHistory>;
 
     async fn list_history_with_config_by_profile_id(
         &self,
@@ -99,15 +90,21 @@ pub trait TransformationHistoryInterface {
 }
 
 #[async_trait]
-impl TransformationConfigInterface for Store {
-    async fn insert_transformation_config(
+pub trait TransformationHistoryWriteInterface {
+    async fn insert_transformation_history(
         &self,
-        transformation_config: TransformationConfigNew,
-    ) -> StorageResult<TransformationConfig> {
-        let conn = self.write_conn().await?;
-        transformation_config.insert(&conn).await
-    }
+        transformation_history: TransformationHistoryNew,
+    ) -> StorageResult<TransformationHistory>;
 
+    async fn update_transformation_history_by_id(
+        &self,
+        id: &str,
+        update: TransformationHistoryUpdate,
+    ) -> StorageResult<TransformationHistory>;
+}
+
+#[async_trait]
+impl<T: DatabaseRead> TransformationConfigReadInterface for T {
     async fn find_transformation_config_by_id_and_profile_id(
         &self,
         id: &str,
@@ -142,6 +139,17 @@ impl TransformationConfigInterface for Store {
     ) -> StorageResult<Vec<TransformationConfig>> {
         let conn = self.read_conn().await?;
         TransformationConfig::list_by_ingestion_id(&conn, ingestion_id, is_active).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> TransformationConfigWriteInterface for T {
+    async fn insert_transformation_config(
+        &self,
+        transformation_config: TransformationConfigNew,
+    ) -> StorageResult<TransformationConfig> {
+        let conn = self.write_conn().await?;
+        transformation_config.insert(&conn).await
     }
 
     async fn insert_transformation_config_with_metadata_schema(
@@ -190,15 +198,7 @@ impl TransformationConfigInterface for Store {
 }
 
 #[async_trait]
-impl TransformationHistoryInterface for Store {
-    async fn insert_transformation_history(
-        &self,
-        transformation_history: TransformationHistoryNew,
-    ) -> StorageResult<TransformationHistory> {
-        let conn = self.write_conn().await?;
-        transformation_history.insert(&conn).await
-    }
-
+impl<T: DatabaseRead> TransformationHistoryReadInterface for T {
     async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
@@ -207,15 +207,6 @@ impl TransformationHistoryInterface for Store {
         let conn = self.read_conn().await?;
         TransformationHistory::find_config_and_history_by_id_and_profile(&conn, id, profile_id)
             .await
-    }
-
-    async fn update_transformation_history_by_id(
-        &self,
-        id: &str,
-        update: TransformationHistoryUpdate,
-    ) -> StorageResult<TransformationHistory> {
-        let conn = self.write_conn().await?;
-        TransformationHistory::update_by_id(&conn, id, update.into()).await
     }
 
     async fn list_history_with_config_by_profile_id(
@@ -235,5 +226,25 @@ impl TransformationHistoryInterface for Store {
     ) -> StorageResult<Vec<TransformationHistory>> {
         let conn = self.read_conn().await?;
         TransformationHistory::list_by_transformation_id(&conn, transformation_id, limit).await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> TransformationHistoryWriteInterface for T {
+    async fn insert_transformation_history(
+        &self,
+        transformation_history: TransformationHistoryNew,
+    ) -> StorageResult<TransformationHistory> {
+        let conn = self.write_conn().await?;
+        transformation_history.insert(&conn).await
+    }
+
+    async fn update_transformation_history_by_id(
+        &self,
+        id: &str,
+        update: TransformationHistoryUpdate,
+    ) -> StorageResult<TransformationHistory> {
+        let conn = self.write_conn().await?;
+        TransformationHistory::update_by_id(&conn, id, update.into()).await
     }
 }

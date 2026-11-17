@@ -1,6 +1,8 @@
 use storage_impl::{
-    account::AccountInterface, business_profile::BusinessProfileReadInterface,
-    ingestion_config::IngestionConfigInterface, ingestion_history::IngestionHistoryInterface,
+    account::AccountReadInterface,
+    business_profile::BusinessProfileReadInterface,
+    ingestion_config::{IngestionConfigReadInterface, IngestionConfigWriteInterface},
+    ingestion_history::{IngestionHistoryReadInterface, IngestionHistoryWriteInterface},
 };
 
 use crate::{

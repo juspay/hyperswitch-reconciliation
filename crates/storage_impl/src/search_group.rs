@@ -4,19 +4,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
 use crate::database::connection::{DatabaseRead, DatabaseWrite};
 
 #[async_trait]
-pub trait SearchGroupInterface {
-    async fn insert_search_group(&self, search_group: SearchGroupNew)
-        -> StorageResult<SearchGroup>;
-
-    async fn batch_insert_search_groups(
-        &self,
-        search_groups: Vec<SearchGroupNew>,
-    ) -> StorageResult<Vec<SearchGroup>>;
-
+pub trait SearchGroupReadInterface {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchGroup>;
 
     async fn find_by_id_and_profile_id(
@@ -36,6 +27,17 @@ pub trait SearchGroupInterface {
         primary_transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<SearchGroup>>;
+}
+
+#[async_trait]
+pub trait SearchGroupWriteInterface {
+    async fn insert_search_group(&self, search_group: SearchGroupNew)
+        -> StorageResult<SearchGroup>;
+
+    async fn batch_insert_search_groups(
+        &self,
+        search_groups: Vec<SearchGroupNew>,
+    ) -> StorageResult<Vec<SearchGroup>>;
 
     async fn discard_by_id(
         &self,
@@ -45,23 +47,7 @@ pub trait SearchGroupInterface {
 }
 
 #[async_trait]
-impl SearchGroupInterface for Store {
-    async fn insert_search_group(
-        &self,
-        search_group: SearchGroupNew,
-    ) -> StorageResult<SearchGroup> {
-        let conn = self.write_conn().await?;
-        search_group.insert(&conn).await
-    }
-
-    async fn batch_insert_search_groups(
-        &self,
-        search_groups: Vec<SearchGroupNew>,
-    ) -> StorageResult<Vec<SearchGroup>> {
-        let conn = self.write_conn().await?;
-        SearchGroupNew::batch_insert(search_groups, &conn).await
-    }
-
+impl<T: DatabaseRead> SearchGroupReadInterface for T {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchGroup> {
         let conn = self.read_conn().await?;
         SearchGroup::find_by_id(&conn, id.to_string()).await
@@ -98,6 +84,25 @@ impl SearchGroupInterface for Store {
             profile_id,
         )
         .await
+    }
+}
+
+#[async_trait]
+impl<T: DatabaseWrite> SearchGroupWriteInterface for T {
+    async fn insert_search_group(
+        &self,
+        search_group: SearchGroupNew,
+    ) -> StorageResult<SearchGroup> {
+        let conn = self.write_conn().await?;
+        search_group.insert(&conn).await
+    }
+
+    async fn batch_insert_search_groups(
+        &self,
+        search_groups: Vec<SearchGroupNew>,
+    ) -> StorageResult<Vec<SearchGroup>> {
+        let conn = self.write_conn().await?;
+        SearchGroupNew::batch_insert(search_groups, &conn).await
     }
 
     async fn discard_by_id(

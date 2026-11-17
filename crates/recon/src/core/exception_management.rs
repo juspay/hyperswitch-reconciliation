@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use storage_impl::{
     database::connection::DatabaseWrite,
-    metadata_schema::MetadataSchemaInterface,
-    recon_rule::ReconRuleInterface,
+    metadata_schema::MetadataSchemaReadInterface,
+    recon_rule::ReconRuleReadInterface,
     transaction::{TransactionReadInterface, TransactionWriteInterface},
-    transformation::TransformationConfigInterface,
+    transformation::TransformationConfigReadInterface,
 };
 
 use crate::{
