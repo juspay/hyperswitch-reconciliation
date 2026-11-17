@@ -13,39 +13,27 @@ use crate::scheduler::interfaces::SchedulerError;
 
 type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
-/// Configuration for scheduler backends
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(tag = "scheduler_backend")]
 #[serde(rename_all = "snake_case")]
 pub enum SchedulerConfig {
-    /// Logs and returns success - local and CI default
     #[default]
     Noop,
-    /// Invokr
     Invokr {
-        /// Invokr specific configuration
         invokr: InvokrConfig,
     },
 }
 
-/// Invokr configuration
 #[derive(Debug, Clone, Deserialize)]
 pub struct InvokrConfig {
-    /// Invokr API base URL, including any path prefix
     pub base_url: String,
-    /// Recon's own static API token (an entry in Invokr's `INVOKR_API_STATIC_TOKENS`),
-    /// sent as a Bearer token. Not the legacy shared `INVOKR_API_KEY`
     pub api_token: Secret<String>,
-    /// Sent as `X-Org-Id`
     pub org_id: String,
-    /// Sent as `X-Workspace-Id`
     pub workspace_id: String,
-    /// Per-request timeout, defaults to 30s
     pub request_timeout_secs: Option<u64>,
 }
 
 impl InvokrConfig {
-    /// Validates the Invokr configuration
     pub fn validate(&self) -> Result<(), SchedulerError> {
         let invalid = |message: String| {
             error_stack::Report::new(SchedulerError::ConfigurationError).attach(message)
@@ -67,7 +55,6 @@ impl InvokrConfig {
 }
 
 impl SchedulerConfig {
-    /// Validates the scheduler configuration
     pub fn validate(&self) -> Result<(), SchedulerError> {
         match self {
             Self::Invokr { invokr } => invokr.validate(),
@@ -82,21 +69,21 @@ impl SecretsHandler for SchedulerConfig {
         value: SecretStateContainer<Self, SecuredSecret>,
         secret_management_client: &dyn SecretManagementInterface,
     ) -> Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
-        match value.get_inner() {
-            Self::Noop => Ok(value.transition_state(|_| Self::Noop)),
-            Self::Invokr { invokr } => {
-                let api_token = secret_management_client
-                    .get_secret(invokr.api_token.clone())
-                    .await?;
-                let invokr = invokr.clone();
+        let Self::Invokr { invokr } = value.get_inner() else {
+            return Ok(value.transition_state(|config| config));
+        };
+        let api_token = secret_management_client
+            .get_secret(invokr.api_token.clone())
+            .await?;
 
-                Ok(value.transition_state(|_| Self::Invokr {
-                    invokr: InvokrConfig {
-                        api_token: Secret::new(api_token.peek().clone()),
-                        ..invokr
-                    },
-                }))
-            }
-        }
+        Ok(value.transition_state(|config| match config {
+            Self::Invokr { invokr } => Self::Invokr {
+                invokr: InvokrConfig {
+                    api_token,
+                    ..invokr
+                },
+            },
+            Self::Noop => Self::Noop,
+        }))
     }
 }

@@ -126,7 +126,7 @@ pub async fn initialize_server(
 
     // Create scheduler client
     let scheduler = SchedulerHandler::from_config(config.scheduler.get_inner())
-        .map_err(|e| format!("Failed to create scheduler client: {e}"))?;
+        .map_err(|e| format!("Failed to create scheduler client: {e:?}"))?;
 
     // Create SFTP file storage handler for ingestion
     let sftp_file_storage =

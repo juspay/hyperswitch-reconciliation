@@ -1,20 +1,18 @@
-//! No-op scheduler implementation - local and CI, where no Invokr is running
+//! No-op scheduler for local and CI, where no Invokr is running
 
 use async_trait::async_trait;
-type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 use crate::scheduler::interfaces::{JobRequest, SchedulerError, SchedulerInterface};
 
-/// Job id returned by the noop backend
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
+
 pub const NOOP_JOB_ID: &str = "noop_job";
 
-/// No-op scheduler client
 #[derive(Debug, Clone, Default)]
 pub struct NoopSchedulerClient;
 
 #[async_trait]
 impl SchedulerInterface for NoopSchedulerClient {
-    /// Returns a fixed placeholder id, since no job exists
     async fn create_job(&self, request: JobRequest) -> Result<String, SchedulerError> {
         tracing::info!(
             endpoint = request.endpoint,

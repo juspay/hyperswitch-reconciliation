@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use aws_smithy_types::{Document, Number};
-type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 use invokr_sdk::{
     config::{retry::RetryConfig, timeout::TimeoutConfig, BehaviorVersion, Token},
     error::DisplayErrorContext,
@@ -19,10 +18,10 @@ use crate::scheduler::{
     interfaces::{JobRequest, JobTrigger, SchedulerError, SchedulerInterface},
 };
 
-/// Falls back to this when `request_timeout_secs` is unset
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
+
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
 
-/// Invokr scheduling client
 #[derive(Debug, Clone)]
 pub struct InvokrClient {
     client: InvokrSdkClient,
@@ -31,8 +30,6 @@ pub struct InvokrClient {
 }
 
 impl InvokrClient {
-    /// Builds the SDK client once - its connection pool is reused across calls.
-    /// Expects a config already checked by `SchedulerConfig::validate`
     pub fn new(config: &InvokrConfig) -> Self {
         let timeout = Duration::from_secs(
             config
@@ -44,8 +41,8 @@ impl InvokrClient {
             .endpoint_url(config.base_url.clone())
             .bearer_token(Token::new(config.api_token.peek().clone(), None))
             .timeout_config(TimeoutConfig::builder().operation_timeout(timeout).build())
-            // An IMMEDIATE job created without an idempotency key gets a fresh one
-            // server side, so an SDK-level retry could create the job twice.
+            // Invokr gives a job without an idempotency key a fresh one, so a retry
+            // could create the job twice.
             .retry_config(RetryConfig::disabled())
             .build();
 
@@ -80,9 +77,15 @@ impl SchedulerInterface for InvokrClient {
 
         let builder = match request.trigger {
             JobTrigger::Immediate => builder.trigger(TriggerTypeEnum::Immediate),
-            JobTrigger::Delayed { run_at } => builder
-                .trigger(TriggerTypeEnum::Delayed)
-                .run_at(DateTime::from_secs(run_at.assume_utc().unix_timestamp())),
+            JobTrigger::Delayed { run_at } => {
+                let run_at = run_at.assume_utc();
+                builder
+                    .trigger(TriggerTypeEnum::Delayed)
+                    .run_at(DateTime::from_secs_and_nanos(
+                        run_at.unix_timestamp(),
+                        run_at.nanosecond(),
+                    ))
+            }
             JobTrigger::Cron {
                 expression,
                 timezone,
@@ -92,8 +95,7 @@ impl SchedulerInterface for InvokrClient {
                 .timezone(timezone),
         };
 
-        // `DisplayErrorContext` unwraps the SDK's source chain - without it every
-        // failure prints as a bare "service error".
+        // Without `DisplayErrorContext`, every SDK error prints as "service error".
         let output = builder.send().await.map_err(|err| {
             error_stack::Report::new(SchedulerError::JobCreationFailed).attach(format!(
                 "Invokr create job failed: {}: {}",
