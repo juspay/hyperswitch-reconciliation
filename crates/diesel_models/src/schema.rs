@@ -191,8 +191,6 @@ diesel::table! {
     link_config (id) {
         #[max_length = 64]
         id -> Varchar,
-        name -> Text,
-        description -> Text,
         #[max_length = 64]
         profile_id -> Varchar,
         #[max_length = 64]
@@ -208,6 +206,9 @@ diesel::table! {
         is_active -> Bool,
         created_at -> Timestamp,
         last_modified_at -> Timestamp,
+        #[max_length = 255]
+        name -> Varchar,
+        description -> Text,
     }
 }
 

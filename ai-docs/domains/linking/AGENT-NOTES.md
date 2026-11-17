@@ -164,7 +164,7 @@ There are two deliberate error paths, following the recon engine's separation be
 ## Storage and Migration Gotchas
 
 <!-- AI-UPDATED: 2026-11-17 - Link-config details migration and column ordering -->
-- Migration `2026-11-06-100100` adds required `name` and `description` without defaults or backfill; it assumes `link_config` is empty. The checked-in Diesel schema and `Queryable` model place these fields after `id`, unlike PostgreSQL's appended physical columns. Schema regeneration must keep the model in the same order as the schema declaration.
+- Migration `2026-11-06-100100` adds required `name` (`VARCHAR(255)`) and `description` (`TEXT`) without defaults or backfill; it assumes `link_config` is empty. Keep these fields at the end of the `Queryable` model: `just test` regenerates the Diesel schema from PostgreSQL's physical column order, where added columns are appended. Manually moving schema fields after `id` hides a model-order mismatch until the next migration run.
 
 <!-- AI-UPDATED: 2026-11-04 - Separate flat Diesel and hierarchical domain linking status -->
 - `entry.linking_status` uses `DieselEntryLinkingStatus`: Pending, Processed, and six `Failed<Reason>` variants. `DomainEntryLinkingStatus` uses `Failed(EntryLinkingFailureReason)` and serializes as status/sub_status. Conversions are total in both directions; messages and missing-field details stay in versioned JSONB `linking_data`.

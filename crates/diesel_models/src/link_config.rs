@@ -10,8 +10,6 @@ use time::PrimitiveDateTime;
 #[diesel(table_name = link_config)]
 pub struct LinkConfig {
     pub id: String,
-    pub name: String,
-    pub description: String,
     pub profile_id: String,
     pub account_id: String,
     pub transaction_rule_id: String,
@@ -23,6 +21,8 @@ pub struct LinkConfig {
     pub is_active: bool,
     pub created_at: PrimitiveDateTime,
     pub last_modified_at: PrimitiveDateTime,
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Clone, Debug, Insertable)]
