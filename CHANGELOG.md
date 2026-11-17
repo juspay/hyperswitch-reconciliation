@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.17.0
+
+### Features
+
+- **link-config:** Add name and description fields ([#50](https://github.com/juspay/hyperswitch-reconciliation/pull/50)) ([`cec5294`](https://github.com/juspay/hyperswitch-reconciliation/commit/cec52941db3bce21af013e2db379be0fd8e31560))
+
+**Full Changelog:** [`2026.11.16.0...2026.11.17.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.16.0...2026.11.17.0)
+
+- - -
+
 ## 2026.11.16.0
 
 ### Features
