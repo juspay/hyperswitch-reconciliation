@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 # First party deps
 api_models = { version = "0.1.0", path = "../api_models" }
-common_utils = { version = "0.1.0", path = "../common_utils", features = ["async_ext"] }
+common_utils = { version = "0.1.0", path = "../common_utils" }
 common_enums = { version = "0.1.0", path = "../common_enums" }
 common_types = { version = "0.1.0", path = "../common_types" }
 diesel_models = { version = "0.1.0", path = "../diesel_models" }

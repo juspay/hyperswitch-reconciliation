@@ -207,12 +207,14 @@ impl Default for IngestionServiceConfig {
 pub enum ReportType {
     Transaction,
     Exception,
+    TransactionFlow,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ReportConfig {
     pub transaction_report_function: String,
     pub exception_report_function: String,
+    pub transaction_flow_report_function: String,
 }
 
 impl ReportConfig {
@@ -220,6 +222,7 @@ impl ReportConfig {
         match report_type {
             ReportType::Transaction => &self.transaction_report_function,
             ReportType::Exception => &self.exception_report_function,
+            ReportType::TransactionFlow => &self.transaction_flow_report_function,
         }
     }
 
@@ -232,6 +235,11 @@ impl ReportConfig {
         if self.exception_report_function.trim().is_empty() {
             return Err(error_stack::Report::from(ReconAppError::ValidationError(
                 "report.exception_report_function must not be empty".into(),
+            )));
+        }
+        if self.transaction_flow_report_function.trim().is_empty() {
+            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+                "report.transaction_flow_report_function must not be empty".into(),
             )));
         }
         Ok(())

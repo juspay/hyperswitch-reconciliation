@@ -46,7 +46,7 @@ Quick reference for implementation patterns. Read the full pattern file when imp
 
 - **ERROR-HANDLING.md** - Handle errors with proper context
   - When: Any operation that can fail
-  - Key: change_context, to_not_found_response, custom errors
+  - Key: change_context, to_not_found_response, custom errors, error code blocks
 
 - **TESTING.md** - Write integration tests
   - When: Testing any new functionality

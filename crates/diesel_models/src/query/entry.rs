@@ -10,7 +10,7 @@ use crate::{
     errors::DatabaseError,
     query::generics,
     schema::{
-        account::{self},
+        account,
         entry::{self, dsl},
     },
     search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},

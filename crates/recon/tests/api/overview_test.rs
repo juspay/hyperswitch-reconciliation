@@ -17,7 +17,7 @@ use api_models::{
     },
     recon_rule::aging_config::{AgingConfigApiRequest, ThresholdApiRequest},
     staging_entry::{
-        ApiStagingEntryCoarseStatus, GetStagingEntryResponse, StagingEntryCreateRequest,
+        ApiStagingEntryStatus, GetStagingEntryResponse, StagingEntryCreateRequest,
         VoidStagingEntryRequest,
     },
     transaction::{
@@ -871,17 +871,21 @@ async fn staging_entries_summary_groups_by_account() {
         .unwrap();
     assert_eq!(touched.account_name, "Staging Overview Account A");
     assert_eq!(touched.account_type, BalanceDirection::Debit);
-    // The coarse breakdown carries only the umbrella statuses, and Archived is excluded from the
-    // breakdown entirely (superseded versions aren't counted).
-    assert_eq!(touched.status_breakdown.len(), 4);
+    // One row per granular status, so every manual-review reason gets its own row, and Archived is
+    // excluded from the breakdown entirely (superseded versions aren't counted).
+    assert_eq!(touched.status_breakdown.len(), 13);
+    assert_eq!(
+        serde_json::to_value(&touched.status_breakdown).unwrap(),
+        serde_json::to_value(&touched.detailed_status_breakdown).unwrap()
+    );
     assert!(touched
         .status_breakdown
         .iter()
-        .all(|status_amount| status_amount.status != ApiStagingEntryCoarseStatus::Archived));
+        .all(|status_amount| status_amount.status != ApiStagingEntryStatus::Archived));
     let status_amount = touched
         .status_breakdown
         .iter()
-        .find(|status_amount| status_amount.status == ApiStagingEntryCoarseStatus::Pending)
+        .find(|status_amount| status_amount.status == ApiStagingEntryStatus::Pending)
         .unwrap();
     assert_eq!(status_amount.count, 1);
     assert_eq!(status_amount.debit_amount.value, FloatMajorUnit::new(100.0));
@@ -977,13 +981,13 @@ async fn staging_entries_summary_excludes_archived() {
     assert!(account
         .status_breakdown
         .iter()
-        .all(|status_amount| status_amount.status != ApiStagingEntryCoarseStatus::Archived));
+        .all(|status_amount| status_amount.status != ApiStagingEntryStatus::Archived));
 
     // The Void version is still counted normally.
     let void_count = account
         .status_breakdown
         .iter()
-        .find(|status_amount| status_amount.status == ApiStagingEntryCoarseStatus::Void)
+        .find(|status_amount| status_amount.status == ApiStagingEntryStatus::Void)
         .map(|status_amount| status_amount.count)
         .unwrap_or_default();
     assert_eq!(void_count, 1);
@@ -1102,7 +1106,7 @@ async fn staging_entries_summary_filters_by_account_ids_and_transformation_histo
     let matched_count = matched_account
         .status_breakdown
         .iter()
-        .find(|status_amount| status_amount.status == ApiStagingEntryCoarseStatus::Pending)
+        .find(|status_amount| status_amount.status == ApiStagingEntryStatus::Pending)
         .map(|status_amount| status_amount.count)
         .unwrap_or_default();
     assert_eq!(matched_count, 1);
@@ -1201,7 +1205,7 @@ async fn staging_entries_summary_transformation_history_ids_narrows_within_accou
     let count = account
         .status_breakdown
         .iter()
-        .find(|status_amount| status_amount.status == ApiStagingEntryCoarseStatus::Pending)
+        .find(|status_amount| status_amount.status == ApiStagingEntryStatus::Pending)
         .map(|status_amount| status_amount.count)
         .unwrap_or_default();
     assert_eq!(count, 1);
@@ -1242,7 +1246,7 @@ async fn staging_entries_summary_transformation_history_ids_narrows_within_accou
     let count = account
         .status_breakdown
         .iter()
-        .find(|status_amount| status_amount.status == ApiStagingEntryCoarseStatus::Pending)
+        .find(|status_amount| status_amount.status == ApiStagingEntryStatus::Pending)
         .map(|status_amount| status_amount.count)
         .unwrap_or_default();
     assert_eq!(count, 2);

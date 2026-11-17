@@ -25,8 +25,8 @@ use api_models::{
     },
     search_entry_key::{SearchEntryKeyListRequest, SearchEntryKeyResponse},
     staging_entry::{
-        ApiStagingEntryCoarseStatus, ApiStagingEntryListFiltersV2, ApiStagingEntryStatus,
-        GetStagingEntryResponse, StagingEntryCreateRequest,
+        ApiStagingEntryListFiltersV2, ApiStagingEntryStatus, GetStagingEntryResponse,
+        StagingEntryCreateRequest,
     },
     transaction::{
         ApiTransactionFilterStatus, ApiTransactionListFiltersV2, ApiTransactionStatus,
@@ -62,6 +62,7 @@ use masking::Secret;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
+use strum::IntoEnumIterator;
 use uuid;
 // Local test fixtures
 fn direct_transaction_entry(account_id: &str, amount: f64) -> DirectTransactionEntry {
@@ -1842,11 +1843,101 @@ async fn test_list_transactions_v2_rejects_invalid_filters() {
         .send()
         .await;
     assert_eq!(invalid_time_response.status(), 400);
+}
 
-    let unsupported_status_response = client
-        .post("/transactions/v2/list")
+struct VersionedTransactionsForV2Listing {
+    token: String,
+    superseded: GetTransactionResponse,
+    voided: GetTransactionResponse,
+    untouched: GetTransactionResponse,
+}
+
+async fn setup_versioned_transactions_for_v2_listing(
+    client: &crate::common::TestClient,
+) -> VersionedTransactionsForV2Listing {
+    let (token, debit_account, credit_account, rule_id) =
+        bootstrap_for_entry_cap(client, "v2_versioned_rule").await;
+    let effective_at = common_utils::date_time::now() - time::Duration::hours(1);
+
+    let superseded = create_transaction_for_v2_listing(
+        client,
+        &token,
+        &debit_account,
+        &credit_account,
+        &rule_id,
+        "v2_superseded_order",
+        effective_at,
+    )
+    .await;
+    let untouched = create_transaction_for_v2_listing(
+        client,
+        &token,
+        &debit_account,
+        &credit_account,
+        &rule_id,
+        "v2_untouched_order",
+        effective_at,
+    )
+    .await;
+
+    let void_response = client
+        .put(&format!("/transactions/{}/void", superseded.id))
         .with_auth(&token)
-        .json(&list_transactions_v2_request(
+        .json(&VoidTransactionRequest {
+            reason: Some("Supersede for v2 listing".to_string()),
+        })
+        .send()
+        .await;
+    assert_eq!(void_response.status(), 200);
+    let voided: GetTransactionResponse = void_response.json().await.unwrap();
+
+    VersionedTransactionsForV2Listing {
+        token,
+        superseded,
+        voided,
+        untouched,
+    }
+}
+
+fn sorted(mut ids: Vec<String>) -> Vec<String> {
+    ids.sort();
+    ids
+}
+
+#[actix_web::test]
+async fn test_list_transactions_v2_without_status_filter_includes_archived_versions() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_transactions_for_v2_listing(&client).await;
+
+    let page = list_all_transactions_v2(&client, &fixture.token).await;
+
+    assert_eq!(
+        sorted(transaction_ids(&page)),
+        sorted(vec![
+            fixture.superseded.id.clone(),
+            fixture.voided.id.clone(),
+            fixture.untouched.id.clone(),
+        ])
+    );
+    let archived = page
+        .items
+        .iter()
+        .find(|item| item.id == fixture.superseded.id)
+        .unwrap();
+    assert_eq!(archived.status, ApiTransactionStatus::Archived);
+}
+
+#[actix_web::test]
+async fn test_list_transactions_v2_filters_archived_status() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_transactions_for_v2_listing(&client).await;
+
+    let page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
             ApiTransactionListFiltersV2 {
                 status: Some(vec![ApiTransactionFilterStatus::Archived]),
                 ..Default::default()
@@ -1855,10 +1946,150 @@ async fn test_list_transactions_v2_rejects_invalid_filters() {
             Some(10),
             CursorDirection::Next,
             SortOrder::Desc,
-        ))
-        .send()
-        .await;
-    assert_eq!(unsupported_status_response.status(), 400);
+        ),
+    )
+    .await;
+
+    assert_eq!(transaction_ids(&page), vec![fixture.superseded.id]);
+    assert_eq!(page.items[0].status, ApiTransactionStatus::Archived);
+}
+
+#[actix_web::test]
+async fn test_list_transactions_v2_non_archived_statuses_return_one_version_per_transaction() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_transactions_for_v2_listing(&client).await;
+
+    let non_archived_statuses = ApiTransactionFilterStatus::iter()
+        .filter(|status| *status != ApiTransactionFilterStatus::Archived)
+        .collect();
+
+    let page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            ApiTransactionListFiltersV2 {
+                status: Some(non_archived_statuses),
+                ..Default::default()
+            },
+            TransactionListSortField::Id { id: None },
+            Some(10),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+
+    assert_eq!(
+        sorted(transaction_ids(&page)),
+        sorted(vec![fixture.voided.id, fixture.untouched.id])
+    );
+}
+
+#[actix_web::test]
+async fn test_list_transactions_v2_transaction_id_filter_returns_full_history() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_transactions_for_v2_listing(&client).await;
+
+    let page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            ApiTransactionListFiltersV2 {
+                transaction_id: Some(fixture.superseded.transaction_id.clone()),
+                ..Default::default()
+            },
+            TransactionListSortField::Version { cursor_value: None },
+            Some(10),
+            CursorDirection::Next,
+            SortOrder::Asc,
+        ),
+    )
+    .await;
+
+    let history: Vec<_> = page
+        .items
+        .iter()
+        .map(|item| (item.version, item.id.clone(), item.status.clone()))
+        .collect();
+    assert_eq!(
+        history,
+        vec![
+            (
+                fixture.superseded.version,
+                fixture.superseded.id,
+                ApiTransactionStatus::Archived
+            ),
+            (
+                fixture.voided.version,
+                fixture.voided.id,
+                ApiTransactionStatus::Void
+            ),
+        ]
+    );
+}
+
+#[actix_web::test]
+async fn test_list_transactions_v2_paginates_by_version_cursor() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let fixture = setup_versioned_transactions_for_v2_listing(&client).await;
+    let history_filter = ApiTransactionListFiltersV2 {
+        transaction_id: Some(fixture.superseded.transaction_id.clone()),
+        ..Default::default()
+    };
+
+    let first_page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            history_filter.clone(),
+            TransactionListSortField::Version { cursor_value: None },
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(
+        transaction_ids(&first_page),
+        vec![fixture.voided.id.clone()]
+    );
+    assert!(first_page.prev_cursor.is_none());
+
+    let second_page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            history_filter.clone(),
+            first_page
+                .next_cursor
+                .expect("first page should include a next cursor"),
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(transaction_ids(&second_page), vec![fixture.superseded.id]);
+    assert!(second_page.next_cursor.is_none());
+
+    let previous_page = list_transactions_v2(
+        &client,
+        &fixture.token,
+        list_transactions_v2_request(
+            history_filter,
+            second_page
+                .prev_cursor
+                .expect("second page should include a previous cursor"),
+            Some(1),
+            CursorDirection::Previous,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(transaction_ids(&previous_page), vec![fixture.voided.id]);
 }
 
 #[actix_web::test]
@@ -3665,7 +3896,9 @@ async fn test_search_duplicate_for_composite_unique_constraint() {
         .expect("duplicate composite-key entry should be NeedsManualReview/DuplicateEntry");
     assert_eq!(
         duplicate_entry.status,
-        ApiStagingEntryCoarseStatus::NeedsManualReview
+        ApiStagingEntryStatus::NeedsManualReview(Some(
+            StagingEntryManualReviewData::DuplicateEntry
+        ))
     );
     assert_eq!(
         duplicate_entry.detailed_status,

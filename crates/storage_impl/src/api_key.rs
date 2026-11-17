@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use common_utils::id_type::MerchantId;
 use diesel_models::{
-    api_key::{ApiKey, ApiKeyNew},
+    api_key::{ApiKey, ApiKeyNew, ApiKeyUpdate},
     StorageResult,
 };
 
@@ -16,6 +16,16 @@ pub trait ApiKeyInterface {
         &self,
         merchant_id: &MerchantId,
         api_key_id: &str,
+    ) -> StorageResult<ApiKey>;
+
+    /// Authentication lookup. Not scoped by merchant, so the caller must compare `merchant_id`.
+    async fn find_active_api_key_by_hash(&self, hashed_api_key: &str) -> StorageResult<ApiKey>;
+
+    async fn update_api_key(
+        &self,
+        merchant_id: &MerchantId,
+        api_key_id: &str,
+        update: ApiKeyUpdate,
     ) -> StorageResult<ApiKey>;
 
     /// Newest first.
@@ -41,6 +51,29 @@ impl ApiKeyInterface for Store {
         let conn = self.read_conn().await?;
 
         ApiKey::find_active_by_merchant_id_and_api_key_id(&conn, merchant_id, api_key_id).await
+    }
+
+    async fn find_active_api_key_by_hash(&self, hashed_api_key: &str) -> StorageResult<ApiKey> {
+        let conn = self.read_conn().await?;
+
+        ApiKey::find_active_by_hashed_api_key(&conn, hashed_api_key).await
+    }
+
+    async fn update_api_key(
+        &self,
+        merchant_id: &MerchantId,
+        api_key_id: &str,
+        update: ApiKeyUpdate,
+    ) -> StorageResult<ApiKey> {
+        let conn = self.write_conn().await?;
+
+        ApiKey::update_active_by_merchant_id_and_api_key_id(
+            &conn,
+            merchant_id,
+            api_key_id,
+            update.into(),
+        )
+        .await
     }
 
     async fn list_active_api_keys_by_merchant_id(

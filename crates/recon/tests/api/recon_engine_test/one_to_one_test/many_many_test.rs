@@ -1,4 +1,4 @@
-use api_models::staging_entry::ApiStagingEntryCoarseStatus;
+use api_models::staging_entry::ApiStagingEntryStatus;
 use api_models::transaction::ApiTransactionStatus;
 use common_enums::{BalanceDirection, EntryStatus, SearchGroupStatus, StagingEntryProcessingMode};
 use common_types::{
@@ -42,7 +42,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 100.00, BalanceDirection::Debit)
@@ -65,7 +65,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 100.00, BalanceDirection::Debit),
@@ -95,7 +95,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 50.00, BalanceDirection::Debit)
@@ -118,7 +118,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
@@ -142,7 +142,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
@@ -167,7 +167,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 30.00, BalanceDirection::Credit),
@@ -199,7 +199,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 100.00, BalanceDirection::Debit)
@@ -223,7 +223,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 25.00, BalanceDirection::Debit),
@@ -248,7 +248,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 25.00, BalanceDirection::Debit),
@@ -274,7 +274,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 25.00, BalanceDirection::Debit),
@@ -306,7 +306,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 40.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 40.00, BalanceDirection::Debit)
@@ -329,7 +329,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 40.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 60.00, BalanceDirection::Credit),
@@ -354,7 +354,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 40.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 60.00, BalanceDirection::Credit),
@@ -380,7 +380,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 40.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 60.00, BalanceDirection::Credit),
@@ -412,7 +412,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 30.00, BalanceDirection::Debit)
@@ -436,7 +436,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 50.00, BalanceDirection::Debit),
@@ -460,7 +460,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 30.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 20.00, BalanceDirection::Credit),
@@ -491,7 +491,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 60.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 60.00, BalanceDirection::Debit)
@@ -513,7 +513,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 60.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 40.00, BalanceDirection::Credit),
@@ -538,7 +538,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 60.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 40.00, BalanceDirection::Credit),
@@ -563,7 +563,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 60.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 40.00, BalanceDirection::Credit),
@@ -596,7 +596,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 50.00, BalanceDirection::Debit)
@@ -618,7 +618,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
@@ -643,7 +643,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
@@ -668,7 +668,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Credit),
@@ -701,7 +701,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 50.00, BalanceDirection::Debit)
@@ -723,7 +723,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
@@ -748,7 +748,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 50.00, BalanceDirection::Credit),
@@ -780,7 +780,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 100.00, BalanceDirection::Debit)
@@ -803,7 +803,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Debit),
@@ -827,7 +827,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 30.00, BalanceDirection::Debit),
@@ -853,7 +853,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 30.00, BalanceDirection::Debit),
@@ -885,7 +885,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 10.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 10.00, BalanceDirection::Debit)
@@ -907,7 +907,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 10.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 20.00, BalanceDirection::Credit),
@@ -932,7 +932,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 10.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 20.00, BalanceDirection::Credit),
@@ -957,7 +957,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 10.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 20.00, BalanceDirection::Credit),
@@ -984,7 +984,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 10.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 20.00, BalanceDirection::Credit),
@@ -1016,7 +1016,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Expected, 100.00, BalanceDirection::Debit)
@@ -1038,7 +1038,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 100.00, BalanceDirection::Debit),
@@ -1060,7 +1060,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Pending, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Pending, 100.00, BalanceDirection::Debit),
@@ -1084,7 +1084,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![
                     (EntryStatus::Matched, 100.00, BalanceDirection::Credit),
                     (EntryStatus::Matched, 20.00, BalanceDirection::Credit),
@@ -1114,7 +1114,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 40.00, BalanceDirection::Credit), (EntryStatus::Expected, 40.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_group_status(SearchGroupStatus::Active)
@@ -1130,7 +1130,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Transaction
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 40.00, BalanceDirection::Credit), (EntryStatus::Pending, 60.00, BalanceDirection::Credit), (EntryStatus::Expected, 100.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Expected)
                 .expected_search_group_status(SearchGroupStatus::Active)
@@ -1146,7 +1146,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Pending, 40.00, BalanceDirection::Credit), (EntryStatus::Pending, 60.00, BalanceDirection::Credit), (EntryStatus::Pending, 30.00, BalanceDirection::Debit), (EntryStatus::Expected, 70.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::UnderAmount(TransactionAmountMismatchData::Expected))
                 .expected_search_group_status(SearchGroupStatus::Active)
@@ -1162,7 +1162,7 @@ use crate::api::recon_engine_test::types::{
                 StagingEntryProcessingMode::Confirmation
             ),
             ReconTestEntryExpectedResultBuilder::new()
-                .expected_staging_entry_status(ApiStagingEntryCoarseStatus::Processed)
+                .expected_staging_entry_status(ApiStagingEntryStatus::Processed)
                 .expected_entries_data(vec![(EntryStatus::Matched, 40.00, BalanceDirection::Credit), (EntryStatus::Matched, 60.00, BalanceDirection::Credit), (EntryStatus::Matched, 30.00, BalanceDirection::Debit), (EntryStatus::Matched, 70.00, BalanceDirection::Debit)])
                 .expected_transaction_status(ApiTransactionStatus::Matched(TransactionMatchedData::Auto))
                 .expected_search_group_status(SearchGroupStatus::Active)

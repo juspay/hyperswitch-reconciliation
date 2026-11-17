@@ -1,4 +1,5 @@
 pub mod account;
+pub mod api_key;
 pub mod app_error;
 pub mod audit_trail;
 pub mod bulk_operations;

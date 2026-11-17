@@ -395,7 +395,6 @@ pub struct ApiTransactionListMetadataFilter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransactionListFilterValidationError {
     InvalidTimeRange,
-    UnsupportedStatus { status: ApiTransactionFilterStatus },
 }
 
 impl ApiTransactionListFiltersV2 {
@@ -404,17 +403,6 @@ impl ApiTransactionListFiltersV2 {
             time_range
                 .validate()
                 .map_err(|_| TransactionListFilterValidationError::InvalidTimeRange)?;
-        }
-
-        if let Some(statuses) = &self.status {
-            if let Some(status) = statuses
-                .iter()
-                .find(|status| matches!(status, ApiTransactionFilterStatus::Archived))
-            {
-                return Err(TransactionListFilterValidationError::UnsupportedStatus {
-                    status: *status,
-                });
-            }
         }
 
         Ok(())

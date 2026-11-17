@@ -98,7 +98,7 @@ pub async fn execute_staging_entry_bulk_operation(
                 &state,
                 unique_staging_entries,
                 reason,
-                Some(auth_context.user_id),
+                auth_context.user_id,
             )
             .await
         }
@@ -174,20 +174,15 @@ pub async fn execute_transaction_bulk_operation(
 
     results.extend(match request.action {
         TransactionBulkAction::Void { reason } => {
-            bulk_transaction_void_core(
-                &state,
-                unique_transactions,
-                reason,
-                Some(auth_context.user_id),
-            )
-            .await
+            bulk_transaction_void_core(&state, unique_transactions, reason, auth_context.user_id)
+                .await
         }
         TransactionBulkAction::ManualPost { reason } => {
             bulk_transaction_manual_post_core(
                 &state,
                 unique_transactions,
                 reason,
-                Some(auth_context.user_id),
+                auth_context.user_id,
             )
             .await
         }
