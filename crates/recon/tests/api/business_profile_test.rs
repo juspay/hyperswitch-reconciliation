@@ -1,17 +1,26 @@
 use crate::api::{
-    account_test::create_test_account, staging_entry_test::staging_entry_request,
+    account_test::create_test_account,
+    staging_entry_test::staging_entry_request,
+    transaction_test::{create_test_recon_rule, create_test_transaction},
     transformation_test::create_transformation_config,
 };
 use crate::common::TestApp;
 use api_models::{
     business_profile::{
         BusinessProfileCreateRequest, BusinessProfileResponse, BusinessProfileUpdateRequest,
-        ReconStatusResponse,
+        LinkingStatusResponse, ReconStatusResponse,
     },
+    entry::GetEntryResponse,
+    linking_processor::LinkingTriggerResponse,
     merchant_account::{MerchantAccountCreateRequest, MerchantAccountResponse},
+    recon_rule::aging_config::AgingConfigApiRequest,
+    transaction::ApiTransactionStatus,
 };
-use common_enums::{BalanceDirection, Currency, ReconProcessorStatus, StagingEntryProcessingMode};
-use common_types::timezone::Timezone;
+use common_enums::{
+    BalanceDirection, Currency, LinkingProcessorStatus, ReconProcessorStatus,
+    StagingEntryProcessingMode,
+};
+use common_types::{timezone::Timezone, transaction::status::TransactionMatchedData};
 use common_utils::crypto::Encryptable;
 use masking::{ExposeInterface, Secret};
 use pretty_assertions::assert_eq;
@@ -1027,6 +1036,145 @@ async fn test_get_recon_status() {
     let response = client
         .get(&format!(
             "/business_profiles/{profile_id}/recon_engine/status"
+        ))
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+}
+
+#[actix_web::test]
+async fn test_get_linking_status() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
+
+    // Fresh profile reports zero pending
+    let response = client
+        .get(&format!(
+            "/business_profiles/{profile_id}/linking_processor/status"
+        ))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let status: LinkingStatusResponse = client.expect_success(response).await;
+    assert_eq!(status.processor_status, LinkingProcessorStatus::Stopped);
+    assert_eq!(status.pending_entries, 0);
+
+    // New entries start pending
+    let source_account_id = create_test_account(
+        &client,
+        &token,
+        "Linking Status Source",
+        BalanceDirection::Debit,
+    )
+    .await;
+    let target_account_id = create_test_account(
+        &client,
+        &token,
+        "Linking Status Target",
+        BalanceDirection::Credit,
+    )
+    .await;
+    let rule_id = create_test_recon_rule(
+        &client,
+        &token,
+        "linking_status_rule",
+        source_account_id.clone(),
+        target_account_id.clone(),
+        AgingConfigApiRequest::NoAging,
+    )
+    .await;
+    let transaction = create_test_transaction(
+        &client,
+        &token,
+        &source_account_id,
+        &target_account_id,
+        &rule_id,
+        &merchant_id,
+        &profile_id,
+        ApiTransactionStatus::Matched(TransactionMatchedData::Auto),
+        None,
+    )
+    .await;
+
+    let response = client
+        .get(&format!(
+            "/business_profiles/{profile_id}/linking_processor/status"
+        ))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let status: LinkingStatusResponse = client.expect_success(response).await;
+    assert_eq!(status.pending_entries, 2);
+
+    // An entry whose linking failed is no longer counted
+    let response = client
+        .get(&format!(
+            "/transactions/{}/entries",
+            transaction.transaction_id
+        ))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let entries: Vec<GetEntryResponse> = client.expect_success(response).await;
+    let response = client
+        .post(&format!(
+            "/linking_processor/{}/process",
+            entries[0].entry_id
+        ))
+        .with_admin_key()
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let result: LinkingTriggerResponse = client.expect_success(response).await;
+    assert!(
+        matches!(result, LinkingTriggerResponse::Failure(_)),
+        "{result:?}"
+    );
+
+    let response = client
+        .get(&format!(
+            "/business_profiles/{profile_id}/linking_processor/status"
+        ))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let status: LinkingStatusResponse = client.expect_success(response).await;
+    assert_eq!(status.pending_entries, 1);
+
+    // Count is profile-scoped
+    let (_, other_profile_id, other_token) = client
+        .bootstrap("Other Test Merchant", "Other Test Profile")
+        .await;
+    let response = client
+        .get(&format!(
+            "/business_profiles/{other_profile_id}/linking_processor/status"
+        ))
+        .with_auth(&other_token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+    let status: LinkingStatusResponse = client.expect_success(response).await;
+    assert_eq!(status.pending_entries, 0);
+
+    // Accessing another profile's status is rejected
+    let response = client
+        .get(&format!(
+            "/business_profiles/{profile_id}/linking_processor/status"
+        ))
+        .with_auth(&other_token)
+        .send()
+        .await;
+    assert_eq!(response.status(), 401);
+
+    // Missing JWT is rejected
+    let response = client
+        .get(&format!(
+            "/business_profiles/{profile_id}/linking_processor/status"
         ))
         .send()
         .await;

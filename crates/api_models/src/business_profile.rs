@@ -1,4 +1,4 @@
-use common_enums::ReconProcessorStatus;
+use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
 use common_types::timezone::Timezone;
 use common_utils::crypto::EncryptableName;
 use common_utils::id_type::MerchantId;
@@ -35,4 +35,10 @@ pub struct BusinessProfileResponse {
 pub struct ReconStatusResponse {
     pub processor_status: ReconProcessorStatus,
     pub pending_staging_entries: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct LinkingStatusResponse {
+    pub processor_status: LinkingProcessorStatus,
+    pub pending_entries: u64,
 }
