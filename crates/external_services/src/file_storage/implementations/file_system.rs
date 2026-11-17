@@ -6,13 +6,15 @@ use std::{
 };
 
 use async_trait::async_trait;
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 use tokio::fs as async_fs;
 
 use crate::file_storage::{
     config::FileSystemConfig,
     interfaces::{FileStorageError, FileStorageInterface},
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// Local file system storage implementation
 #[derive(Debug, Clone)]
@@ -30,22 +32,20 @@ impl FileSystemStorage {
         if config.create_directories && !base_path.exists() {
             fs::create_dir_all(&base_path)
                 .change_context(FileStorageError::ConfigurationError)
-                .attach_printable_lazy(|| {
+                .attach_with(|| {
                     format!("Failed to create base directory: {}", base_path.display())
                 })?;
         }
 
         // Verify base path exists and is a directory
         if !base_path.exists() {
-            return Err(FileStorageError::ConfigurationError).attach_printable_lazy(|| {
-                format!("Base path does not exist: {}", base_path.display())
-            });
+            return Err(FileStorageError::ConfigurationError)
+                .attach_with(|| format!("Base path does not exist: {}", base_path.display()));
         }
 
         if !base_path.is_dir() {
-            return Err(FileStorageError::ConfigurationError).attach_printable_lazy(|| {
-                format!("Base path is not a directory: {}", base_path.display())
-            });
+            return Err(FileStorageError::ConfigurationError)
+                .attach_with(|| format!("Base path is not a directory: {}", base_path.display()));
         }
 
         Ok(Self {
@@ -58,14 +58,13 @@ impl FileSystemStorage {
     fn get_file_path(&self, file_key: &str) -> Result<PathBuf, FileStorageError> {
         // Validate file key
         if file_key.is_empty() {
-            return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key cannot be empty");
+            return Err(FileStorageError::InvalidFileKey).attach("File key cannot be empty");
         }
 
         // Prevent directory traversal attacks
         if file_key.contains("..") || file_key.starts_with('/') {
             return Err(FileStorageError::InvalidFileKey)
-                .attach_printable("File key contains invalid characters");
+                .attach("File key contains invalid characters");
         }
 
         let file_path = self.base_path.join(file_key);
@@ -79,7 +78,7 @@ impl FileSystemStorage {
         if let Ok(canonical_file) = file_path.canonicalize() {
             if !canonical_file.starts_with(&canonical_base) {
                 return Err(FileStorageError::InvalidFileKey)
-                    .attach_printable("File path is outside base directory");
+                    .attach("File path is outside base directory");
             }
         }
 
@@ -93,7 +92,7 @@ impl FileSystemStorage {
                 async_fs::create_dir_all(parent)
                     .await
                     .change_context(FileStorageError::UploadFailed)
-                    .attach_printable_lazy(|| {
+                    .attach_with(|| {
                         format!("Failed to create parent directory: {}", parent.display())
                     })?;
             }
@@ -118,7 +117,7 @@ impl FileStorageInterface for FileSystemStorage {
         async_fs::write(&file_path, file_data)
             .await
             .change_context(FileStorageError::UploadFailed)
-            .attach_printable_lazy(|| format!("Failed to write file: {}", file_path.display()))?;
+            .attach_with(|| format!("Failed to write file: {}", file_path.display()))?;
 
         Ok(())
     }
@@ -128,13 +127,13 @@ impl FileStorageInterface for FileSystemStorage {
 
         if !file_path.exists() {
             return Err(FileStorageError::FileNotFound)
-                .attach_printable_lazy(|| format!("File not found: {}", file_path.display()));
+                .attach_with(|| format!("File not found: {}", file_path.display()));
         }
 
         async_fs::read(&file_path)
             .await
             .change_context(FileStorageError::RetrieveFailed)
-            .attach_printable_lazy(|| format!("Failed to read file: {}", file_path.display()))
+            .attach_with(|| format!("Failed to read file: {}", file_path.display()))
     }
 
     async fn delete_file(&self, file_key: &str) -> Result<(), FileStorageError> {
@@ -142,13 +141,13 @@ impl FileStorageInterface for FileSystemStorage {
 
         if !file_path.exists() {
             return Err(FileStorageError::FileNotFound)
-                .attach_printable_lazy(|| format!("File not found: {}", file_path.display()));
+                .attach_with(|| format!("File not found: {}", file_path.display()));
         }
 
         async_fs::remove_file(&file_path)
             .await
             .change_context(FileStorageError::DeleteFailed)
-            .attach_printable_lazy(|| format!("Failed to delete file: {}", file_path.display()))?;
+            .attach_with(|| format!("Failed to delete file: {}", file_path.display()))?;
 
         Ok(())
     }

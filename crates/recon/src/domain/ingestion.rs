@@ -2,7 +2,7 @@ use actix_web::http::header::HeaderMap;
 use common_types::ingestion::{
     manual::ManualTriggerData, RawPayload, RawPayloadV1, TriggerData, TriggerDataV1,
 };
-use common_utils::errors::ReportSwitchExt;
+use common_utils::{errors::ReportSwitchExt, id_type::MerchantId};
 use error_stack::ResultExt;
 use masking::{PeekInterface, Secret};
 use recon_domain_models::{
@@ -149,6 +149,7 @@ impl IngestionContext {
             Self::SftpInternal(context) => Ok(FileDownloadContext::SftpInternal(
                 sftp_internal::SftpInternalFileDownloadContext {
                     file_path: context.config.file_path.clone(),
+                    merchant_id: context.merchant_id.clone(),
                 },
             )),
         }
@@ -163,6 +164,7 @@ pub trait IngestionConfigDataExt {
         raw_payload: serde_json::Value,
         headers: HeaderMap,
         internal_api_key: Secret<String>,
+        merchant_id: MerchantId,
         encryptor: &EncryptionHandler<impl ApplicationEncryptionInterface>,
     ) -> IngestionResult<IngestionContext>;
 
@@ -180,6 +182,7 @@ impl IngestionConfigDataExt for IngestionConfigData {
         raw_payload: serde_json::Value,
         headers: HeaderMap,
         internal_api_key: Secret<String>,
+        merchant_id: MerchantId,
         encryptor: &EncryptionHandler<impl ApplicationEncryptionInterface>,
     ) -> IngestionResult<IngestionContext> {
         match self {
@@ -211,6 +214,7 @@ impl IngestionConfigDataExt for IngestionConfigData {
                 Ok(IngestionContext::SftpInternal(Box::new(
                     sftp_internal::SftpInternalIngestionContext {
                         config: domain_config,
+                        merchant_id,
                         headers,
                         internal_api_key,
                     },

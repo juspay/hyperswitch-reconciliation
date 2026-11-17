@@ -2,13 +2,13 @@
 
 use std::sync::Arc;
 
-use error_stack::Result;
-
 use super::{
     config::FaasConfig,
     implementations::{AwsLambdaClient, NoopFaasClient},
     interfaces::{FaasError, FaasInterface},
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// Handler for FaaS invocations
 #[derive(Clone)]
@@ -20,7 +20,7 @@ impl FaasHandler {
     /// Creates a FaaS handler from configuration
     pub async fn from_config(config: &FaasConfig) -> Result<Self, FaasError> {
         config.validate().map_err(|validation_error| {
-            error_stack::report!(FaasError::ConfigurationError).attach_printable(validation_error)
+            error_stack::Report::new(FaasError::ConfigurationError).attach(validation_error)
         })?;
 
         let faas: Arc<dyn FaasInterface> = match config {

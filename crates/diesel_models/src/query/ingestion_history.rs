@@ -2,7 +2,6 @@ use async_bb8_diesel::AsyncRunQueryDsl;
 use common_types::ingestion::ListIngestionHistoryFilters;
 use common_utils::logging;
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error as DieselError};
-use error_stack::report;
 
 use crate::{
     errors,
@@ -54,9 +53,9 @@ impl IngestionHistory {
             .map(|(history, config)| IngestionConfigHistoryView { config, history })
             .map_err(|err| match err {
                 DieselError::NotFound => {
-                    report!(err).change_context(errors::DatabaseError::NotFound)
+                    error_stack::Report::new(err).change_context(errors::DatabaseError::NotFound)
                 }
-                _ => report!(err).change_context(errors::DatabaseError::Others),
+                _ => error_stack::Report::new(err).change_context(errors::DatabaseError::Others),
             })
     }
 
@@ -82,8 +81,8 @@ impl IngestionHistory {
         )
         .await
         .map_err(|err| {
-            report!(errors::DatabaseError::Others)
-                .attach_printable(format!("Error while listing ingestion history: {err}"))
+            error_stack::Report::new(errors::DatabaseError::Others)
+                .attach(format!("Error while listing ingestion history: {err}"))
         })
     }
 
@@ -110,7 +109,7 @@ impl IngestionHistory {
         )
         .await
         .map_err(|err| {
-            report!(errors::DatabaseError::Others).attach_printable(format!(
+            error_stack::Report::new(errors::DatabaseError::Others).attach(format!(
                 "Error while listing ingestion history by ingestion_id: {err}"
             ))
         })
@@ -166,8 +165,8 @@ impl IngestionHistory {
                     .collect()
             })
             .map_err(|err| {
-                report!(errors::DatabaseError::Others)
-                    .attach_printable(format!("Error while listing ingestion history: {err}"))
+                error_stack::Report::new(errors::DatabaseError::Others)
+                    .attach(format!("Error while listing ingestion history: {err}"))
             })
     }
 

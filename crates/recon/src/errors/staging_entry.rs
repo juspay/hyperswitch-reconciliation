@@ -46,9 +46,6 @@ pub enum StagingEntryError {
 
     #[error("Staging entry {id} cannot be voided in its current state")]
     StagingEntryNotVoidable { id: String },
-
-    #[error("Filtering by status '{status}' is not supported")]
-    UnsupportedStatusFilter { status: String },
 }
 
 // Type alias for cleaner function signatures
@@ -77,9 +74,6 @@ impl From<StagingEntryError> for ReconAppError {
                 Self::ValidationError(error.to_string())
             }
             StagingEntryError::StagingEntryNotVoidable { .. } => {
-                Self::ValidationError(error.to_string())
-            }
-            StagingEntryError::UnsupportedStatusFilter { .. } => {
                 Self::ValidationError(error.to_string())
             }
         }
@@ -162,14 +156,6 @@ impl ErrorSwitchFrom<StagingEntryError> for ApiErrorPayload {
                     None,
                 ))
             }
-            StagingEntryError::UnsupportedStatusFilter { status } => Self::BadRequest(
-                ApiError::new(
-                    "RE",
-                    411,
-                    format!("Filtering by status '{status}' is not supported"),
-                    None,
-                ),
-            ),
         }
     }
 }
@@ -179,16 +165,6 @@ impl ErrorSwitchFrom<StagingEntryListFilterValidationError> for StagingEntryErro
         match error {
             StagingEntryListFilterValidationError::InvalidTimeRange => {
                 Self::TimeRangeValidationError
-            }
-            StagingEntryListFilterValidationError::UnsupportedStatus { status } => {
-                Self::UnsupportedStatusFilter {
-                    status: status.to_string(),
-                }
-            }
-            StagingEntryListFilterValidationError::UnsupportedDetailedStatus { status } => {
-                Self::UnsupportedStatusFilter {
-                    status: status.to_string(),
-                }
             }
         }
     }

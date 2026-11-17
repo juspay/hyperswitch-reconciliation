@@ -23,22 +23,22 @@ impl ErrorSwitch<ApiErrorResponse> for ReportError {
         match self {
             Self::InternalServerError => ApiErrorResponse::InternalServerError(ApiError::new(
                 "RP",
-                1,
+                1801,
                 self.to_string(),
                 None,
             )),
             Self::TimeRangeValidationError => {
-                ApiErrorResponse::BadRequest(ApiError::new("RP", 2, self.to_string(), None))
+                ApiErrorResponse::BadRequest(ApiError::new("RP", 1802, self.to_string(), None))
             }
             Self::PayloadSerializationFailed => ApiErrorResponse::InternalServerError(
-                ApiError::new("RP", 3, self.to_string(), None),
+                ApiError::new("RP", 1803, self.to_string(), None),
             ),
             Self::RuleNotFound { .. } => {
-                ApiErrorResponse::NotFound(ApiError::new("RP", 4, self.to_string(), None))
+                ApiErrorResponse::NotFound(ApiError::new("RP", 1804, self.to_string(), None))
             }
             Self::LambdaInvocationFailed => ApiErrorResponse::InternalServerError(ApiError::new(
                 "RP",
-                5,
+                1805,
                 self.to_string(),
                 None,
             )),

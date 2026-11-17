@@ -31,6 +31,10 @@ jwt_expiry_hours = 24
 admin_api_key = "${ADMIN_API_KEY}"
 internal_api_key = "${INTERNAL_API_KEY}"
 
+# 64 hex chars (32 bytes). Required. Must differ per environment.
+[api_keys]
+hash_key = "${API_KEY_HASH_KEY}"
+
 [secrets_management]
 secrets_manager = "aws_kms" # Options: aws_kms, oci_kms, no_encryption
 
@@ -82,6 +86,7 @@ force_path_style = true
 [reporting_service]
 transaction_report_function = "recon-transactions-report"
 exception_report_function = "recon-exceptions-report"
+transaction_flow_report_function = "recon-transaction-flows-report"
 
 [proxy]
 https_url = "http://hyperswitch-outgoing-proxy-1f4d1706e4bc104d.elb.us-east-1.amazonaws.com:80"

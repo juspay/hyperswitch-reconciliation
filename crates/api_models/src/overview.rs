@@ -1,4 +1,4 @@
-use crate::staging_entry::{ApiStagingEntryCoarseStatus, ApiStagingEntryStatus};
+use crate::staging_entry::ApiStagingEntryStatus;
 use crate::transaction::ApiTransactionFilterStatus;
 use common_enums::{BalanceDirection, Granularity, ReconRuleAccountType};
 use common_types::{
@@ -100,17 +100,8 @@ impl StagingEntryOverviewFilters {
 /// One `(status, currency)` aggregate for a staging entry account.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct StagingEntryStatusAmount {
-    pub status: ApiStagingEntryCoarseStatus,
-    #[schema(example = 12)]
-    pub count: i64,
-    pub credit_amount: AmountResponse,
-    pub debit_amount: AmountResponse,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct StagingEntryDetailedStatusAmount {
     #[serde(flatten)]
-    pub detailed_status: ApiStagingEntryStatus,
+    pub status: ApiStagingEntryStatus,
     #[schema(example = 12)]
     pub count: i64,
     pub credit_amount: AmountResponse,
@@ -125,7 +116,7 @@ pub struct AccountStagingEntriesOverview {
     pub account_name: String,
     pub account_type: BalanceDirection,
     pub status_breakdown: Vec<StagingEntryStatusAmount>,
-    pub detailed_status_breakdown: Vec<StagingEntryDetailedStatusAmount>,
+    pub detailed_status_breakdown: Vec<StagingEntryStatusAmount>,
 }
 
 pub type StagingEntriesOverviewResponse = Vec<AccountStagingEntriesOverview>;

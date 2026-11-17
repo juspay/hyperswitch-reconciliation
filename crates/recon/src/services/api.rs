@@ -48,6 +48,9 @@ pub fn http_response_from_application<T: serde::Serialize>(
 ) -> HttpResponse {
     match response {
         ApplicationResponse::Json { data, status } => HttpResponse::build(status).json(data),
+        ApplicationResponse::JsonNoStore { data, status } => HttpResponse::build(status)
+            .insert_header((header::CACHE_CONTROL, "no-store"))
+            .json(data),
         ApplicationResponse::StatusOk => HttpResponse::Ok().finish(),
         ApplicationResponse::TextPlain(text) => {
             HttpResponse::Ok().content_type("text/plain").body(text)

@@ -8,6 +8,10 @@ pub enum ApplicationResponse<R> {
         data: R,
         status: StatusCode,
     },
+    JsonNoStore {
+        data: R,
+        status: StatusCode,
+    },
     StatusOk,
     TextPlain(String),
     FileDownload {
@@ -33,8 +37,15 @@ impl<R> ApplicationResponse<R> {
             status: StatusCode::CREATED,
         }
     }
+
+    pub fn json_created_no_store(data: R) -> Self {
+        Self::JsonNoStore {
+            data,
+            status: StatusCode::CREATED,
+        }
+    }
 }
 
 // Type alias for our responses
 pub type ReconResponse<T> =
-    error_stack::Result<ApplicationResponse<T>, crate::errors::ReconAppError>;
+    Result<ApplicationResponse<T>, error_stack::Report<crate::errors::ReconAppError>>;

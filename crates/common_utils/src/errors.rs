@@ -25,8 +25,8 @@ pub trait ReportSwitchExt<T, U> {
 
 impl<T, U, V> ReportSwitchExt<T, U> for Result<T, error_stack::Report<V>>
 where
-    V: ErrorSwitch<U> + error_stack::Context,
-    U: error_stack::Context,
+    V: ErrorSwitch<U> + std::error::Error + Send + Sync + 'static,
+    U: std::error::Error + Send + Sync + 'static,
 {
     #[track_caller]
     fn switch(self) -> Result<T, error_stack::Report<U>> {
@@ -40,7 +40,7 @@ where
     }
 }
 
-pub type CustomResult<T, E> = error_stack::Result<T, E>;
+pub type CustomResult<T, E> = Result<T, error_stack::Report<E>>;
 
 /// Cryptographic algorithm errors
 #[derive(Debug, thiserror::Error)]

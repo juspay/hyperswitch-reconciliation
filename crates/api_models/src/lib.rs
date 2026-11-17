@@ -1,10 +1,12 @@
 pub mod account;
+pub mod api_key;
 pub mod audit_trail;
 pub mod auth;
 pub mod bulk_operations;
 pub mod business_profile;
 pub mod entry;
 pub mod errors;
+pub mod health;
 pub mod ingestion;
 pub mod link_config;
 pub mod linking_processor;

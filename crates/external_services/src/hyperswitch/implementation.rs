@@ -102,7 +102,8 @@ impl SecretsHandler for HyperswitchConfig {
     async fn convert_to_raw_secret(
         value: SecretStateContainer<Self, SecuredSecret>,
         secret_management_client: &dyn SecretManagementInterface,
-    ) -> error_stack::Result<SecretStateContainer<Self, RawSecret>, SecretsManagementError> {
+    ) -> Result<SecretStateContainer<Self, RawSecret>, error_stack::Report<SecretsManagementError>>
+    {
         // Store values we need before moving
         let hyperswitch_config = value.get_inner();
         let base_url = hyperswitch_config.base_url.clone();

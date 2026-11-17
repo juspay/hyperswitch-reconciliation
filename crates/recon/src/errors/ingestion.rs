@@ -2,7 +2,7 @@ use error_stack::Report;
 use thiserror::Error;
 
 use api_models::errors::{ApiError, ApiErrorResponse as ApiErrorPayload};
-use common_utils::errors::ErrorSwitchFrom;
+use common_utils::errors::{ErrorSwitchFrom, ValidationError};
 
 use crate::types::ApplicationResponse;
 
@@ -105,6 +105,17 @@ pub type IngestionResult<T> = Result<T, Report<IngestionError>>;
 pub type ParseStageResult<T> = Result<T, Report<ParseStageError>>;
 pub type DownloadStageResult<T> = Result<T, Report<DownloadStageError>>;
 pub type StorageStageResult<T> = Result<T, Report<StorageStageError>>;
+
+impl ErrorSwitchFrom<ValidationError> for IngestionError {
+    fn switch_from(error: &ValidationError) -> Self {
+        match error {
+            ValidationError::IncorrectValueProvided { .. } => {
+                Self::ValidationError(error.to_string())
+            }
+            ValidationError::InvalidValue { .. } => Self::InternalServerError,
+        }
+    }
+}
 
 // ErrorSwitch implementations for stage errors to IngestionError
 impl ErrorSwitchFrom<ParseStageError> for IngestionError {

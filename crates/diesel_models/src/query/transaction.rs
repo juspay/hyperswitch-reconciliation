@@ -35,7 +35,7 @@ use diesel::WindowExpressionMethods;
 use diesel::{
     debug_query, pg::Pg, prelude::*, result::Error as DieselError, BoxableExpression, IntoSql,
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use time::PrimitiveDateTime;
 
 type TransactionOverviewRowTuple = (
@@ -136,7 +136,7 @@ impl Transaction {
                 .and(dsl::discarded_at.is_null()),
         )
         .await
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while finding latest transaction for transaction_id: {transaction_id}, profile_id: {profile_id}"
             )
@@ -181,13 +181,14 @@ impl Transaction {
         {
             Ok(value) => Ok(value),
             Err(err) => match err {
-                DieselError::NotFound => {
-                    Err(report!(err)).change_context(errors::DatabaseError::NotFound)
+                DieselError::NotFound => Err(error_stack::Report::new(err))
+                    .change_context(errors::DatabaseError::NotFound),
+                _ => {
+                    Err(error_stack::Report::new(err)).change_context(errors::DatabaseError::Others)
                 }
-                _ => Err(report!(err)).change_context(errors::DatabaseError::Others),
             },
         }
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while finding transactions for transaction_id: {transaction_id}")
         })
     }
@@ -216,7 +217,7 @@ impl Transaction {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while finding transactions for profile_id: {profile_id} and transaction_ids: {primary_transaction_ids:?}"
             )
@@ -234,7 +235,7 @@ impl Transaction {
             transaction_update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error while updating transaction for id: {id}"))
+        .attach_with(|| format!("Error while updating transaction for id: {id}"))
     }
 
     pub async fn append_expected_source_entry(
@@ -265,9 +266,7 @@ impl Transaction {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
-            format!("Error while appending source entry to expected transaction: {id}")
-        })
+        .attach_with(|| format!("Error while appending source entry to expected transaction: {id}"))
     }
 
     pub async fn list_with_accounts_and_entries(
@@ -354,7 +353,7 @@ impl Transaction {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing transactions with accounts for profile_id: {profile_id}")
         })?;
 
@@ -422,7 +421,7 @@ impl Transaction {
             )
             .await
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while aggregating transaction status counts for profile_id: {profile_id}"
                 )
@@ -543,7 +542,7 @@ impl Transaction {
             )
             .await
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while aggregating transaction status counts by rule and account for profile_id: {profile_id}"
                 )
@@ -642,9 +641,7 @@ impl Transaction {
             }
         }
 
-        query = query
-            .filter(dsl::profile_id.eq(profile_id.to_owned()))
-            .filter(dsl::status.ne(DieselTransactionStatus::Archived));
+        query = query.filter(dsl::profile_id.eq(profile_id.to_owned()));
 
         if let Some(transaction_id) = filters.transaction_id {
             query = query.filter(dsl::transaction_id.eq(transaction_id));
@@ -725,6 +722,28 @@ impl Transaction {
                     query.order((dsl::effective_at.desc(), dsl::id.desc()))
                 }
             }
+            TransactionListSortField::Version { cursor_value } => {
+                if let Some(cursor) = cursor_value {
+                    query = if ascending {
+                        query.filter(
+                            dsl::version.gt(cursor.version).or(dsl::version
+                                .eq(cursor.version)
+                                .and(dsl::id.gt(cursor.id.clone()))),
+                        )
+                    } else {
+                        query.filter(
+                            dsl::version.lt(cursor.version).or(dsl::version
+                                .eq(cursor.version)
+                                .and(dsl::id.lt(cursor.id.clone()))),
+                        )
+                    };
+                }
+                if ascending {
+                    query.order((dsl::version.asc(), dsl::id.asc()))
+                } else {
+                    query.order((dsl::version.desc(), dsl::id.desc()))
+                }
+            }
         };
 
         query = query.limit(i64::from(pagination.fetch_limit + 1));
@@ -738,7 +757,7 @@ impl Transaction {
             )
             .await
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while listing v2 transactions for profile_id: {profile_id}")
             })?;
 
@@ -821,7 +840,7 @@ impl Transaction {
             )
             .await
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while aggregating transaction time series for profile_id: {profile_id}"
                 )

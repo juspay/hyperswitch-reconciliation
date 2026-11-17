@@ -30,13 +30,15 @@ Look in `domains/[feature]/` and read ALL files present:
   - [AGENT-NOTES.md](domains/linking/AGENT-NOTES.md) - Final/provisional links, config API/update constraints, matching keys, admin inline processing, linked-entry lookup, enqueue/retry limits, and migration/worker contracts
 - `external-services/` - Secret management, AWS S3/OCI file storage, FaaS invocation, and external integrations
 - `file-storage/` - File upload/download API validation, organization, and storage integration gotchas
-- `api-keys/` - Merchant-level API keys: table, store, and design notes
+- `api-keys/` - API keys: table, store, hashing, management endpoints, and authentication
 - `encryption/` - Application encryption system with LocalEncryption and KeymanagerService strategies
 - `audit-trail/` - Chronological activity tracking with event grouping and profile-scoped views
+- `health/` - `/health` (shallow, probes) vs `/health/deep` (per-dependency report, 503 on failure)
 - `transactions/` - Transaction lifecycle, versioning, entries, and profile overview aggregation
   - `OVERVIEW-API.md` - Non-obvious aggregation, status, and time-range semantics
   - `MANUAL-RECONCILIATION.md` - Exception-management reconcile endpoints (v1 and the v2 delta API)
-- `reporting/` - Triggers per-rule transaction/exception reports via the generic FaaS invocation client
+<!-- AI-UPDATED: 2026-11-02 - Transaction-flow report endpoint -->
+- `reporting/` - Triggers per-rule transaction/exception/transaction-flow reports via the generic FaaS invocation client
   - `AGENT-NOTES.md` - Why validation lives in core, the Lambda `event` contract, and gotchas
 
 ### WHEN IMPLEMENTING FEATURES

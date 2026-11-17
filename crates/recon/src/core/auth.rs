@@ -22,7 +22,7 @@ use diesel_models::{
     business_profile::BusinessProfileNew,
     merchant_account::MerchantAccountNew as DieselMerchantAccountNew,
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use recon_domain_models::ApplicationEncryptionInterface;
 
 pub async fn bootstrap(
@@ -31,8 +31,8 @@ pub async fn bootstrap(
 ) -> ReconResponse<TestMerchantSetupResponse> {
     // 1. Create merchant account
     if request.merchant_name.is_empty() {
-        return Err(report!(ReconAppError::from(
-            MerchantAccountError::MerchantNameEmpty
+        return Err(error_stack::Report::new(ReconAppError::from(
+            MerchantAccountError::MerchantNameEmpty,
         )));
     }
 
@@ -66,8 +66,8 @@ pub async fn bootstrap(
 
     // 2. Create business profile
     if request.profile_name.is_empty() {
-        return Err(report!(ReconAppError::from(
-            BusinessProfileError::ProfileNameEmpty
+        return Err(error_stack::Report::new(ReconAppError::from(
+            BusinessProfileError::ProfileNameEmpty,
         )));
     }
 
@@ -104,20 +104,20 @@ pub async fn bootstrap_with_merchant_id_profile_id(
 ) -> ReconResponse<TestMerchantSetupResponse> {
     // 1. Validate input fields
     if request.merchant_name.is_empty() {
-        return Err(report!(ReconAppError::from(
-            MerchantAccountError::MerchantNameEmpty
+        return Err(error_stack::Report::new(ReconAppError::from(
+            MerchantAccountError::MerchantNameEmpty,
         )));
     }
 
     if request.profile_name.is_empty() {
-        return Err(report!(ReconAppError::from(
-            BusinessProfileError::ProfileNameEmpty
+        return Err(error_stack::Report::new(ReconAppError::from(
+            BusinessProfileError::ProfileNameEmpty,
         )));
     }
 
     if request.profile_id.is_empty() {
-        return Err(report!(ReconAppError::from(
-            BusinessProfileError::ProfileIdEmpty
+        return Err(error_stack::Report::new(ReconAppError::from(
+            BusinessProfileError::ProfileIdEmpty,
         )));
     }
 
@@ -148,22 +148,26 @@ pub async fn bootstrap_with_merchant_id_profile_id(
         // Merchant exists, check if profile exists
         if let Ok(_profile) = profile_result {
             // Both exist - throw error
-            return Err(report!(ReconAppError::ResourceConflict(format!(
-                "Both merchant '{}' and profile '{}' already exist",
-                merchant_id.get_string_repr(),
-                request.profile_id
-            ))));
+            return Err(error_stack::Report::new(ReconAppError::ResourceConflict(
+                format!(
+                    "Both merchant '{}' and profile '{}' already exist",
+                    merchant_id.get_string_repr(),
+                    request.profile_id
+                ),
+            )));
         }
         // Merchant exists, profile doesn't - return existing merchant
         merchant
     } else {
         // Merchant doesn't exist, check if profile exists (edge case)
         if let Ok(_profile) = profile_result {
-            return Err(report!(ReconAppError::ResourceConflict(format!(
-                "Profile '{}' already exists but merchant '{}' does not",
-                request.profile_id,
-                merchant_id.get_string_repr()
-            ))));
+            return Err(error_stack::Report::new(ReconAppError::ResourceConflict(
+                format!(
+                    "Profile '{}' already exists but merchant '{}' does not",
+                    request.profile_id,
+                    merchant_id.get_string_repr()
+                ),
+            )));
         }
 
         let diesel_merchant_account_new = DieselMerchantAccountNew {

@@ -6,21 +6,21 @@ edition = "2021"
 [dependencies]
 common_utils = { path = "../common_utils" }
 common_types = { path = "../common_types" }
-masking = { git = "https://github.com/juspay/hyperswitch.git",tag = "2025.10.22.0" }
+masking = { package = "hyperswitch_masking", version = "0.0.1", features = ["serde", "diesel", "time"] }
 recon_domain_models = { path = "../recon_domain_models" }
 recon_interfaces = { path = "../recon_interfaces" }
 async-trait = "0.1.92"
-error-stack = "0.4.1"
-serde = { version = "=1.0.219", features = ["derive"] }
+error-stack = "0.8.0"
+serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0" } 
 thiserror = "2.0"
 strum = { version = "0.26", features = ["derive"] }
 base64 = "0.22"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.51.6", features = ["full"] }
 once_cell = "1.21.3"
 reqwest = { version = "0.13.5", features = ["rustls", "native-tls-no-alpn", "form", "query"] }
 url = { version = "2.5.4", features = ["serde"] }
-quick-xml = { version = "0.31.0", features = ["serialize"] }
+quick-xml = { version = "0.42.0", features = ["serialize"] }
 hyper = "1.6.0"
 tracing = { version = "0.1.41" }
 sha2 = "0.10"
@@ -28,9 +28,9 @@ oci_kms = { git = "https://github.com/juspay/hyperswitch.git", rev = "9986e5c0c2
 
 # AWS dependencies
 aws-config = "1.6.0"
-aws-sdk-kms = "1.0"
-aws-sdk-lambda = "1.0"
-aws-sdk-s3 = "1.0"
+aws-sdk-kms = { version = "1.0", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-lambda = { version = "1.0", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-s3 = { version = "1.0", default-features = false, features = ["sigv4a", "http-1x", "default-https-client", "rt-tokio"] }
 
 [dev-dependencies]
 tempfile = "3.0"

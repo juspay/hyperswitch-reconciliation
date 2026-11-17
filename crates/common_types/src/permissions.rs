@@ -8,9 +8,10 @@ generate_permissions! {
         ReconStagingEntry:   { scopes: [Read, Write], entities: [Profile] },
         ReconTransaction:    { scopes: [Read, Write], entities: [Profile] },
         ReconRule:           { scopes: [Read, Write], entities: [Profile] },
+        ReconApiKey:         { scopes: [Read, Write], entities: [Merchant] },
         ReconAccount:        { scopes: [Read, Write], entities: [Profile] },
         ReconAudit:          { scopes: [Read], entities: [Profile] },
-        Account:             { scopes: [Read, Write], entities: [Profile] },
+        Account:             { scopes: [Read, Write], entities: [Profile, Merchant] },
     ]
 }
 

@@ -1,9 +1,10 @@
 //! No-op FaaS implementation - local and CI, where no AWS credentials exist
 
 use async_trait::async_trait;
-use error_stack::Result;
 
 use crate::faas::interfaces::{FaasError, FaasInterface};
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// No-op FaaS client
 #[derive(Debug, Clone, Default)]

@@ -28,7 +28,7 @@ impl SearchGroup {
 
         generics::generic_find_one::<search_group::table, _, _>(conn, predicate)
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while finding search group by profile_id: {profile_id} and id: {id}")
             })
     }
@@ -51,7 +51,7 @@ impl SearchGroup {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error finding search group: rule_id={rule_id}, hashed_value={hashed_grouping_value}"
             )
@@ -75,7 +75,7 @@ impl SearchGroup {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error finding search group by transaction and profile: primary_transaction_id={primary_transaction_id}, profile_id={profile_id}"
             )
@@ -93,7 +93,7 @@ impl SearchGroup {
             update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error updating search group: id={id}"))
+        .attach_with(|| format!("Error updating search group: id={id}"))
     }
 }
 
@@ -119,6 +119,6 @@ impl SearchGroupNew {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(move || format!("Error batch inserting {group_count} search groups"))
+        .attach_with(move || format!("Error batch inserting {group_count} search groups"))
     }
 }

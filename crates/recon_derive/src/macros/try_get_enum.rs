@@ -75,7 +75,7 @@ pub fn try_get_enum_variant(
             pub fn #try_into_fn(self)->Result<(#(#variant_types),*),error_stack::Report<#error_type>> {
                 match self {
                     Self::#variant_name(inner) => Ok(inner),
-                    _=> Err(error_stack::report!(#error_type::#error_variant)),
+                    _=> Err(error_stack::Report::new(#error_type::#error_variant)),
                 }
             }
         })

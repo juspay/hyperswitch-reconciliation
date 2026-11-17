@@ -76,6 +76,7 @@ Defaults:
 
 - `config/config.toml` is used by default.
 - If `RUN_ENV=production`, `config/prod.toml` is used.
+- If `RUN_ENV=sandbox`, `config/sandbox.toml` is used.
 
 Override config file explicitly:
 
@@ -136,6 +137,7 @@ Current CI is split by concern:
 │   ├── config.toml
 │   ├── ci.toml
 │   ├── prod.toml
+│   ├── sandbox.toml
 │   └── test.toml
 ├── crates/
 │   ├── recon/

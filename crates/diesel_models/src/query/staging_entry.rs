@@ -12,7 +12,7 @@ use common_types::{
 use common_utils::{chunking::chunked, logging};
 use diesel::dsl::{case_when, count_star};
 use diesel::{debug_query, pg::Pg, prelude::*};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 const STAGING_ENTRY_BATCH_CHUNK_SIZE: usize = 1000;
 
@@ -82,7 +82,7 @@ impl StagingEntry {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while finding staging entries for profile_id: {profile_id} and ids: {ids:?}"
             )
@@ -159,7 +159,7 @@ impl StagingEntry {
                     .collect()
             })
             .map_err(|err| {
-                report!(errors::DatabaseError::Others).attach_printable(format!(
+                error_stack::Report::new(errors::DatabaseError::Others).attach(format!(
                     "Error while listing staging entries for profile_id: {profile_id}: {err}"
                 ))
             })
@@ -181,8 +181,7 @@ impl StagingEntry {
 
         query = query
             .filter(dsl::profile_id.eq(profile_id.to_owned()))
-            .filter(transformation_config::profile_id.eq(profile_id.to_owned()))
-            .filter(dsl::status.ne(DieselStagingEntryStatus::Archived));
+            .filter(transformation_config::profile_id.eq(profile_id.to_owned()));
 
         if let Some(status) = filters.status {
             query = query.filter(dsl::status.eq_any(status));
@@ -273,6 +272,29 @@ impl StagingEntry {
                     query.order((dsl::effective_at.desc(), dsl::id.desc()))
                 }
             }
+            StagingEntryListSortField::Version { cursor_value } => {
+                if let Some(cursor) = cursor_value {
+                    query = if ascending {
+                        query.filter(
+                            dsl::version.gt(cursor.version).or(dsl::version
+                                .eq(cursor.version)
+                                .and(dsl::id.gt(cursor.id.clone()))),
+                        )
+                    } else {
+                        query.filter(
+                            dsl::version.lt(cursor.version).or(dsl::version
+                                .eq(cursor.version)
+                                .and(dsl::id.lt(cursor.id.clone()))),
+                        )
+                    };
+                }
+
+                if ascending {
+                    query.order((dsl::version.asc(), dsl::id.asc()))
+                } else {
+                    query.order((dsl::version.desc(), dsl::id.desc()))
+                }
+            }
         };
 
         query = query.limit(i64::from(pagination.fetch_limit + 1));
@@ -298,7 +320,7 @@ impl StagingEntry {
                     .collect()
             })
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!("Error while listing v2 staging entries for profile_id: {profile_id}")
             })?;
 
@@ -337,7 +359,7 @@ impl StagingEntry {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| "Error while listing all staging entries".to_string())
+        .attach_with(|| "Error while listing all staging entries".to_string())
     }
 
     pub async fn count_pending_by_profile(
@@ -357,7 +379,7 @@ impl StagingEntry {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while counting pending staging entries for profile_id: {profile_id}")
         })
     }
@@ -373,7 +395,7 @@ impl StagingEntry {
             staging_entry_update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error while updating staging entry for id: {id}"))
+        .attach_with(|| format!("Error while updating staging entry for id: {id}"))
     }
 
     pub async fn aggregate_status_counts_by_account(
@@ -425,7 +447,7 @@ impl StagingEntry {
             )
             .await
             .change_context(errors::DatabaseError::Others)
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while aggregating staging entry status counts for profile_id: {profile_id}"
                 )
@@ -491,7 +513,7 @@ impl StagingEntryNew {
         })
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Transaction failed while batch inserting {entries_count} staging entries")
         })
     }

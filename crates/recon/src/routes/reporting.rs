@@ -1,5 +1,7 @@
 use actix_web::{web, HttpRequest, Responder};
-use api_models::reporting::{ExceptionReportFilters, TransactionReportFilters};
+use api_models::reporting::{
+    ExceptionReportFilters, TransactionFlowReportFilters, TransactionReportFilters,
+};
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
 
@@ -12,8 +14,18 @@ use crate::{
 #[derive(OpenApi)]
 #[openapi(
     tags((name = "Reports", description = "Report generation")),
-    paths(trigger_transaction_report, trigger_exception_report),
-    components(schemas(TransactionReportFilters, ExceptionReportFilters)),
+    paths(
+        trigger_transaction_report,
+        trigger_exception_report,
+        trigger_transaction_flow_report,
+    ),
+    components(
+        schemas(
+            TransactionReportFilters,
+            ExceptionReportFilters,
+            TransactionFlowReportFilters,
+        )
+    ),
 )]
 pub struct ReportApi;
 
@@ -74,6 +86,37 @@ pub async fn trigger_exception_report(
         state,
         |state, auth| async move {
             core::reporting::generate_exception_report(state, auth, req.into_inner()).await
+        },
+    )
+    .await
+}
+
+/// Trigger a transaction flow report
+#[utoipa::path(
+    post,
+    path = "/report/transaction_flows",
+    tag = "Reports",
+    request_body = TransactionFlowReportFilters,
+    responses(
+        (status = 200, description = "Transaction flow report triggered"),
+        (status = 400, description = "Invalid time range"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Recon rule not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    security(("Bearer" = []))
+)]
+pub async fn trigger_transaction_flow_report(
+    state: web::Data<AppState>,
+    req: web::Json<TransactionFlowReportFilters>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    api::server_wrap(
+        JwtAuth::basic(Permission::ProfileReconTransactionRead),
+        &http_req,
+        state,
+        |state, auth| async move {
+            core::reporting::generate_transaction_flow_report(state, auth, req.into_inner()).await
         },
     )
     .await

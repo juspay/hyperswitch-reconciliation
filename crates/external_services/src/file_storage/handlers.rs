@@ -2,13 +2,15 @@
 
 use std::sync::Arc;
 
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 
 use super::{
     config::FileStorageConfig,
     implementations::{AwsS3Storage, FileSystemStorage, OciObjectStorage},
     interfaces::{FileStorageError, FileStorageInterface},
 };
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 
 /// Handler for file storage operations
 pub struct FileStorageHandler {
@@ -20,7 +22,7 @@ impl FileStorageHandler {
     pub async fn from_config(config: &FileStorageConfig) -> Result<Self, FileStorageError> {
         // Validate configuration first
         if let Err(validation_error) = config.validate() {
-            return Err(FileStorageError::ConfigurationError).attach_printable(validation_error);
+            return Err(FileStorageError::ConfigurationError).attach(validation_error);
         }
 
         let storage: Arc<dyn FileStorageInterface> = match config {

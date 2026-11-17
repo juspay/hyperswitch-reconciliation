@@ -11,5 +11,3 @@ CREATE TABLE IF NOT EXISTS api_key (
     last_modified_at TIMESTAMP NOT NULL,
     status VARCHAR(64) NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS idx_api_key_merchant_id_active ON api_key (merchant_id, created_at DESC) WHERE status = 'active';

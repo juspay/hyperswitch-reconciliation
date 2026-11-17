@@ -5,10 +5,12 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_kms::{config::Region, primitives::Blob, Client};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use common_utils::errors::CustomResult;
-use error_stack::{Result, ResultExt};
+use error_stack::ResultExt;
 use masking::{PeekInterface, Secret};
 use recon_interfaces::secrets_interface::{SecretManagementInterface, SecretsManagementError};
 use serde::Deserialize;
+
+type Result<T, E> = core::result::Result<T, error_stack::Report<E>>;
 /// Configuration parameters required for constructing an [`AwsKmsClient`].
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]

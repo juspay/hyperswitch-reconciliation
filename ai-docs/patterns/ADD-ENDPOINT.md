@@ -193,7 +193,7 @@ impl ErrorCode for ThingError {
     }
 }
 
-pub type ThingResult<T> = error_stack::Result<ApplicationResponse<T>, ThingError>;
+pub type ThingResult<T> = Result<ApplicationResponse<T>, error_stack::Report<ThingError>>;
 ```
 
 ### 5. Register the Endpoint

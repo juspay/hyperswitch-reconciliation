@@ -19,7 +19,7 @@ use diesel_models::{
     transformation_config::{TransformationConfigNew, TransformationConfigUpdate},
     transformation_history::{TransformationHistoryNew, TransformationHistoryUpdate},
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use futures::future;
 use storage_impl::{
     account::AccountInterface,
@@ -359,11 +359,11 @@ pub async fn download_transformation_report(
         .history
         .data
         .and_then(|data| data.get_report_file_key(report_format))
-        .ok_or_else(|| report!(TransformationError::ReportNotAvailable))?;
+        .ok_or_else(|| error_stack::Report::new(TransformationError::ReportNotAvailable))?;
 
     let report_file_key = report_file_key
         .to_str()
-        .ok_or_else(|| report!(TransformationError::InternalServerError))?;
+        .ok_or_else(|| error_stack::Report::new(TransformationError::InternalServerError))?;
     let report = state
         .file_storage
         .retrieve_file(report_file_key)
@@ -449,7 +449,9 @@ pub async fn update_transformation_config(
             .iter()
             .any(|skip_config| skip_config.conditions.is_empty())
         {
-            return Err(report!(TransformationError::EmptySkipConfigConditionsFound));
+            return Err(error_stack::Report::new(
+                TransformationError::EmptySkipConfigConditionsFound,
+            ));
         }
     }
 

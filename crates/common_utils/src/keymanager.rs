@@ -234,6 +234,30 @@ pub async fn create_key_in_key_manager(
         .change_context(errors::KeyManagerError::KeyAddFailed)
 }
 
+#[instrument(skip_all)]
+pub async fn health_check_key_manager(
+    state: &KeyManagerState,
+) -> errors::CustomResult<(), errors::KeyManagerClientError> {
+    let client = get_api_encryption_client(state)?;
+    let url = reqwest::Url::parse(&format!("{}/health", state.url))
+        .change_context(errors::KeyManagerClientError::UrlEncodingFailed)?;
+    let response = client.get(url).send().await.change_context(
+        errors::KeyManagerClientError::RequestNotSent(
+            "Unable to send health check request to encryption service".to_string(),
+        ),
+    )?;
+
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        let status = response.status();
+        Err(errors::KeyManagerClientError::Unexpected(
+            response.bytes().await.unwrap_or_default(),
+        ))
+        .attach_with(|| format!("Keymanager health check returned status {status}"))
+    }
+}
+
 /// A function to transfer the key in keymanager
 #[instrument(skip_all)]
 pub async fn transfer_key_to_key_manager(

@@ -57,4 +57,26 @@ impl HyperswitchClient {
 
         hyperswitch_api.response_handler(response).await
     }
+
+    pub async fn health_check(&self) -> HyperswitchResult<()> {
+        let response = self
+            .get_api_hyperswitch_client()?
+            .get(format!("{}/health", self.base_url))
+            .timeout(Duration::from_secs(self.request_timeout_secs.unwrap_or(30)))
+            .send()
+            .await
+            .change_context(HyperswitchClientError::RequestNotSent(
+                "Unable to send health check request to hyperswitch".to_string(),
+            ))?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            let status = response.status();
+            Err(HyperswitchClientError::Unexpected(
+                response.bytes().await.unwrap_or_default(),
+            ))
+            .attach_with(|| format!("Hyperswitch health check returned status {status}"))
+        }
+    }
 }

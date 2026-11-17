@@ -35,7 +35,7 @@ use common_types::{
         TransactionAccountFilters, TransactionData as DieselTransactionData, TransactionDataV3,
         TransactionEffectiveAtSortField, TransactionListEntryFilters, TransactionListFiltersV2,
         TransactionListMetadataFilters, TransactionListSortField, TransactionListStatusFilter,
-        VoidData, VoidDataV1,
+        TransactionVersionSortField, VoidData, VoidDataV1,
     },
     units::{FloatMajorUnit, MinorUnit},
 };
@@ -46,7 +46,7 @@ use diesel_models::{
     recon_rule::ReconRule,
     transaction::{TransactionAccountView, TransactionRuleView},
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use futures::{future, future::Either};
 use masking::ExposeInterface;
 use recon_domain_models::{
@@ -687,6 +687,12 @@ impl CursorSort<GroupedTransactionViews> for TransactionListSortField {
                     id: item.transaction.id.clone(),
                 }),
             },
+            Self::Version { .. } => Self::Version {
+                cursor_value: Some(TransactionVersionSortField {
+                    version: item.transaction.version,
+                    id: item.transaction.id.clone(),
+                }),
+            },
         }
     }
 
@@ -694,6 +700,7 @@ impl CursorSort<GroupedTransactionViews> for TransactionListSortField {
         match self {
             Self::Id { id } => id.is_some(),
             Self::EffectiveAt { cursor_value } => cursor_value.is_some(),
+            Self::Version { cursor_value } => cursor_value.is_some(),
         }
     }
 }
@@ -748,10 +755,12 @@ pub async fn hydrate_transaction_rule_views(
                 Some(account) => account.clone(),
                 None => {
                     return Err(
-                        report!(TransactionError::InternalServerError).attach_printable(format!(
-                            "Account {} not found for entry {} while listing transactions",
-                            entry.account_id, entry.id
-                        )),
+                        error_stack::Report::new(TransactionError::InternalServerError).attach(
+                            format!(
+                                "Account {} not found for entry {} while listing transactions",
+                                entry.account_id, entry.id
+                            ),
+                        ),
                     )
                 }
             };
@@ -771,8 +780,10 @@ pub async fn hydrate_transaction_rule_views(
                     let (entry, account) = match entries_by_id.get(entry_id) {
                         Some(entry_with_account) => entry_with_account,
                         None => {
-                            return Err(report!(TransactionError::InternalServerError)
-                                .attach_printable(format!(
+                            return Err(error_stack::Report::new(
+                                TransactionError::InternalServerError,
+                            )
+                            .attach(format!(
                             "Entry {entry_id} referenced by transaction {} version {} not found",
                             view.transaction.transaction_id, view.transaction.version
                         )))
@@ -782,8 +793,10 @@ pub async fn hydrate_transaction_rule_views(
                     if entry.logical_transaction_id != view.transaction.transaction_id
                         || entry.transaction_version != view.transaction.version
                     {
-                        return Err(report!(TransactionError::InternalServerError)
-                            .attach_printable(format!(
+                        return Err(error_stack::Report::new(
+                            TransactionError::InternalServerError,
+                        )
+                        .attach(format!(
                         "Entry {entry_id} belongs to transaction {} version {}, not {} version {}",
                         entry.logical_transaction_id,
                         entry.transaction_version,

@@ -5,7 +5,7 @@ use common_types::amount::AmountResponse;
 use common_types::entry::{EntryListFilters, ListEntriesFilters};
 use common_utils::auth::AuthContext;
 use common_utils::errors::ErrorSwitchFrom;
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use futures::future;
 use recon_domain_models::behaviour::ReverseConversion;
 use recon_domain_models::entry::DomainEntry;
@@ -193,7 +193,7 @@ pub async fn list_entries_by_transaction_id(
         .await
         .change_context(EntryError::InternalServerError)?
         .ok_or_else(|| {
-            report!(EntryError::TransactionNotFound {
+            error_stack::Report::new(EntryError::TransactionNotFound {
                 id: transaction_id.clone(),
             })
         })?;

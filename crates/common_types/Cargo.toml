@@ -6,14 +6,14 @@ edition = "2021"
 [dependencies]
 bigdecimal = "0.4"
 chrono-tz = "0.10"
-diesel = { version = "2.3.2", features = ["postgres", "r2d2", "chrono"] }
-error-stack = "0.4.1"
+diesel = { version = "2.3.10", features = ["postgres", "r2d2", "chrono"] }
+error-stack = "0.8.0"
 rust_decimal = { version = "1.37", features = ["serde-with-str"] }
-serde = { version = "=1.0.219", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.132"
 thiserror = "2.0.12"
-time = "0.3.41"
-utoipa = "5.3.1"
+time = "0.3.47"
+utoipa = "6.0.0"
 common_enums = { version = "0.1.0", path = "../common_enums" }
 common_utils = { version = "0.1.0", path = "../common_utils" }
 recon_derive = { version = "0.1.0", path = "../recon_derive" }

@@ -1,7 +1,7 @@
 use actix_web::http::header::HeaderMap;
 use base64::{engine::general_purpose, Engine};
 use common_utils::request::{Method, RequestBuilder};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use common_types::ingestion::{
     adyen::{AdyenTriggerData, EventCode, NotificationItemWrapper},
@@ -46,7 +46,7 @@ pub fn parse_adyen_payload(
     // Parse the payload into AdyenTriggerData
     let adyen_data = serde_json::from_value::<AdyenTriggerData>(raw_payload).map_err(|e| {
         let reason = e.to_string();
-        report!(e).change_context(ParseStageError::JsonParseError { reason })
+        error_stack::Report::new(e).change_context(ParseStageError::JsonParseError { reason })
     })?;
 
     // Validate HMAC signature
@@ -133,7 +133,7 @@ fn validate_webhook_signature(
 
     // Step 1: Extract notification item
     let notification_item = webhook_data.notification_items.first().ok_or_else(|| {
-        report!(ParseStageError::MissingField {
+        error_stack::Report::new(ParseStageError::MissingField {
             field: "notification_items".to_string(),
         })
     })?;
@@ -283,10 +283,11 @@ fn validate_report_available(data: &AdyenTriggerData) -> DownloadStageResult<()>
 /// Get the file download URL for Adyen reports
 fn get_report_download_url(data: &AdyenTriggerData) -> DownloadStageResult<String> {
     // Find the first REPORT_AVAILABLE notification
-    let report_notification =
-        find_report_notification(data).ok_or(report!(DownloadStageError::ReportNotAvailable {
+    let report_notification = find_report_notification(data).ok_or(error_stack::Report::new(
+        DownloadStageError::ReportNotAvailable {
             reason: "No REPORT_AVAILABLE event found in notification".to_string(),
-        }))?;
+        },
+    ))?;
 
     // Extract the download URL from the reason field
     let download_url = &report_notification.notification_request_item.reason;

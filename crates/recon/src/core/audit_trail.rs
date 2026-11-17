@@ -1,6 +1,6 @@
 use api_models::{audit_trail::AuditTrailFilters, AccountData};
 use common_utils::auth::AuthContext;
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use std::collections::{HashMap, HashSet};
 use storage_impl::account::AccountInterface;
 
@@ -19,7 +19,7 @@ pub async fn get_audit_trail(
     // Validate filters
     filters
         .validate()
-        .map_err(|_| report!(AuditTrailError::InvalidTimeRange))?;
+        .map_err(|_| error_stack::Report::new(AuditTrailError::InvalidTimeRange))?;
 
     // Fetch all event occurrences from domain
     let ingestion_events =

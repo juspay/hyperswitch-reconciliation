@@ -66,7 +66,7 @@ pub async fn get_ingestion_events(
                     .as_ref()
                     .and_then(|data| data.get_file_name())
                     .ok_or(AuditTrailError::InternalServerError)
-                    .attach_printable_lazy(|| {
+                    .attach_with(|| {
                         format!(
                             "Missing file name for processed ingestion_history_id {}",
                             view.history.ingestion_history_id
@@ -92,7 +92,7 @@ pub async fn get_ingestion_events(
             IngestionStatus::Pending | IngestionStatus::Processing | IngestionStatus::Discarded => {
                 Err(
                     error_stack::Report::new(AuditTrailError::InternalServerError)
-                        .attach_printable("Unexpected ingestion status"),
+                        .attach("Unexpected ingestion status"),
                 )
             }
         })
@@ -157,7 +157,7 @@ pub async fn get_staging_entry_events(
                 }
                 DomainStagingEntryStatus::Archived | DomainStagingEntryStatus::Void => Err(
                     error_stack::Report::new(AuditTrailError::InternalServerError)
-                        .attach_printable("Archived staging entry should have been filtered"),
+                        .attach("Archived staging entry should have been filtered"),
                 ),
             },
         )
@@ -260,7 +260,7 @@ pub async fn get_transaction_events(
                 | DomainTransactionStatus::PartiallyReconciled => Err(error_stack::Report::new(
                     AuditTrailError::InternalServerError,
                 )
-                .attach_printable("Unexpected transaction status")),
+                .attach("Unexpected transaction status")),
             }
         })
         .collect::<Result<Vec<_>, _>>()

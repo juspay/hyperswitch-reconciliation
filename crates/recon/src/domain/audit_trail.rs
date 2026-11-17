@@ -395,7 +395,7 @@ impl GroupedAuditEvent {
                 let account = account_map
                     .get(&data.account_id)
                     .ok_or(AuditTrailError::InternalServerError)
-                    .attach_printable_lazy(|| format!("Account {} not found", data.account_id))?
+                    .attach_with(|| format!("Account {} not found", data.account_id))?
                     .clone();
 
                 Ok(AuditEvent::FileUploaded {
@@ -414,7 +414,7 @@ impl GroupedAuditEvent {
                 let account = account_map
                     .get(&account_id)
                     .ok_or(AuditTrailError::InternalServerError)
-                    .attach_printable_lazy(|| format!("Account {account_id} not found"))?
+                    .attach_with(|| format!("Account {account_id} not found"))?
                     .clone();
 
                 Ok(AuditEvent::IngestionsFailed {
@@ -431,7 +431,7 @@ impl GroupedAuditEvent {
                 let account = account_map
                     .get(&account_id)
                     .ok_or(AuditTrailError::InternalServerError)
-                    .attach_printable_lazy(|| format!("Account {account_id} not found"))?
+                    .attach_with(|| format!("Account {account_id} not found"))?
                     .clone();
 
                 Ok(AuditEvent::StagingEntriesCreated {
@@ -448,7 +448,7 @@ impl GroupedAuditEvent {
                 let account = account_map
                     .get(&account_id)
                     .ok_or(AuditTrailError::InternalServerError)
-                    .attach_printable_lazy(|| format!("Account {account_id} not found"))?
+                    .attach_with(|| format!("Account {account_id} not found"))?
                     .clone();
 
                 Ok(AuditEvent::StagingEntryNeedsManualReview {
@@ -468,7 +468,7 @@ impl GroupedAuditEvent {
                         account_map
                             .get(account_id)
                             .ok_or(AuditTrailError::InternalServerError)
-                            .attach_printable_lazy(|| format!("Account {account_id} not found"))
+                            .attach_with(|| format!("Account {account_id} not found"))
                             .cloned()
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -490,7 +490,7 @@ impl GroupedAuditEvent {
                         account_map
                             .get(account_id)
                             .ok_or(AuditTrailError::InternalServerError)
-                            .attach_printable_lazy(|| format!("Account {account_id} not found"))
+                            .attach_with(|| format!("Account {account_id} not found"))
                             .cloned()
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -512,7 +512,7 @@ impl GroupedAuditEvent {
                         account_map
                             .get(account_id)
                             .ok_or(AuditTrailError::InternalServerError)
-                            .attach_printable_lazy(|| format!("Account {account_id} not found"))
+                            .attach_with(|| format!("Account {account_id} not found"))
                             .cloned()
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -534,7 +534,7 @@ impl GroupedAuditEvent {
                         account_map
                             .get(account_id)
                             .ok_or(AuditTrailError::InternalServerError)
-                            .attach_printable_lazy(|| format!("Account {account_id} not found"))
+                            .attach_with(|| format!("Account {account_id} not found"))
                             .cloned()
                     })
                     .collect::<Result<Vec<_>, _>>()?;

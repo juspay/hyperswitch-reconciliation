@@ -24,7 +24,7 @@ impl MetadataSchema {
 
         generics::generic_find_one::<metadata_schema::table, _, _>(conn, predicate)
             .await
-            .attach_printable_lazy(|| {
+            .attach_with(|| {
                 format!(
                     "Error while finding metadata schema by id: {id} and profile_id: {profile_id}"
                 )
@@ -48,7 +48,7 @@ impl MetadataSchema {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing metadata schemas by ids: {ids:?} and profile_id: {profile_id}"
             )
@@ -94,7 +94,7 @@ impl MetadataSchema {
         )
         .await
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing metadata schemas by profile_id: {profile_id} with filters")
         })
     }
@@ -118,6 +118,6 @@ impl MetadataSchema {
             update,
         )
         .await
-        .attach_printable_lazy(|| format!("Error while updating metadata schema with id: {id}"))
+        .attach_with(|| format!("Error while updating metadata schema with id: {id}"))
     }
 }

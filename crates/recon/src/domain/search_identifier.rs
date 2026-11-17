@@ -24,10 +24,10 @@ pub(super) trait CompositeSearchIdentifierExt {
         data: &impl ExtractFromEntryField,
         name_of: F,
         on_missing_field: impl FnOnce(EntryField) -> E,
-    ) -> error_stack::Result<String, E>
+    ) -> Result<String, error_stack::Report<E>>
     where
         F: Fn(&Self::Key) -> &EntryField,
-        E: error_stack::Context,
+        E: std::error::Error + Send + Sync + 'static,
     {
         let sorted_keys = self.get_sorted_keys();
         build_composite_value(

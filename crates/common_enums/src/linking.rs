@@ -41,18 +41,16 @@ pub enum LinkingProcessorStatus {
 #[recon_derive::diesel_enum(storage_type = "text")]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
-pub enum EntryLinkingStatus {
+pub enum DieselEntryLinkingStatus {
     #[default]
     Pending,
     Processed,
-    Failed,
-    NotApplicable,
-}
-
-impl EntryLinkingStatus {
-    pub fn enqueuable_statuses() -> Vec<Self> {
-        vec![Self::Failed]
-    }
+    FailedExpectedEntry,
+    FailedInternalError,
+    FailedNoTransformationConfigFound,
+    FailedNoLinkConfigFound,
+    FailedMissingSearchIdentifierValue,
+    FailedMultiplePostedLinksFound,
 }
 
 #[derive(

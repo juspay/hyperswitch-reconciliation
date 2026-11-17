@@ -31,7 +31,7 @@ use diesel_models::{
     },
     transaction::{Transaction, TransactionNew},
 };
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 use futures::future;
 use masking::ExposeInterface;
 use recon_domain_models::{
@@ -857,10 +857,12 @@ async fn validate_entries(
             classification: EntryClassification::Good,
         }
     } else {
-        return Err(report!(ProcessingError::InternalError(format!(
-            "Currency mismatch in source entry: expected currency {}, found {}",
-            source_account.currency, source_entry.currency
-        ))));
+        return Err(error_stack::Report::new(ProcessingError::InternalError(
+            format!(
+                "Currency mismatch in source entry: expected currency {}, found {}",
+                source_account.currency, source_entry.currency
+            ),
+        )));
     };
 
     let mut has_data_mismatches = false;

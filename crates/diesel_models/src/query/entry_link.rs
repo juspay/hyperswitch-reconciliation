@@ -41,7 +41,7 @@ impl EntryLink {
         )
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Error while listing linked entries for entry_id: {entry_id}, profile_id: {profile_id}")
         })
     }
@@ -92,7 +92,7 @@ impl EntryLinkNew {
         })
         .await
         .change_context(DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!("Transaction failed while bulk inserting {entry_link_count} entry links")
         })
     }

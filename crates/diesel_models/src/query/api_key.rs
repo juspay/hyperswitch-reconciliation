@@ -2,10 +2,10 @@ use async_bb8_diesel::AsyncRunQueryDsl;
 use common_enums::ApiKeyStatus;
 use common_utils::{id_type::MerchantId, logging};
 use diesel::{debug_query, pg::Pg, prelude::*, BoolExpressionMethods, ExpressionMethods};
-use error_stack::{report, ResultExt};
+use error_stack::ResultExt;
 
 use crate::{
-    api_key::{ApiKey, ApiKeyNew},
+    api_key::{ApiKey, ApiKeyNew, ApiKeyUpdateInternal},
     errors,
     query::generics,
     schema::api_key::{self, dsl},
@@ -19,6 +19,19 @@ impl ApiKeyNew {
 }
 
 impl ApiKey {
+    pub async fn find_active_by_hashed_api_key(
+        conn: &PgPooledConn,
+        hashed_api_key: &str,
+    ) -> StorageResult<Self> {
+        generics::generic_find_one::<api_key::table, _, _>(
+            conn,
+            dsl::hashed_api_key
+                .eq(hashed_api_key.to_owned())
+                .and(dsl::status.eq(ApiKeyStatus::Active)),
+        )
+        .await
+    }
+
     pub async fn find_active_by_merchant_id_and_api_key_id(
         conn: &PgPooledConn,
         merchant_id: &MerchantId,
@@ -32,6 +45,24 @@ impl ApiKey {
                 .and(dsl::status.eq(ApiKeyStatus::Active)),
         )
         .await
+    }
+
+    pub async fn update_active_by_merchant_id_and_api_key_id(
+        conn: &PgPooledConn,
+        merchant_id: &MerchantId,
+        api_key_id: &str,
+        update: ApiKeyUpdateInternal,
+    ) -> StorageResult<Self> {
+        generics::generic_update_with_unique_predicate_get_result::<api_key::table, _, _, _>(
+            conn,
+            dsl::merchant_id
+                .eq(merchant_id.to_owned())
+                .and(dsl::id.eq(api_key_id.to_owned()))
+                .and(dsl::status.eq(ApiKeyStatus::Active)),
+            update,
+        )
+        .await
+        .attach_with(|| format!("Error updating API key: id={api_key_id}"))
     }
 
     pub async fn list_active_by_merchant_id(
@@ -50,9 +81,9 @@ impl ApiKey {
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
-        .map_err(|err| report!(err))
+        .map_err(|err| error_stack::Report::new(err))
         .change_context(errors::DatabaseError::Others)
-        .attach_printable_lazy(|| {
+        .attach_with(|| {
             format!(
                 "Error while listing API keys for merchant_id: {}",
                 merchant_id.get_string_repr()

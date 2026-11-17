@@ -66,6 +66,7 @@ pub fn make_app(
     app = app.service(routes::app::Transformation::server(state.clone()));
     app = app.service(routes::app::Report::server(state.clone()));
     app = app.service(routes::app::MetadataSchema::server(state.clone()));
+    app = app.service(routes::app::ApiKey::server(state.clone()));
     app = app.service(routes::app::SearchGroup::server(state.clone()));
     app = app.service(routes::app::SearchEntryKey::server(state.clone()));
     app = app.service(routes::app::SearchExpectation::server(state.clone()));
@@ -95,6 +96,13 @@ pub async fn initialize_server(
         secrets_transformers::fetch_raw_secrets(secured_config, &*secret_management_client)
             .await
             .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
+
+    // Format is checked here, not in `Config::validate`: that runs before decryption (ciphertext under KMS).
+    let api_key_hash_key = config
+        .api_keys
+        .get_inner()
+        .get_hash_key()
+        .map_err(|e| format!("Invalid api_keys.hash_key: {e:?}"))?;
 
     // Create connection pool
     let manager =
@@ -153,6 +161,7 @@ pub async fn initialize_server(
         linking_processor_status: linking_sx,
         encryption_client,
         user_client,
+        api_key_hash_key,
     };
 
     tokio::spawn(core::recon_engine::recon_processor_v2(state.clone(), rx));
