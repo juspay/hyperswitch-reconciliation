@@ -67,7 +67,7 @@ region = "us-east-1"
 request_timeout_secs = 30
 
 [scheduler]
-scheduler_backend = "noop"
+scheduler_backend = "invokr"
 
 [scheduler.invokr]
 base_url = "https://invokr.example.com"
