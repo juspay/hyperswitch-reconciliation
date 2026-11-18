@@ -107,10 +107,10 @@ fn entry_on_account<'a>(
 
     let entry = matching
         .next()
-        .unwrap_or_else(|| panic!("no entry on account {account_id}"));
+        .unwrap_or_else(|| panic!("no entry found for the requested account"));
     assert!(
         matching.next().is_none(),
-        "expected exactly one entry on account {account_id}"
+        "expected exactly one entry for the requested account"
     );
 
     entry
@@ -127,7 +127,7 @@ fn entry_with_amount<'a>(
         .find(|entry| {
             entry.account_id == account_id && entry.amount.value == FloatMajorUnit::new(amount)
         })
-        .unwrap_or_else(|| panic!("no entry on account {account_id} with amount {amount}"))
+        .unwrap_or_else(|| panic!("no entry found for the requested account and amount"))
 }
 
 fn plaintext_metadata(entry: &GetEntryResponse) -> serde_json::Value {

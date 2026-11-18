@@ -331,7 +331,8 @@
     - `OneToOneSingleSingleV1`, `OneToOneSingleManyV1`, `OneToManySingleSingleV1`, `OneToOneSingleSingleV1WithTolerance` use `source_field: "order_id"`. Since `StagingEntryData::recon_staging_entry` hardcodes `order_id: "order_123"`, every callsite for these rules passes `"order_123"`.
     - `OneToOneManyManyV1`, `OneToOneManySingleV1` use `source_field: "metadata.batch_id"`. Pass the source entry's `batch_id` value from the test case (e.g. `"BATCH-001"`, `"BATCH-002"`). All entries in a single case share the same source batch_id, so all callsites in that case use the same string.
     - Check `recon_rule_test::create_recon_rule_request` to see each rule type's configured `source_field`.
-  - **Test-fixture names → real account_ids**: the runner builds an `account_name → account_id` map from the accounts created at setup and translates before comparing against the API's real `target_account_id`. A typo in the fixture name panics with `Test fixture error: account_name {?} not found in created accounts`.
+  <!-- AI-UPDATED: 2026-11-18 - Keep fixture identifiers out of CI panic output -->
+  - **Test-fixture names → real account_ids**: the runner builds an `account_name → account_id` map from the accounts created at setup and translates before comparing against the API's real `target_account_id`. A typo in the fixture name panics with `Test fixture error: expected account not found in created accounts` without dumping account names or IDs.
   - **Why this shape, not statuses or account-name-only**: every returned row is `status = Expected` (filtered at the DB layer), so status carries no information. The `(account, source-value-hash)` pair fully identifies *which* expectation, and verifying the hash catches encoding bugs (wrong field used as source, hash function changed, etc.) that an account-only check would miss.
 
 ## Critical Paths (Moved from main CRITICAL-PATHS.md)

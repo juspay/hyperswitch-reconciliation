@@ -1,5 +1,8 @@
 name: "[CI] PR Title"
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     types:
@@ -21,14 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
         with:
           toolchain: stable
 
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2
         with:
           tool: cocogitto
           checksum: true
@@ -81,7 +84,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Store PR title in a file
         shell: bash
@@ -90,6 +93,6 @@ jobs:
         run: echo "$TITLE" > pr_title.txt
 
       - name: Spell check
-        uses: crate-ci/typos@master
+        uses: crate-ci/typos@b41eb62e9a8096c9ba6636e2365d3f56018a203c # master
         with:
           files: ./pr_title.txt

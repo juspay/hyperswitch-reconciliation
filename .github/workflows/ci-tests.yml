@@ -1,5 +1,8 @@
 name: "[CI] Tests"
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, master, develop]
@@ -41,31 +44,33 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
 
       - name: Restore Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           save-if: ${{ github.event_name == 'push' }}
 
       - name: Install just
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2
         with:
           tool: just
           checksum: true
 
       - name: Install Diesel CLI
-        uses: baptiste0928/cargo-install@v3.3.0
+        uses: baptiste0928/cargo-install@91c5da15570085bcde6f4d7aed98cb82d6769fd3 # v3.3.0
         with:
           crate: diesel_cli
           features: postgres
           args: --no-default-features
 
       - name: Install cargo-nextest
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2
         with:
           tool: cargo-nextest
           checksum: true
