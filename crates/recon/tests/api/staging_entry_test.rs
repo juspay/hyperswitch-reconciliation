@@ -12,10 +12,10 @@ use api_models::{
         OneToOneSingleSingleTarget, OneToOneStrategy, ReconRuleCreateRequest, ReconStrategy,
     },
     staging_entry::{
-        ApiStagingEntryCoarseStatus, ApiStagingEntryListFiltersV2, ApiStagingEntryStatus,
-        GetStagingEntryResponse, ListStagingEntriesV2Request, NeedsManualReviewData,
-        StagingEntryCreateRequest, StagingEntryData as ApiStagingEntryData, StagingEntryListV2Page,
-        StagingEntryUpdateRequest, VoidStagingEntryRequest,
+        ApiStagingEntryListFiltersV2, ApiStagingEntryStatus, GetStagingEntryResponse,
+        ListStagingEntriesV2Request, NeedsManualReviewData, StagingEntryCreateRequest,
+        StagingEntryData as ApiStagingEntryData, StagingEntryListV2Page, StagingEntryUpdateRequest,
+        VoidStagingEntryRequest,
     },
 };
 use common_enums::{BalanceDirection, Currency, ResolutionActionType, StagingEntryProcessingMode};
@@ -45,7 +45,6 @@ use pretty_assertions::assert_eq;
 use recon::utils::staging_entry::DomainStagingEntryStatusExt;
 use rstest::rstest;
 use serde_json::json;
-use strum::IntoEnumIterator;
 
 // Helper function to create a recon rule
 /// # Panics
@@ -629,13 +628,10 @@ pub async fn create_test_staging_entry(
 
                 assert_eq!(void_response.status(), 200);
                 let voided_entry: GetStagingEntryResponse = void_response.json().await.unwrap();
-                assert_eq!(voided_entry.status, ApiStagingEntryCoarseStatus::Void);
+                assert_eq!(voided_entry.status, ApiStagingEntryStatus::Void);
 
-                if ApiStagingEntryCoarseStatus::Void.eq(&DomainStagingEntryStatus::from(
-                    &target_data,
-                )
-                .to_api_response()
-                .coarse())
+                if ApiStagingEntryStatus::Void
+                    .eq(&DomainStagingEntryStatus::from(&target_data).to_api_response())
                 {
                     voided_entry
                 } else {
@@ -650,7 +646,7 @@ pub async fn create_test_staging_entry(
                     assert_eq!(get_response.status(), 200);
                     let archived_entry: GetStagingEntryResponse =
                         get_response.json().await.unwrap();
-                    assert_eq!(archived_entry.status, ApiStagingEntryCoarseStatus::Archived);
+                    assert_eq!(archived_entry.status, ApiStagingEntryStatus::Archived);
                     archived_entry
                 }
             }
@@ -939,7 +935,7 @@ async fn test_list_staging_entries_v2_filters_status_account_order_and_time_rang
         &token,
         list_staging_entries_v2_request(
             ApiStagingEntryListFiltersV2 {
-                status: Some(vec![ApiStagingEntryCoarseStatus::Pending]),
+                status: Some(vec![ApiStagingEntryStatus::Pending]),
                 detailed_status: None,
                 entry_type: Some(vec![BalanceDirection::Credit]),
                 account_ids: Some(vec![account_id]),
@@ -966,7 +962,7 @@ async fn test_list_staging_entries_v2_filters_status_account_order_and_time_rang
     .await;
 
     assert_eq!(staging_entry_ids(&page), vec![included.id]);
-    assert_eq!(page.items[0].status, ApiStagingEntryCoarseStatus::Pending);
+    assert_eq!(page.items[0].status, ApiStagingEntryStatus::Pending);
     assert_eq!(page.items[0].order_id, "v2_filter_order");
     assert_eq!(
         page.items[0].transformation_config.transformation_config_id,
@@ -1064,22 +1060,15 @@ async fn test_list_staging_entries_v2_filters_by_detailed_status() {
         })
         .unwrap();
     let duplicate = manual_review_entries.next().unwrap();
+    let duplicate_status = ApiStagingEntryStatus::NeedsManualReview(Some(
+        StagingEntryManualReviewData::DuplicateEntry,
+    ));
 
-    // The coarse `status` field must keep reporting the pre-flattening value, while the reason
-    // moves into `detailed_status`.
-    assert_eq!(
-        duplicate.status,
-        ApiStagingEntryCoarseStatus::NeedsManualReview
-    );
-    assert_eq!(
-        duplicate.detailed_status,
-        ApiStagingEntryStatus::NeedsManualReview(Some(
-            StagingEntryManualReviewData::DuplicateEntry
-        ))
-    );
+    assert_eq!(duplicate.status, duplicate_status);
+    assert_eq!(duplicate.detailed_status, duplicate_status);
 
-    // The legacy fields stay bare strings and the new ones are nested objects, so the `status` /
-    // `sub_status` keys inside `detailed_status` cannot collide with the top-level `status`.
+    // `status` is flattened into the entry, so its `sub_status` is a top-level key, while
+    // `detailed_status` nests the same value in its own object.
     let raw_entry: serde_json::Value = client
         .get(&format!("/staging_entries/{}", duplicate.id))
         .with_auth(&token)
@@ -1089,6 +1078,7 @@ async fn test_list_staging_entries_v2_filters_by_detailed_status() {
         .await
         .unwrap();
     assert_eq!(raw_entry["status"], json!("needs_manual_review"));
+    assert_eq!(raw_entry["sub_status"], json!("duplicate_entry"));
     assert_eq!(raw_entry["discarded_status"], json!(null));
     assert_eq!(
         raw_entry["detailed_status"],
@@ -1096,66 +1086,78 @@ async fn test_list_staging_entries_v2_filters_by_detailed_status() {
     );
     assert_eq!(raw_entry["detailed_discarded_status"], json!(null));
 
-    let duplicates_only = staging_entry_ids(
-        &list_staging_entries_v2(
-            &client,
-            &token,
-            list_staging_entries_v2_request(
-                ApiStagingEntryListFiltersV2 {
-                    detailed_status: Some(vec![ApiStagingEntryStatus::NeedsManualReview(Some(
-                        StagingEntryManualReviewData::DuplicateEntry,
-                    ))]),
-                    ..Default::default()
-                },
-                StagingEntryListSortField::Id { id: None },
-                Some(50),
-                CursorDirection::Next,
-                SortOrder::Desc,
-            ),
-        )
-        .await,
-    );
-    assert!(duplicates_only.contains(&duplicate.id));
-    assert!(!duplicates_only.contains(&no_rules_found.id));
+    for filters in [
+        ApiStagingEntryListFiltersV2 {
+            status: Some(vec![duplicate_status]),
+            ..Default::default()
+        },
+        ApiStagingEntryListFiltersV2 {
+            detailed_status: Some(vec![duplicate_status]),
+            ..Default::default()
+        },
+        // When both are sent, `detailed_status` is used and `status` is ignored.
+        ApiStagingEntryListFiltersV2 {
+            status: Some(vec![ApiStagingEntryStatus::NeedsManualReview(Some(
+                StagingEntryManualReviewData::NoRulesFound,
+            ))]),
+            detailed_status: Some(vec![duplicate_status]),
+            ..Default::default()
+        },
+    ] {
+        let duplicates_only = staging_entry_ids(
+            &list_staging_entries_v2(
+                &client,
+                &token,
+                list_staging_entries_v2_request(
+                    filters,
+                    StagingEntryListSortField::Id { id: None },
+                    Some(50),
+                    CursorDirection::Next,
+                    SortOrder::Desc,
+                ),
+            )
+            .await,
+        );
+        assert!(duplicates_only.contains(&duplicate.id));
+        assert!(!duplicates_only.contains(&no_rules_found.id));
+    }
 
     // A parent status with the `sub_status` key omitted entirely - what a caller that has not
     // migrated yet sends - must still match every sub-status.
-    let bare_parent_response = client
-        .post("/staging_entries/v2/list")
+    for filter_field in ["status", "detailed_status"] {
+        let bare_parent_response = client
+            .post("/staging_entries/v2/list")
+            .with_auth(&token)
+            .json(&json!({
+                "filters": { filter_field: [{ "status": "needs_manual_review" }] },
+                "cursor_payload": {
+                    "limit": 50,
+                    "direction": "next",
+                    "order": "desc",
+                    "sort_by": { "sort_field": "id", "id": null }}}))
+            .send()
+            .await;
+
+        assert_eq!(bare_parent_response.status(), 200, "{filter_field}");
+        let all_manual_review = staging_entry_ids(&bare_parent_response.json().await.unwrap());
+        assert!(all_manual_review.contains(&duplicate.id), "{filter_field}");
+        assert!(
+            all_manual_review.contains(&no_rules_found.id),
+            "{filter_field}"
+        );
+    }
+
+    // The v1 query param carries only the parent status, which also matches every sub-status.
+    let v1_response = client
+        .get("/staging_entries?status=needs_manual_review")
         .with_auth(&token)
-        .json(&json!({
-            "filters": { "detailed_status": [{ "status": "needs_manual_review" }] },
-            "cursor_payload": {
-                "limit": 50,
-                "direction": "next",
-                "order": "desc",
-                "sort_by": { "sort_field": "id", "id": null }}}))
         .send()
         .await;
-
-    assert_eq!(bare_parent_response.status(), 200);
-    let all_manual_review = staging_entry_ids(&bare_parent_response.json().await.unwrap());
-    assert!(all_manual_review.contains(&duplicate.id));
-    assert!(all_manual_review.contains(&no_rules_found.id));
-
-    let coarse_page = list_staging_entries_v2(
-        &client,
-        &token,
-        list_staging_entries_v2_request(
-            ApiStagingEntryListFiltersV2 {
-                status: Some(vec![ApiStagingEntryCoarseStatus::NeedsManualReview]),
-                ..Default::default()
-            },
-            StagingEntryListSortField::Id { id: None },
-            Some(50),
-            CursorDirection::Next,
-            SortOrder::Desc,
-        ),
-    )
-    .await;
-    let coarse_ids = staging_entry_ids(&coarse_page);
-    assert!(coarse_ids.contains(&duplicate.id));
-    assert!(coarse_ids.contains(&no_rules_found.id));
+    assert_eq!(v1_response.status(), 200);
+    let v1_entries: Vec<GetStagingEntryResponse> = v1_response.json().await.unwrap();
+    let v1_ids: Vec<&str> = v1_entries.iter().map(|entry| entry.id.as_str()).collect();
+    assert!(v1_ids.contains(&duplicate.id.as_str()));
+    assert!(v1_ids.contains(&no_rules_found.id.as_str()));
 }
 
 struct VersionedStagingEntriesForV2Listing {
@@ -1270,8 +1272,13 @@ async fn test_list_staging_entries_v2_without_status_filter_includes_archived_ve
         .iter()
         .find(|item| item.id == fixture.superseded.id)
         .unwrap();
-    assert_eq!(archived.status, ApiStagingEntryCoarseStatus::Archived);
+    assert_eq!(archived.status, ApiStagingEntryStatus::Archived);
     assert_eq!(archived.detailed_status, ApiStagingEntryStatus::Archived);
+    assert_eq!(archived.discarded_status, Some(fixture.superseded.status));
+    assert_eq!(
+        archived.detailed_discarded_status,
+        archived.discarded_status
+    );
 }
 
 #[actix_web::test]
@@ -1280,11 +1287,11 @@ async fn test_list_staging_entries_v2_filters_archived_status() {
     let client = app.api_client();
     let fixture = setup_versioned_staging_entries_for_v2_listing(&client).await;
 
-    let coarse_page = list_staging_entries_v2_with_filters(
+    let status_page = list_staging_entries_v2_with_filters(
         &client,
         &fixture.token,
         ApiStagingEntryListFiltersV2 {
-            status: Some(vec![ApiStagingEntryCoarseStatus::Archived]),
+            status: Some(vec![ApiStagingEntryStatus::Archived]),
             ..Default::default()
         },
     )
@@ -1300,7 +1307,7 @@ async fn test_list_staging_entries_v2_filters_archived_status() {
     .await;
 
     assert_eq!(
-        staging_entry_ids(&coarse_page),
+        staging_entry_ids(&status_page),
         vec![fixture.superseded.id.clone()]
     );
     assert_eq!(
@@ -1319,11 +1326,12 @@ async fn test_list_staging_entries_v2_non_archived_statuses_return_one_version_p
         &client,
         &fixture.token,
         ApiStagingEntryListFiltersV2 {
-            status: Some(
-                ApiStagingEntryCoarseStatus::iter()
-                    .filter(|status| *status != ApiStagingEntryCoarseStatus::Archived)
-                    .collect(),
-            ),
+            status: Some(vec![
+                ApiStagingEntryStatus::Pending,
+                ApiStagingEntryStatus::NeedsManualReview(None),
+                ApiStagingEntryStatus::Processed,
+                ApiStagingEntryStatus::Void,
+            ]),
             ..Default::default()
         },
     )
@@ -1368,12 +1376,12 @@ async fn test_list_staging_entries_v2_staging_entry_id_filter_returns_full_histo
             (
                 fixture.superseded.version,
                 fixture.superseded.id,
-                ApiStagingEntryCoarseStatus::Archived
+                ApiStagingEntryStatus::Archived
             ),
             (
                 fixture.voided.version,
                 fixture.voided.id,
-                ApiStagingEntryCoarseStatus::Void
+                ApiStagingEntryStatus::Void
             ),
         ]
     );
@@ -1573,7 +1581,7 @@ async fn test_create_staging_entry(#[case] amount: f64, #[case] expected_status:
         assert_eq!(body.entry_type, BalanceDirection::Credit);
         assert_eq!(body.amount.value.0, amount);
         assert_eq!(body.amount.currency, Currency::USD);
-        assert_eq!(body.status, ApiStagingEntryCoarseStatus::Pending);
+        assert_eq!(body.status, ApiStagingEntryStatus::Pending);
         assert_eq!(
             body.processing_mode,
             StagingEntryProcessingMode::Transaction
@@ -2328,9 +2336,7 @@ async fn test_get_staging_entry_resolutions(
 
     assert_eq!(
         staging_entry.status,
-        DomainStagingEntryStatus::from(&target_data)
-            .to_api_response()
-            .coarse(),
+        DomainStagingEntryStatus::from(&target_data).to_api_response(),
         "Staging Entry status should be target status"
     );
 
@@ -2459,7 +2465,7 @@ async fn test_staging_entry_correction_validation(
     } else if expected_status == 200 {
         let updated_entry: GetStagingEntryResponse = response.json().await.unwrap();
         // Verify it created a new version with Edited status (shows as Pending)
-        assert_eq!(updated_entry.status, ApiStagingEntryCoarseStatus::Pending);
+        assert_eq!(updated_entry.status, ApiStagingEntryStatus::Pending);
         assert_eq!(updated_entry.amount.value.0, updated_amount);
         assert_ne!(updated_entry.id, staging_entry.id); // New version has different ID
         assert_eq!(
@@ -2569,7 +2575,7 @@ async fn test_update_staging_entry_amount_field() {
 
     assert_eq!(original_response.status(), 200);
     let original_entry: GetStagingEntryResponse = original_response.json().await.unwrap();
-    assert_eq!(original_entry.status, ApiStagingEntryCoarseStatus::Archived);
+    assert_eq!(original_entry.status, ApiStagingEntryStatus::Archived);
 }
 
 // Test updating multiple fields
@@ -2665,7 +2671,7 @@ async fn test_update_staging_entry_multiple_fields() {
     );
 
     // Verify versioning and status
-    assert_eq!(updated_entry.status, ApiStagingEntryCoarseStatus::Pending); // Edited entries show as Pending
+    assert_eq!(updated_entry.status, ApiStagingEntryStatus::Pending); // Edited entries show as Pending
     assert_eq!(updated_entry.version, staging_entry.version + 1);
     assert_eq!(
         updated_entry.staging_entry_id,
@@ -2917,7 +2923,7 @@ async fn test_staging_entry_update_workflow() {
     // Verify NeedsManualReview state
     assert_eq!(
         staging_entry.status,
-        ApiStagingEntryCoarseStatus::NeedsManualReview
+        ApiStagingEntryStatus::NeedsManualReview(Some(StagingEntryManualReviewData::NoRulesFound))
     );
     assert_eq!(staging_entry.version, 2);
 
@@ -2950,7 +2956,7 @@ async fn test_staging_entry_update_workflow() {
     let updated_entry: GetStagingEntryResponse = update_response.json().await.unwrap();
 
     // Step 3: Verify the updated entry
-    assert_eq!(updated_entry.status, ApiStagingEntryCoarseStatus::Pending); // Edited entries show as Pending
+    assert_eq!(updated_entry.status, ApiStagingEntryStatus::Pending); // Edited entries show as Pending
     assert_eq!(updated_entry.amount.value.0, 999.99);
     assert_eq!(updated_entry.version, staging_entry.version + 1); // Version incremented
     assert_ne!(updated_entry.id, staging_entry.id); // New version
@@ -2975,7 +2981,7 @@ async fn test_staging_entry_update_workflow() {
 
     assert_eq!(original_response.status(), 200);
     let original_entry: GetStagingEntryResponse = original_response.json().await.unwrap();
-    assert_eq!(original_entry.status, ApiStagingEntryCoarseStatus::Archived);
+    assert_eq!(original_entry.status, ApiStagingEntryStatus::Archived);
 
     // Step 5: Verify both entries show up in the list
     let list_response = client

@@ -1,8 +1,9 @@
 use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
-use common_utils::{chunking::chunked, date_time, logging};
+use common_utils::{chunking::chunked, date_time};
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
 use futures::future;
+use recon_env::logging;
 
 use crate::{
     entry::{Entry, EntryNew, EntryPage, EntryUpdateInternal, ExpectedEntryUpdateInternal},
@@ -904,6 +905,28 @@ impl Entry {
         .await
         .change_context(DatabaseError::Others)
         .attach_with(|| format!("Error while listing entries by IDs: {entry_ids:?}"))
+    }
+
+    pub async fn count_linking_pending_by_account_ids(
+        conn: &PgPooledConn,
+        account_ids: &[String],
+    ) -> StorageResult<i64> {
+        let query = dsl::entry
+            .filter(dsl::account_id.eq_any(account_ids.to_vec()))
+            .filter(dsl::linking_status.eq(DieselEntryLinkingStatus::Pending))
+            .count();
+
+        logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
+
+        generics::db_metrics::track_database_call::<entry::table, _, _>(
+            query.get_result_async::<i64>(conn),
+            generics::db_metrics::DatabaseOperation::Count,
+        )
+        .await
+        .change_context(DatabaseError::Others)
+        .attach_with(|| {
+            format!("Error while counting linking pending entries for account_ids: {account_ids:?}")
+        })
     }
 
     pub async fn list_linking_pending(conn: &PgPooledConn, limit: u16) -> StorageResult<Vec<Self>> {

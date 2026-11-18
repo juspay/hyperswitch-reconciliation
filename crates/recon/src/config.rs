@@ -1,27 +1,25 @@
 use std::{fs, path::PathBuf};
 
-use crate::{env, errors::ReconAppError};
-use base64::Engine;
+use crate::errors::ReconAppError;
 use common_utils::{
     api_key::ApiKeyHashKey,
-    consts::BASE64_ENGINE,
     errors::{CryptoError, CustomResult},
-    logging::LoggerConfig,
 };
 use config::{Environment, File};
-use error_stack::ResultExt;
+use error_stack::{Report, ResultExt};
 use external_services::{
     faas::FaasConfig, file_storage::FileStorageConfig, secrets::SecretsManagementConfig,
-    ApplicationEncryptionConfig, HyperswitchConfig, SchedulerConfig, UserConfig,
+    ApplicationEncryptionConfig, SchedulerConfig, UserConfig,
 };
 use masking::{PeekInterface, Secret};
+use recon_env::{env, logging::LoggerConfig};
 use recon_interfaces::{
     secrets_interface::secret_state::{SecretState, SecretStateContainer, SecuredSecret},
     types::Proxy,
 };
 use serde::Deserialize;
 
-pub type ApplicationResult<T> = Result<T, error_stack::Report<ReconAppError>>;
+pub type ApplicationResult<T> = Result<T, Report<ReconAppError>>;
 
 #[derive(clap::Parser, Default)]
 pub struct CmdLineConf {
@@ -66,22 +64,22 @@ impl DatabaseConfig {
 
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.username.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database username must not be empty".into(),
             )));
         }
         if self.password.peek().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database password must not be empty".into(),
             )));
         }
         if self.host.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database host must not be empty".into(),
             )));
         }
         if self.dbname.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Database name must not be empty".into(),
             )));
         }
@@ -111,12 +109,12 @@ impl Default for ServerConfig {
 impl ServerConfig {
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.host.is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Server host must not be empty".into(),
             )));
         }
         if self.workers == 0 {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "Server workers must be greater than 0".into(),
             )));
         }
@@ -162,7 +160,7 @@ impl ApiKeysConfig {
     /// Emptiness only: this runs before decryption, when the value is ciphertext under KMS.
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.hash_key.peek().trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "api_keys.hash_key must not be empty".into(),
             )));
         }
@@ -178,7 +176,7 @@ impl ApiKeysConfig {
 impl AuthConfig {
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.internal_api_key.peek().trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "auth.internal_api_key must not be empty".into(),
             )));
         }
@@ -227,17 +225,17 @@ impl ReportConfig {
 
     pub fn validate(&self) -> ApplicationResult<()> {
         if self.transaction_report_function.trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "report.transaction_report_function must not be empty".into(),
             )));
         }
         if self.exception_report_function.trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "report.exception_report_function must not be empty".into(),
             )));
         }
         if self.transaction_flow_report_function.trim().is_empty() {
-            return Err(error_stack::Report::from(ReconAppError::ValidationError(
+            return Err(Report::from(ReconAppError::ValidationError(
                 "report.transaction_flow_report_function must not be empty".into(),
             )));
         }
@@ -284,9 +282,9 @@ impl Config<SecuredSecret> {
         // environment variables override both the defaults and the config file values.
 
         let environment = env::which();
-        let config_path = Self::config_path(&environment.to_string(), config_path);
+        let config_path = recon_env::config::config_path(&environment.to_string(), config_path);
 
-        let config = Self::builder(&environment.to_string())
+        let config = recon_env::config::builder(&environment.to_string())
             .change_context(ReconAppError::ValidationError("Configuration error".into()))?
             .add_source(File::from(config_path).required(false))
             .add_source(
@@ -307,53 +305,16 @@ impl Config<SecuredSecret> {
         self.database.get_inner().validate()?;
         self.auth.get_inner().validate()?;
         self.api_keys.get_inner().validate()?;
-        self.application_encryption.get_inner().validate()?;
-        self.user_client.get_inner().validate()?;
+        self.application_encryption
+            .get_inner()
+            .validate()
+            .map_err(|message| Report::new(ReconAppError::ValidationError(message)))?;
+        self.user_client
+            .get_inner()
+            .validate()
+            .map_err(|message| Report::new(ReconAppError::ValidationError(message)))?;
         self.reporting_service.validate()?;
         Ok(())
-    }
-
-    /// Construct config builder extending it by fall-back defaults and setting config file to load.
-    pub fn builder(
-        environment: &str,
-    ) -> Result<config::ConfigBuilder<config::builder::DefaultState>, config::ConfigError> {
-        config::Config::builder()
-            // Here, it should be `set_override()` not `set_default()`.
-            // "env" can't be altered by config field.
-            // Should be single source of truth.
-            .set_override("env", environment)
-    }
-
-    /// Config path.
-    pub fn config_path(environment: &str, explicit_config_path: Option<PathBuf>) -> PathBuf {
-        let mut config_path = PathBuf::new();
-        if let Some(explicit_config_path_val) = explicit_config_path {
-            config_path.push(explicit_config_path_val);
-        } else {
-            let config_file_name = match environment {
-                "production" => "prod.toml",
-                "sandbox" => "sandbox.toml",
-                _ => "config.toml",
-            };
-
-            let config_directory = Self::get_config_directory();
-            config_path.push(config_directory);
-            config_path.push(config_file_name);
-        }
-        config_path
-    }
-
-    /// Get the Directory for the config file
-    /// Read the env variable `CONFIG_DIR` or fallback to `config`
-    pub fn get_config_directory() -> PathBuf {
-        let mut config_path = PathBuf::new();
-
-        let config_directory =
-            std::env::var(env::vars::CONFIG_DIR).unwrap_or_else(|_| "config".into());
-
-        config_path.push(env::workspace_path());
-        config_path.push(config_directory);
-        config_path
     }
 }
 
@@ -371,114 +332,4 @@ pub fn load_config_from_env() -> Config<SecuredSecret> {
     let config_path =
         std::env::var("CONFIG_FILE").unwrap_or_else(|_| "config/config.toml".to_string());
     load_config(&config_path)
-}
-
-trait ApplicationEncryptionConfigExt {
-    fn validate(&self) -> ApplicationResult<()>;
-}
-
-impl ApplicationEncryptionConfigExt for ApplicationEncryptionConfig {
-    /// Validates the encryption configuration
-    fn validate(&self) -> ApplicationResult<()> {
-        match self {
-            Self::LocalEncryption { local_encryption } => {
-                let key_str = local_encryption.master_key.peek().trim();
-
-                // Check if master key is empty
-                if key_str.is_empty() {
-                    return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                        "Master key cannot be empty for LocalEncryption variant".into(),
-                    )));
-                }
-
-                // Validate base64 format
-                match BASE64_ENGINE.decode(key_str) {
-                    Ok(decoded) => {
-                        // Check key length (should be 32 bytes for AES-256)
-                        if decoded.len() != 32 {
-                            return Err(error_stack::Report::new(
-                                ReconAppError::ValidationError(format!(
-                                        "Master key must be exactly 32 bytes when decoded, got {} bytes", 
-                                        decoded.len())
-                            )));
-                        }
-
-                        // Check if key is all zeros (weak key)
-                        if decoded.iter().all(|&b| b == 0) {
-                            return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                                "Master key cannot be all zeros (weak key)".into(),
-                            )));
-                        }
-                    }
-                    Err(_) => {
-                        return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                            "Master key must be valid base64 encoded string".into(),
-                        )));
-                    }
-                }
-
-                Ok(())
-            }
-            Self::KeyManager { key_manager } => {
-                // Validate KeyManager configuration
-                if !key_manager.enabled {
-                    return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                        "KeyManager must be enabled for KeyManager variant".into(),
-                    )));
-                }
-
-                if key_manager.url.trim().is_empty() {
-                    return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                        "KeyManager URL cannot be empty for KeyManager variant".into(),
-                    )));
-                }
-
-                if key_manager.cert.peek().trim().is_empty()
-                    || key_manager.ca.peek().trim().is_empty()
-                {
-                    return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                        "KeyManager certificates (cert and ca) are required for KeyManager variant"
-                            .into(),
-                    )));
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-trait UserConfigExt {
-    fn validate(&self) -> ApplicationResult<()>;
-}
-
-impl UserConfigExt for UserConfig {
-    fn validate(&self) -> ApplicationResult<()> {
-        match self {
-            Self::MockUserClient => Ok(()),
-            Self::Hyperswitch { hyperswitch_config } => hyperswitch_config.validate(),
-        }
-    }
-}
-
-trait HyperswitchConfigExt {
-    fn validate(&self) -> ApplicationResult<()>;
-}
-
-impl HyperswitchConfigExt for HyperswitchConfig {
-    fn validate(&self) -> ApplicationResult<()> {
-        if self.base_url.is_empty() {
-            return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                "HyperSwitch base URL cannot be empty".into(),
-            )));
-        }
-
-        if self.internal_api_key.peek().is_empty() {
-            return Err(error_stack::Report::new(ReconAppError::ValidationError(
-                "HyperSwitch internal API key cannot be empty".into(),
-            )));
-        }
-
-        Ok(())
-    }
 }

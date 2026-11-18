@@ -94,6 +94,10 @@ impl BusinessProfile {
                     .service(
                         web::resource("/recon_engine/status")
                             .route(web::get().to(business_profile::get_recon_status)),
+                    )
+                    .service(
+                        web::resource("/linking_processor/status")
+                            .route(web::get().to(business_profile::get_linking_status)),
                     ),
             )
     }

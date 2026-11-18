@@ -72,7 +72,7 @@ use common_types::{
         TransactionData, TransactionDataV3,
     },
 };
-use common_utils::{auth::AuthContext, logging};
+use common_utils::auth::AuthContext;
 use diesel_models::{
     entry::EntryNew,
     errors::DatabaseError,
@@ -93,6 +93,7 @@ use recon_domain_models::{
     staging_entry::DomainStagingEntry,
     transaction::DomainTransaction,
 };
+use recon_env::logging;
 use strum::IntoEnumIterator;
 
 /// Get available resolution action types for a staging entry
@@ -389,7 +390,7 @@ pub async fn list_linkable_staging_entries_for_transaction(
                         domain_staging_entry.currency,
                     )
                     .change_context(TransactionError::InternalServerError)?,
-                    status: domain_staging_entry.status.to_api_response().coarse(),
+                    status: domain_staging_entry.status.to_api_response(),
                     detailed_status: domain_staging_entry.status.to_api_response(),
                     processing_mode: domain_staging_entry.processing_mode,
                     effective_at: domain_staging_entry.effective_at,
@@ -407,7 +408,7 @@ pub async fn list_linkable_staging_entries_for_transaction(
                     discarded_at: domain_staging_entry.discarded_at,
                     discarded_status: domain_staging_entry
                         .discarded_status
-                        .map(|status| status.to_api_response().coarse()),
+                        .map(DomainStagingEntryStatus::to_api_response),
                     detailed_discarded_status: domain_staging_entry
                         .discarded_status
                         .map(DomainStagingEntryStatus::to_api_response),

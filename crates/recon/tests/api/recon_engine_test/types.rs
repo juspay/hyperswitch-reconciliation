@@ -1,4 +1,4 @@
-use api_models::staging_entry::ApiStagingEntryCoarseStatus;
+use api_models::staging_entry::ApiStagingEntryStatus;
 use std::collections::HashMap;
 
 use crate::api::recon_engine_test::{
@@ -191,7 +191,7 @@ impl ExpectedSearchExpectation {
 
 #[derive(Debug)]
 pub struct ReconTestEntryExpectedResult {
-    pub expected_staging_entry_status: ApiStagingEntryCoarseStatus,
+    pub expected_staging_entry_status: ApiStagingEntryStatus,
     pub expected_entries_data: Vec<ReconTestEntryExpectedData>,
     pub expected_transaction_status: ApiTransactionStatus,
     pub expected_transaction_version: Option<i32>,
@@ -201,7 +201,7 @@ pub struct ReconTestEntryExpectedResult {
 }
 
 pub struct ReconTestEntryExpectedResultBuilder {
-    expected_staging_entry_status: Option<ApiStagingEntryCoarseStatus>,
+    expected_staging_entry_status: Option<ApiStagingEntryStatus>,
     expected_entries_data: Option<Vec<ReconTestEntryExpectedData>>,
     expected_transaction_status: Option<ApiTransactionStatus>,
     expected_transaction_version: Option<i32>,
@@ -229,7 +229,7 @@ impl ReconTestEntryExpectedResultBuilder {
         }
     }
 
-    pub fn expected_staging_entry_status(mut self, status: ApiStagingEntryCoarseStatus) -> Self {
+    pub fn expected_staging_entry_status(mut self, status: ApiStagingEntryStatus) -> Self {
         self.expected_staging_entry_status = Some(status);
         self
     }

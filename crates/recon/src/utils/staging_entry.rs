@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use common_utils::id_type::MerchantId;
 
 use crate::{
@@ -9,8 +7,8 @@ use crate::{
 };
 use api_models::{
     staging_entry::{
-        ApiListStagingEntriesFilters, ApiStagingEntryCoarseStatus, ApiStagingEntryListFiltersV2,
-        ApiStagingEntryStatus, NeedsManualReviewData, PendingData as PendingDataApi,
+        ApiListStagingEntriesFilters, ApiStagingEntryListFiltersV2, ApiStagingEntryStatus,
+        NeedsManualReviewData, PendingData as PendingDataApi,
         StagingEntryData as StagingEntryDataApi,
     },
     user::User,
@@ -181,23 +179,10 @@ fn to_diesel_statuses(
     })
 }
 
-fn coarse_to_diesel_statuses(
-    statuses: Option<Vec<ApiStagingEntryCoarseStatus>>,
-) -> Option<Vec<DieselStagingEntryStatus>> {
-    statuses.map(|statuses| {
-        statuses
-            .into_iter()
-            .map(ApiStagingEntryCoarseStatus::to_detailed)
-            .flat_map(ApiStagingEntryStatus::to_domain_statuses)
-            .map(DieselStagingEntryStatus::from)
-            .collect()
-    })
-}
-
 impl ForeignFrom<ApiListStagingEntriesFilters> for ListStagingEntriesFilters {
     fn foreign_from(value: ApiListStagingEntriesFilters) -> Self {
         Self {
-            status: coarse_to_diesel_statuses(value.status),
+            status: to_diesel_statuses(value.status),
             entry_type: value.entry_type,
             account_id: value.account_id,
             transformation_history_id: value.transformation_history_id,
@@ -210,19 +195,8 @@ impl ForeignFrom<ApiListStagingEntriesFilters> for ListStagingEntriesFilters {
 
 impl ForeignFrom<ApiStagingEntryListFiltersV2> for StagingEntryListFiltersV2 {
     fn foreign_from(value: ApiStagingEntryListFiltersV2) -> Self {
-        let coarse = coarse_to_diesel_statuses(value.status);
-        let detailed = to_diesel_statuses(value.detailed_status);
-
         Self {
-            status: match (coarse, detailed) {
-                (Some(coarse), Some(detailed)) => {
-                    let set: HashSet<DieselStagingEntryStatus> =
-                        coarse.into_iter().chain(detailed).collect();
-                    Some(set.into_iter().collect())
-                }
-                (Some(statuses), None) | (None, Some(statuses)) => Some(statuses),
-                (None, None) => None,
-            },
+            status: to_diesel_statuses(value.detailed_status.or(value.status)),
             entry_type: value.entry_type,
             account_ids: value.account_ids,
             transformation_config_ids: value.transformation_config_ids,

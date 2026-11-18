@@ -10,6 +10,8 @@ pub use link_trigger::LinkTrigger;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct LinkConfigCreateRequest {
+    pub name: String,
+    pub description: String,
     pub account_id: String,
     pub transaction_rule_id: String,
     pub confirmation_rule_id: String,
@@ -21,6 +23,8 @@ pub struct LinkConfigCreateRequest {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct LinkConfigUpdateRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
     pub transaction_rule_id: Option<String>,
     pub confirmation_rule_id: Option<String>,
     pub transaction_trigger: Option<LinkTrigger>,
@@ -32,6 +36,8 @@ pub struct LinkConfigUpdateRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct GetLinkConfigResponse {
+    pub name: String,
+    pub description: String,
     pub link_config_id: String,
     pub profile_id: String,
     pub account_id: String,

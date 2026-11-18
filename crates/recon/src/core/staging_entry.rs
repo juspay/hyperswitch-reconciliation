@@ -19,7 +19,7 @@ use common_types::{
         StagingEntryDataV2, StagingEntryListFiltersV2, VoidData, VoidDataV1,
     },
 };
-use common_utils::{auth::AuthContext, errors::ErrorSwitchFrom, logging};
+use common_utils::{auth::AuthContext, errors::ErrorSwitchFrom};
 use diesel_models::{
     errors::DatabaseError,
     staging_entry::{
@@ -32,6 +32,7 @@ use external_services::user::interfaces::UserInterface;
 use futures::future;
 use masking::ExposeInterface;
 use recon_domain_models::{behaviour::ReverseConversion, staging_entry::DomainStagingEntry};
+use recon_env::logging;
 use storage_impl::{
     account::AccountInterface, metadata_schema::MetadataSchemaInterface,
     transformation::TransformationConfigInterface,
@@ -189,7 +190,7 @@ pub async fn create_staging_entry(
             domain_staging_entry.currency,
         )
         .change_context(StagingEntryError::InternalServerError)?,
-        status: domain_staging_entry.status.to_api_response().coarse(),
+        status: domain_staging_entry.status.to_api_response(),
         detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
@@ -207,7 +208,7 @@ pub async fn create_staging_entry(
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
             .discarded_status
-            .map(|status| status.to_api_response().coarse()),
+            .map(DomainStagingEntryStatus::to_api_response),
         detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
@@ -279,7 +280,7 @@ pub async fn get_staging_entry_by_id(
             domain_staging_entry.currency,
         )
         .change_context(StagingEntryError::InternalServerError)?,
-        status: domain_staging_entry.status.to_api_response().coarse(),
+        status: domain_staging_entry.status.to_api_response(),
         detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
@@ -297,7 +298,7 @@ pub async fn get_staging_entry_by_id(
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
             .discarded_status
-            .map(|status| status.to_api_response().coarse()),
+            .map(DomainStagingEntryStatus::to_api_response),
         detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
@@ -435,7 +436,7 @@ pub(super) async fn staging_entry_views_to_response(
                         domain_staging_entry.currency,
                     )
                     .change_context(StagingEntryError::InternalServerError)?,
-                    status: domain_staging_entry.status.to_api_response().coarse(),
+                    status: domain_staging_entry.status.to_api_response(),
                     detailed_status: domain_staging_entry.status.to_api_response(),
                     processing_mode: domain_staging_entry.processing_mode,
                     effective_at: domain_staging_entry.effective_at,
@@ -453,7 +454,7 @@ pub(super) async fn staging_entry_views_to_response(
                     discarded_at: domain_staging_entry.discarded_at,
                     discarded_status: domain_staging_entry
                         .discarded_status
-                        .map(|status| status.to_api_response().coarse()),
+                        .map(DomainStagingEntryStatus::to_api_response),
                     detailed_discarded_status: domain_staging_entry
                         .discarded_status
                         .map(DomainStagingEntryStatus::to_api_response),
@@ -550,7 +551,7 @@ pub async fn void_staging_entry(
             domain_staging_entry.currency,
         )
         .change_context(StagingEntryError::InternalServerError)?,
-        status: domain_staging_entry.status.to_api_response().coarse(),
+        status: domain_staging_entry.status.to_api_response(),
         detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
@@ -568,7 +569,7 @@ pub async fn void_staging_entry(
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
             .discarded_status
-            .map(|status| status.to_api_response().coarse()),
+            .map(DomainStagingEntryStatus::to_api_response),
         detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
@@ -808,7 +809,7 @@ pub async fn update_staging_entry(
             domain_staging_entry.currency,
         )
         .change_context(StagingEntryError::InternalServerError)?,
-        status: domain_staging_entry.status.to_api_response().coarse(),
+        status: domain_staging_entry.status.to_api_response(),
         detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
@@ -826,7 +827,7 @@ pub async fn update_staging_entry(
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
             .discarded_status
-            .map(|status| status.to_api_response().coarse()),
+            .map(DomainStagingEntryStatus::to_api_response),
         detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
@@ -957,7 +958,7 @@ pub async fn create_staging_entry_with_validation(
             domain_staging_entry.currency,
         )
         .change_context(StagingEntryError::InternalServerError)?,
-        status: domain_staging_entry.status.to_api_response().coarse(),
+        status: domain_staging_entry.status.to_api_response(),
         detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
@@ -975,7 +976,7 @@ pub async fn create_staging_entry_with_validation(
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
             .discarded_status
-            .map(|status| status.to_api_response().coarse()),
+            .map(DomainStagingEntryStatus::to_api_response),
         detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),

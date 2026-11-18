@@ -1,0 +1,3 @@
+ALTER TABLE link_config
+    ADD COLUMN name VARCHAR(255) NOT NULL,
+    ADD COLUMN description TEXT NOT NULL;

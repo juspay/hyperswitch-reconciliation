@@ -10,6 +10,7 @@ common_enums = { version = "0.1.0", path = "../common_enums" }
 common_types = { version = "0.1.0", path = "../common_types" }
 common_utils = { version = "0.1.0", path = "../common_utils" }
 diesel_models = { version = "0.1.0", path = "../diesel_models" }
+recon_env = { version = "0.1.0", path = "../recon_env" }
 masking = { package = "hyperswitch_masking", version = "0.0.1", features = ["serde", "diesel", "time"] }
 
 # Third party deps

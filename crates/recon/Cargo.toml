@@ -34,11 +34,11 @@ common_utils = { path = "../common_utils" }
 diesel_models = { path = "../diesel_models" }
 external_services = { path = "../external_services" }
 masking = { package = "hyperswitch_masking", version = "0.0.1", features = ["serde", "diesel", "time"] }
+recon_env = { path = "../recon_env" }
 recon_interfaces = { path = "../recon_interfaces" }
 recon_domain_models = { path = "../recon_domain_models" }
 storage_impl = { path = "../storage_impl" }
 tracing-actix-web = "0.7.18"
-tracing-futures = "0.2"
 toml = "0.8"
 tracing = "0.1.41"
 thiserror = "2.0"
