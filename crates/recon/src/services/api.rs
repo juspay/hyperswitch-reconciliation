@@ -1,8 +1,9 @@
 use actix_web::{web, HttpRequest, HttpResponse};
 use api_models::errors::ApiErrorResponse as ApiErrorPayload;
-use common_utils::{errors::ErrorSwitch, logging};
+use common_utils::errors::ErrorSwitch;
 use error_stack::Report;
 use http::header;
+use recon_env::logging;
 use std::future::Future;
 
 use crate::{routes::AppState, services::auth::AuthValidator, types::ApplicationResponse};

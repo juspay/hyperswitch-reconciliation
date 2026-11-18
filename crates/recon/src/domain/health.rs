@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use api_models::health::ComponentHealth;
 use common_enums::HealthComponent;
-use common_utils::logging;
 use error_stack::{Report, ResultExt};
+use recon_env::logging;
 
 use crate::{errors::health::HealthCheckError, routes::AppState};
 

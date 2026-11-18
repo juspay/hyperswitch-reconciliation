@@ -28,7 +28,6 @@ use common_types::{
     transaction::{TransactionAccountFilters, TransactionListFiltersV2, TransactionListSortField},
     units::MinorUnit,
 };
-use common_utils::logging;
 use diesel::dsl::{case_when, count, count_star, exists};
 use diesel::sql_types::{Bool, Timestamp, Varchar};
 use diesel::WindowExpressionMethods;
@@ -36,6 +35,7 @@ use diesel::{
     debug_query, pg::Pg, prelude::*, result::Error as DieselError, BoxableExpression, IntoSql,
 };
 use error_stack::ResultExt;
+use recon_env::logging;
 use time::PrimitiveDateTime;
 
 type TransactionOverviewRowTuple = (

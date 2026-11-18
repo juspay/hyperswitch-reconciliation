@@ -15,7 +15,7 @@ use common_types::{
     },
     units::MinorUnit,
 };
-use common_utils::{date_time, id_type::MerchantId, logging};
+use common_utils::{date_time, id_type::MerchantId};
 use diesel_models::{
     account::Account,
     entry::EntryNew,
@@ -47,6 +47,7 @@ use recon_domain_models::{
     },
     ApplicationEncryptionInterface, EncryptionHandler,
 };
+use recon_env::logging;
 use storage_impl::{
     account::AccountInterface, entry::EntryInterface, search_expectation::SearchCriteria,
     search_group::SearchGroupInterface, transaction::TransactionInterface,

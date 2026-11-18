@@ -1,9 +1,9 @@
-use common_utils::logging;
 use recon::{
     config::{ApplicationResult, CmdLineConf, Config},
     errors::ReconAppError,
     initialize_server,
 };
+use recon_env::logging;
 
 #[cfg(not(target_env = "msvc"))]
 use tikv_jemallocator::Jemalloc;
@@ -27,7 +27,7 @@ async fn main() -> ApplicationResult<()> {
 
     #[allow(clippy::print_stdout)] // The logger has not yet been initialized
     {
-        println!("Starting recon: {}", recon::env::which());
+        println!("Starting recon: {}", recon_env::env::which());
     }
 
     // Initialize logger after loading config

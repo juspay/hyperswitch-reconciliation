@@ -10,12 +10,13 @@ use serde::{
     ser, Deserialize, Deserializer, Serialize,
 };
 
+use recon_env::logging;
+
 use crate::{
     consts::BASE64_ENGINE,
     crypto::Encryptable,
     encryption::Encryption,
     errors::{self, CustomResult},
-    logging,
     transformers::{ForeignFrom, ForeignTryFrom},
 };
 

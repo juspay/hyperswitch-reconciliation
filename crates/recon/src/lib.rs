@@ -18,9 +18,7 @@ use tracing_actix_web::TracingLogger;
 pub mod config;
 pub mod core;
 pub mod domain;
-pub mod env;
 pub mod errors;
-pub mod middleware;
 pub mod openapi;
 pub mod routes;
 pub mod secrets_transformers;
@@ -41,7 +39,7 @@ pub fn make_app(
 > {
     let mut app = App::new()
         .app_data(web::Data::new(state.clone()))
-        .wrap(middleware::RequestId)
+        .wrap(recon_env::request_id::RequestId)
         .wrap(TracingLogger::default())
         .wrap(ErrorHandlers::new().handler(
             StatusCode::METHOD_NOT_ALLOWED,

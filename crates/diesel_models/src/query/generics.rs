@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use async_bb8_diesel::AsyncRunQueryDsl;
-use common_utils::logging;
 use diesel::{
     associations::HasTable,
     debug_query,
@@ -21,11 +20,12 @@ use diesel::{
     Insertable, QuerySource, Table,
 };
 use error_stack::ResultExt;
+use recon_env::logging;
 
 use crate::{errors, PgPooledConn, StorageResult};
 
 pub mod db_metrics {
-    use common_utils::logging;
+    use recon_env::logging;
 
     #[derive(Debug)]
     pub enum DatabaseOperation {
