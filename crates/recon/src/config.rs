@@ -9,7 +9,7 @@ use config::{Environment, File};
 use error_stack::{Report, ResultExt};
 use external_services::{
     faas::FaasConfig, file_storage::FileStorageConfig, secrets::SecretsManagementConfig,
-    ApplicationEncryptionConfig, UserConfig,
+    ApplicationEncryptionConfig, SchedulerConfig, UserConfig,
 };
 use masking::{PeekInterface, Secret};
 use recon_env::{env, logging::LoggerConfig};
@@ -255,6 +255,7 @@ pub struct Config<S: SecretState> {
     pub secrets_management: SecretsManagementConfig,
     pub file_storage: FileStorageConfig,
     pub faas: FaasConfig,
+    pub scheduler: SecretStateContainer<SchedulerConfig, S>,
     pub ingestion_service: IngestionServiceConfig,
     pub reporting_service: ReportConfig,
     pub application_encryption: SecretStateContainer<ApplicationEncryptionConfig, S>,

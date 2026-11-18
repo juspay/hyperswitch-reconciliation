@@ -66,6 +66,16 @@ faas_backend = "aws_lambda"
 region = "us-east-1"
 request_timeout_secs = 30
 
+[scheduler]
+scheduler_backend = "invokr"
+
+[scheduler.invokr]
+base_url = "https://invokr.example.com"
+api_token = "${INVOKR_API_TOKEN}"
+org_id = "${INVOKR_ORG_ID}"
+workspace_id = "${INVOKR_WORKSPACE_ID}"
+request_timeout_secs = 30
+
 [ingestion_service]
 transformation_base_url = "http://localhost:8080"
 
