@@ -34,8 +34,7 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/target/release/recon /app/recon
 
-# Copy configuration and migrations
-COPY config/ /app/config/
+# Copy migrations
 COPY migrations/ /app/migrations/
 COPY diesel.toml /app/diesel.toml
 
