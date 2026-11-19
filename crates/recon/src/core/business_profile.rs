@@ -9,7 +9,9 @@ use futures::future;
 use masking::PeekInterface;
 use recon_domain_models::{behaviour::ReverseConversion, business_profile::DomainBusinessProfile};
 use storage_impl::{
-    account::AccountInterface, business_profile::BusinessProfileInterface, entry::EntryInterface,
+    account::AccountReadInterface,
+    business_profile::{BusinessProfileReadInterface, BusinessProfileWriteInterface},
+    entry::EntryReadInterface,
 };
 
 use crate::{

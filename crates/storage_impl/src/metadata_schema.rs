@@ -7,15 +7,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::Store;
 
 #[async_trait]
-pub trait MetadataSchemaInterface {
-    async fn insert_metadata_schema(
-        &self,
-        metadata_schema: MetadataSchemaNew,
-    ) -> StorageResult<MetadataSchema>;
-
+pub trait MetadataSchemaReadInterface {
     async fn find_metadata_schema_by_id_and_profile_id(
         &self,
         id: &str,
@@ -33,6 +28,14 @@ pub trait MetadataSchemaInterface {
         profile_id: &str,
         filters: ListMetadataSchemasFilters,
     ) -> StorageResult<Vec<MetadataSchema>>;
+}
+
+#[async_trait]
+pub trait MetadataSchemaWriteInterface {
+    async fn insert_metadata_schema(
+        &self,
+        metadata_schema: MetadataSchemaNew,
+    ) -> StorageResult<MetadataSchema>;
 
     /// Create a new metadata schema version with incremented version number
     async fn create_new_metadata_schema_version(
@@ -49,21 +52,13 @@ pub trait MetadataSchemaInterface {
 }
 
 #[async_trait]
-impl MetadataSchemaInterface for Store {
-    async fn insert_metadata_schema(
-        &self,
-        metadata_schema: MetadataSchemaNew,
-    ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
-        metadata_schema.insert(&conn).await
-    }
-
+impl MetadataSchemaReadInterface for Store {
     async fn find_metadata_schema_by_id_and_profile_id(
         &self,
         id: &str,
         profile_id: &str,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         MetadataSchema::find_by_id_and_profile_id(&conn, id, profile_id).await
     }
 
@@ -72,7 +67,7 @@ impl MetadataSchemaInterface for Store {
         ids: Vec<String>,
         profile_id: &str,
     ) -> StorageResult<Vec<MetadataSchema>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         MetadataSchema::list_by_ids_and_profile_id(&conn, ids, profile_id).await
     }
 
@@ -81,8 +76,19 @@ impl MetadataSchemaInterface for Store {
         profile_id: &str,
         filters: ListMetadataSchemasFilters,
     ) -> StorageResult<Vec<MetadataSchema>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         MetadataSchema::list_by_profile_id(&conn, profile_id, filters).await
+    }
+}
+
+#[async_trait]
+impl MetadataSchemaWriteInterface for Store {
+    async fn insert_metadata_schema(
+        &self,
+        metadata_schema: MetadataSchemaNew,
+    ) -> StorageResult<MetadataSchema> {
+        let conn = self.write_conn().await?;
+        metadata_schema.insert(&conn).await
     }
 
     async fn create_new_metadata_schema_version(
@@ -90,7 +96,7 @@ impl MetadataSchemaInterface for Store {
         previous_version: MetadataSchema,
         version_update: MetadataSchemaVersionUpdate,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let new_version = MetadataSchemaNew::new_versioned(previous_version, version_update);
         new_version.insert(&conn).await
     }
@@ -100,7 +106,7 @@ impl MetadataSchemaInterface for Store {
         id: &str,
         update: MetadataSchemaUpdate,
     ) -> StorageResult<MetadataSchema> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         MetadataSchema::update_by_id(&conn, id, update.into()).await
     }
 }

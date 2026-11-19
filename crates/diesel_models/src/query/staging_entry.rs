@@ -1,4 +1,4 @@
-use async_bb8_diesel::{AsyncConnection, AsyncRunQueryDsl};
+use async_bb8_diesel::AsyncRunQueryDsl;
 use bigdecimal::BigDecimal;
 use common_enums::{BalanceDirection, Currency, DieselStagingEntryStatus};
 use common_types::{
@@ -19,6 +19,7 @@ const STAGING_ENTRY_BATCH_CHUNK_SIZE: usize = 1000;
 
 use crate::{
     account::Account,
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::{
@@ -31,7 +32,7 @@ use crate::{
         StagingEntryOverviewRow, StagingEntryUpdateInternal,
     },
     transformation_config::TransformationConfig,
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 type StagingEntryOverviewSummaryRowTuple = (
@@ -44,12 +45,12 @@ type StagingEntryOverviewSummaryRowTuple = (
 );
 
 impl StagingEntry {
-    pub async fn find_by_id(conn: &PgPooledConn, id: String) -> StorageResult<Self> {
+    pub async fn find_by_id(conn: &impl ReadConnection, id: String) -> StorageResult<Self> {
         generics::generic_find_one::<staging_entry::table, _, _>(conn, dsl::id.eq(id)).await
     }
 
     pub async fn find_by_id_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         id: String,
         profile_id: String,
     ) -> StorageResult<Self> {
@@ -61,7 +62,7 @@ impl StagingEntry {
     }
 
     pub async fn list_staging_entries_by_primary_ids_and_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         ids: &[String],
         profile_id: &str,
         limit: Option<i64>,
@@ -78,7 +79,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -91,7 +92,7 @@ impl StagingEntry {
     }
 
     pub async fn list_with_account_by_profile_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: ListStagingEntriesFilters,
         limit: Option<i64>,
@@ -145,7 +146,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_results_async::<(Self, Account, TransformationConfig)>(conn)
+            .get_results_async::<(Self, Account, TransformationConfig)>(conn.inner())
             .await
             .map(|results| {
                 results
@@ -167,7 +168,7 @@ impl StagingEntry {
     }
 
     pub async fn list_v2_paginated(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         filters: StagingEntryListFiltersV2,
         pagination: PaginationQuery<StagingEntryListSortField>,
@@ -304,7 +305,7 @@ impl StagingEntry {
 
         let mut views: Vec<StagingEntryAccountView> =
             generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-                query.get_results_async::<(Self, Account, TransformationConfig)>(conn),
+                query.get_results_async::<(Self, Account, TransformationConfig)>(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -339,7 +340,7 @@ impl StagingEntry {
     }
 
     pub async fn list_all_staging_entries(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         status: Option<DieselStagingEntryStatus>,
         limit: u16,
     ) -> StorageResult<Vec<Self>> {
@@ -355,7 +356,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -364,7 +365,7 @@ impl StagingEntry {
     }
 
     pub async fn count_pending_by_profile(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
     ) -> StorageResult<i64> {
         let query = dsl::staging_entry
@@ -375,7 +376,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-            query.get_result_async::<i64>(conn),
+            query.get_result_async::<i64>(conn.inner()),
             generics::db_metrics::DatabaseOperation::Count,
         )
         .await
@@ -386,7 +387,7 @@ impl StagingEntry {
     }
 
     pub async fn update_by_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         id: &str,
         staging_entry_update: StagingEntryUpdateInternal,
     ) -> StorageResult<Self> {
@@ -400,7 +401,7 @@ impl StagingEntry {
     }
 
     pub async fn aggregate_status_counts_by_account(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         profile_id: &str,
         time_range: TimeRange,
         account_ids: Option<Vec<String>>,
@@ -443,7 +444,7 @@ impl StagingEntry {
 
         let rows: Vec<StagingEntryOverviewSummaryRowTuple> =
             generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-                query.get_results_async(conn),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -473,17 +474,17 @@ impl StagingEntry {
 }
 
 impl StagingEntryNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<StagingEntry> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<StagingEntry> {
         generics::generic_insert(conn, self).await
     }
 
     pub async fn batch_insert_chunked(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         staging_entries: Vec<Self>,
     ) -> StorageResult<Vec<StagingEntry>> {
         let entries_count = staging_entries.len();
 
-        conn.transaction_async(|conn| async move {
+        conn.transaction(|conn| async move {
             let mut inserted: Vec<StagingEntry> = Vec::with_capacity(entries_count);
 
             for (chunk_idx, chunk) in
@@ -495,7 +496,7 @@ impl StagingEntryNew {
 
                 let rows: Vec<StagingEntry> =
                     generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-                        query.get_results_async(&conn),
+                        query.get_results_async(conn.inner()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await

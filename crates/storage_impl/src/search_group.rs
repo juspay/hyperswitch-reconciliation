@@ -4,18 +4,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::Store;
 
 #[async_trait]
-pub trait SearchGroupInterface {
-    async fn insert_search_group(&self, search_group: SearchGroupNew)
-        -> StorageResult<SearchGroup>;
-
-    async fn batch_insert_search_groups(
-        &self,
-        search_groups: Vec<SearchGroupNew>,
-    ) -> StorageResult<Vec<SearchGroup>>;
-
+pub trait SearchGroupReadInterface {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchGroup>;
 
     async fn find_by_id_and_profile_id(
@@ -35,6 +27,17 @@ pub trait SearchGroupInterface {
         primary_transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<SearchGroup>>;
+}
+
+#[async_trait]
+pub trait SearchGroupWriteInterface {
+    async fn insert_search_group(&self, search_group: SearchGroupNew)
+        -> StorageResult<SearchGroup>;
+
+    async fn batch_insert_search_groups(
+        &self,
+        search_groups: Vec<SearchGroupNew>,
+    ) -> StorageResult<Vec<SearchGroup>>;
 
     async fn discard_by_id(
         &self,
@@ -44,25 +47,9 @@ pub trait SearchGroupInterface {
 }
 
 #[async_trait]
-impl SearchGroupInterface for Store {
-    async fn insert_search_group(
-        &self,
-        search_group: SearchGroupNew,
-    ) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
-        search_group.insert(&conn).await
-    }
-
-    async fn batch_insert_search_groups(
-        &self,
-        search_groups: Vec<SearchGroupNew>,
-    ) -> StorageResult<Vec<SearchGroup>> {
-        let conn = self.get_connection().await?;
-        SearchGroupNew::batch_insert(search_groups, &conn).await
-    }
-
+impl SearchGroupReadInterface for Store {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_id(&conn, id.to_string()).await
     }
 
@@ -71,7 +58,7 @@ impl SearchGroupInterface for Store {
         id: &str,
         profile_id: &str,
     ) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_id_and_profile_id(&conn, id, profile_id).await
     }
 
@@ -80,7 +67,7 @@ impl SearchGroupInterface for Store {
         rule_id: &str,
         hashed_grouping_value: &str,
     ) -> StorageResult<Option<SearchGroup>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_rule_id_and_hashed_group_value(&conn, rule_id, hashed_grouping_value)
             .await
     }
@@ -90,7 +77,7 @@ impl SearchGroupInterface for Store {
         primary_transaction_id: &str,
         profile_id: &str,
     ) -> StorageResult<Option<SearchGroup>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchGroup::find_by_primary_transaction_id_and_profile_id(
             &conn,
             primary_transaction_id,
@@ -98,13 +85,32 @@ impl SearchGroupInterface for Store {
         )
         .await
     }
+}
+
+#[async_trait]
+impl SearchGroupWriteInterface for Store {
+    async fn insert_search_group(
+        &self,
+        search_group: SearchGroupNew,
+    ) -> StorageResult<SearchGroup> {
+        let conn = self.write_conn().await?;
+        search_group.insert(&conn).await
+    }
+
+    async fn batch_insert_search_groups(
+        &self,
+        search_groups: Vec<SearchGroupNew>,
+    ) -> StorageResult<Vec<SearchGroup>> {
+        let conn = self.write_conn().await?;
+        SearchGroupNew::batch_insert(search_groups, &conn).await
+    }
 
     async fn discard_by_id(
         &self,
         id: &str,
         update: SearchGroupUpdate,
     ) -> StorageResult<SearchGroup> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let update_internal = update.into();
         SearchGroup::discard_by_id(&conn, id, update_internal).await
     }

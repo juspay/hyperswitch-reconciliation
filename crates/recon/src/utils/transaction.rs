@@ -61,8 +61,9 @@ use recon_domain_models::{
 };
 use std::collections::{HashMap, HashSet};
 use storage_impl::{
-    account::AccountInterface, entry::EntryInterface, metadata_schema::MetadataSchemaInterface,
-    transformation::TransformationConfigInterface,
+    account::AccountReadInterface, entry::EntryReadInterface,
+    metadata_schema::MetadataSchemaReadInterface,
+    transformation::TransformationConfigReadInterface,
 };
 use time::PrimitiveDateTime;
 

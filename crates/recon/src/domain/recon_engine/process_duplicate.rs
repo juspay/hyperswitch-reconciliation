@@ -11,7 +11,7 @@ use recon_domain_models::{
 
 use common_types::metadata_schema::UniqueConstraintProvider;
 use storage_impl::{
-    metadata_schema::MetadataSchemaInterface, search_duplicate::SearchDuplicateInterface,
+    metadata_schema::MetadataSchemaReadInterface, search_duplicate::SearchDuplicateReadInterface,
 };
 
 use crate::{
