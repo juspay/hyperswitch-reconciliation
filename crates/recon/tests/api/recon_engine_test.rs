@@ -323,11 +323,7 @@ pub async fn run_recon_engine_test(
                     let account_id = account_name_to_id
                         .get(&exp.account_name)
                         .unwrap_or_else(|| {
-                            panic!(
-                                "Test fixture error: account_name {:?} not found in created accounts {:?}",
-                                exp.account_name,
-                                account_name_to_id.keys().collect::<Vec<_>>()
-                            )
+                            panic!("Test fixture error: expected account not found in created accounts")
                         })
                         .clone();
                     let hashed = recon::utils::recon_engine::hash_string(&exp.source_value).expose();
