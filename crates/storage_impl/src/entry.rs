@@ -49,6 +49,11 @@ pub trait EntryReadInterface {
     ) -> StorageResult<EntryPage>;
 
     async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>>;
+
+    async fn count_linking_pending_entries_by_account_ids(
+        &self,
+        account_ids: &[String],
+    ) -> StorageResult<i64>;
 }
 
 #[async_trait]
@@ -133,6 +138,14 @@ impl<T: DatabaseRead> EntryReadInterface for T {
     async fn list_linking_pending_entries(&self, limit: u16) -> StorageResult<Vec<Entry>> {
         let conn = self.read_conn().await?;
         Entry::list_linking_pending(&conn, limit).await
+    }
+
+    async fn count_linking_pending_entries_by_account_ids(
+        &self,
+        account_ids: &[String],
+    ) -> StorageResult<i64> {
+        let conn = self.read_conn().await?;
+        Entry::count_linking_pending_by_account_ids(&conn, account_ids).await
     }
 }
 

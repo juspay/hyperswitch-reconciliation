@@ -1,8 +1,9 @@
 use async_bb8_diesel::AsyncRunQueryDsl;
 use common_enums::ApiKeyStatus;
-use common_utils::{id_type::MerchantId, logging};
+use common_utils::id_type::MerchantId;
 use diesel::{debug_query, pg::Pg, prelude::*, BoolExpressionMethods, ExpressionMethods};
 use error_stack::ResultExt;
+use recon_env::logging;
 
 use crate::{
     api_key::{ApiKey, ApiKeyNew, ApiKeyUpdateInternal},

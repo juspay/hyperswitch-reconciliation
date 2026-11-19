@@ -5,7 +5,7 @@ use common_types::entry_linking::{
 };
 use common_types::metadata_schema::ProcessingModeProvider;
 use common_types::recon_rule::entry_field::EntryField;
-use common_utils::{encryption::Encryption, logging};
+use common_utils::encryption::Encryption;
 use diesel_models::search_entry_link_key::{SearchEntryLinkKey, SearchEntryLinkKeyNew};
 use diesel_models::{
     entry::{Entry as DieselEntry, EntryUpdate},
@@ -16,6 +16,7 @@ use masking::Secret;
 use recon_domain_models::{
     behaviour::ReverseConversion, entry::DomainEntry, transaction::DomainTransaction,
 };
+use recon_env::logging;
 use storage_impl::database::connection::DatabaseWrite;
 use thiserror::Error;
 

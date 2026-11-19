@@ -1,7 +1,7 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::business_profile::{
     BusinessProfileCreateRequest, BusinessProfileResponse, BusinessProfileUpdateRequest,
-    ReconStatusResponse,
+    LinkingStatusResponse, ReconStatusResponse,
 };
 use common_types::permissions::Permission;
 use utoipa::OpenApi;
@@ -28,6 +28,7 @@ use crate::{
         get_business_profile,
         update_business_profile,
         get_recon_status,
+        get_linking_status,
     ),
     components(
         schemas(
@@ -35,6 +36,7 @@ use crate::{
             BusinessProfileUpdateRequest,
             BusinessProfileResponse,
             ReconStatusResponse,
+            LinkingStatusResponse,
         )
     ),
     tags(
@@ -213,6 +215,37 @@ pub async fn get_recon_status(
         &http_req,
         state,
         |state, auth| async move { core::business_profile::get_recon_status(state, auth).await },
+    )
+    .await
+}
+
+#[utoipa::path(
+    get,
+    path = "/business_profiles/{profile_id}/linking_processor/status",
+    tag = "Business Profile",
+    params(
+        ("profile_id" = String, Path, description = "Unique identifier of the business profile"),
+    ),
+    security(
+        ("Bearer" = [])
+    ),
+    responses(
+        (status = 200, description = "Linking processor status and count of the profile's entries pending linking", body = LinkingStatusResponse),
+        (status = 401, description = "Unauthorized - invalid or missing JWT token"),
+        (status = 500, description = "Internal server error"),
+    ),
+)]
+pub async fn get_linking_status(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    http_req: HttpRequest,
+) -> impl Responder {
+    let profile_id = path.into_inner();
+    api::server_wrap(
+        JwtAuth::with_profile(profile_id, Permission::ProfileReconTransactionRead),
+        &http_req,
+        state,
+        |state, auth| async move { core::business_profile::get_linking_status(state, auth).await },
     )
     .await
 }

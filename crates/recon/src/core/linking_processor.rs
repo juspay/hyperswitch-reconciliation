@@ -3,8 +3,9 @@ use common_enums::LinkingProcessorStatus;
 use common_types::entry_linking::{
     status::DomainEntryLinkingStatus, EntryLinkingData, EntryLinkingDataV1,
 };
-use common_utils::{auth::AuthContext, logging};
+use common_utils::auth::AuthContext;
 use diesel_models::entry::EntryUpdate;
+use recon_env::logging;
 use tokio::sync::watch;
 
 use storage_impl::{

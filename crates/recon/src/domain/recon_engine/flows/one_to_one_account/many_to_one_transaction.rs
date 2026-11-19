@@ -15,7 +15,7 @@ use common_types::{
     },
     units::MinorUnit,
 };
-use common_utils::{id_type::MerchantId, logging};
+use common_utils::id_type::MerchantId;
 use diesel_models::{
     account::Account,
     connection::WriteConnection,
@@ -48,6 +48,7 @@ use recon_domain_models::{
     },
     ApplicationEncryptionInterface, EncryptionHandler,
 };
+use recon_env::logging;
 use storage_impl::{
     account::AccountReadInterface,
     database::connection::DatabaseWrite,

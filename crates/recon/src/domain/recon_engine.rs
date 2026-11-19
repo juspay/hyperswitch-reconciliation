@@ -6,7 +6,6 @@ use common_types::{
     staging_entry::{ManualReviewData, ManualReviewDataV1, StagingEntryData, StagingEntryDataV2},
     units::MinorUnit,
 };
-use common_utils::logging;
 use diesel_models::connection::WriteConnection;
 use diesel_models::{
     errors::DatabaseError,
@@ -19,6 +18,7 @@ use error_stack::{Report, ResultExt};
 use recon_domain_models::{
     behaviour::ReverseConversion, staging_entry::DomainStagingEntry, transaction::DomainTransaction,
 };
+use recon_env::logging;
 use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::{
     metadata_schema::MetadataSchemaReadInterface, transformation::TransformationConfigReadInterface,

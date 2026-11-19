@@ -63,6 +63,8 @@ pub async fn create_link_config(
         .await?;
 
     let new_config = LinkConfigNew::new(
+        request.name,
+        request.description,
         auth_context.profile_id,
         request.account_id,
         request.transaction_rule_id,
@@ -103,6 +105,26 @@ pub async fn update_link_config(
             Some(link_config_id),
         )
         .await?;
+
+    let existing = if request.name.is_some() || request.description.is_some() {
+        let update = LinkConfigUpdate::DetailsUpdate {
+            name: request.name,
+            description: request.description,
+        };
+        state
+            .store
+            .update_link_config_by_profile_id_and_link_config_id(
+                &auth_context.profile_id,
+                link_config_id,
+                update,
+            )
+            .await
+            .to_not_found_response(|| LinkConfigError::LinkConfigNotFound {
+                link_config_id: link_config_id.to_owned(),
+            })?
+    } else {
+        existing
+    };
 
     let config = if request.transaction_rule_id.is_some() || request.confirmation_rule_id.is_some()
     {

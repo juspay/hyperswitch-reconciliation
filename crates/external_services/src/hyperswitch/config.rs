@@ -1,4 +1,4 @@
-use masking::Secret;
+use masking::{PeekInterface, Secret};
 use serde::Deserialize;
 use std::fmt::Debug;
 
@@ -31,5 +31,17 @@ impl HyperswitchConfig {
             request_timeout_secs: self.request_timeout_secs,
             client_idle_timeout: self.client_idle_timeout,
         }
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        if self.base_url.is_empty() {
+            return Err("HyperSwitch base URL cannot be empty".into());
+        }
+
+        if self.internal_api_key.peek().is_empty() {
+            return Err("HyperSwitch internal API key cannot be empty".into());
+        }
+
+        Ok(())
     }
 }

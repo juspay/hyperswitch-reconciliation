@@ -16,7 +16,7 @@ use common_types::{
         TransactionDataV3,
     },
 };
-use common_utils::{id_type::MerchantId, logging};
+use common_utils::id_type::MerchantId;
 use diesel_models::{
     connection::WriteConnection,
     entry::EntryNew,
@@ -45,6 +45,7 @@ use recon_domain_models::{
     staging_entry::{DomainStagingEntry, StagingEntryDomainVersionUpdate},
     transaction::{SearchExpectationCreation, TransactionCreationData},
 };
+use recon_env::logging;
 use storage_impl::{
     account::AccountReadInterface,
     database::connection::DatabaseWrite,

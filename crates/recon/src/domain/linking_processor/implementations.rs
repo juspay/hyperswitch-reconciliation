@@ -1,6 +1,6 @@
 use common_enums::{EntryLinkKeyStatus, EntryLinkSide, EntryLinkStatus};
 use common_types::entry_linking::{EntryLinkingData, EntryLinkingDataV1};
-use common_utils::{encryption::Encryption, logging};
+use common_utils::encryption::Encryption;
 use diesel_models::connection::WriteConnection;
 use diesel_models::{
     entry::{Entry, EntryUpdate},
@@ -12,6 +12,7 @@ use diesel_models::{
 use error_stack::ResultExt;
 use masking::Secret;
 use recon_domain_models::entry::DomainEntry;
+use recon_env::logging;
 use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::search_entry_link_key::{
     SearchEntryLinkKeyReadInterface, SearchEntryLinkSearchCriteria,

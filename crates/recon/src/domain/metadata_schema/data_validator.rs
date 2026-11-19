@@ -5,8 +5,8 @@ use common_types::metadata_schema::{
     ReconMetadataFieldConfig, ReconMetadataFieldConfigV1, ReconMetadataSchema,
     ReconMetadataSchemaV1,
 };
-use common_utils::logging;
 use error_stack::Report;
+use recon_env::logging;
 use uuid::Uuid;
 
 use crate::domain::{

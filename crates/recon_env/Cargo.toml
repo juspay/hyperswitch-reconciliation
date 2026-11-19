@@ -1,0 +1,22 @@
+[package]
+name = "recon_env"
+description = "Environment, logging, request ID and config loading shared by the recon crates"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.11.0"
+config = "0.14"
+error-stack = "0.8.0"
+futures = "0.3"
+http = "0.2"
+serde = { version = "1.0.219", features = ["derive"] }
+strum = { version = "0.27.1", features = ["derive"] }
+tracing = "0.1.41"
+tracing-actix-web = "0.7.18"
+tracing-futures = "0.2"
+tracing-log = "0.2.0"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
+
+[lints]
+workspace = true

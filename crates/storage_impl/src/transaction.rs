@@ -7,7 +7,6 @@ use common_types::{
     pagination::PaginationQuery,
     transaction::{TransactionAccountFilters, TransactionListFiltersV2, TransactionListSortField},
 };
-use common_utils::logging;
 use diesel_models::{
     connection::{TransactionConnection, WriteConnection},
     entry::{Entry, EntryNew, EntryUpdate},
@@ -25,6 +24,7 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 use futures::future;
+use recon_env::logging;
 use time::PrimitiveDateTime;
 
 use crate::database::connection::{DatabaseRead, DatabaseWrite};

@@ -32,6 +32,15 @@
 - **FaaS invocations are fire-and-forget**: `InvocationType::Event` returns 202 once queued and `function_error` is always `None`, so success means "accepted", never "the report was produced"
 - **`AwsLambdaConfig` has no endpoint field on purpose**: `aws_config::defaults().load()` already reads `AWS_ENDPOINT_URL`, so retargeting the backend is an env var, not a config change
 - **Report generation is `recon`-crate business logic, not part of `faas`**: `state.faas.invoke_event(function_name, payload)` is the only thing report generation uses from this crate - the report-type-to-function-name mapping, request validation, and payload shape all live in `crates/recon/src/{core,domain,errors}/reporting.rs`, see `ai-docs/domains/reporting/AGENT-NOTES.md`
+<!-- AI-UPDATED: 2026-10-22 - Invokr scheduler backend added -->
+- **Scheduler defaults to `Noop`** like FaaS: a missing `[scheduler]` section logs and returns `Ok`. The abstraction is `scheduler`, Invokr is the `invokr` variant
+- **Invokr comes in through its generated Smithy SDK** (`invokr_sdk`, git dep pinned to an invokr release tag), not hand-written reqwest calls. Bump the tag to pick up API changes
+- **Endpoints must already exist in Invokr**: `JobRequest.endpoint` is the name of an endpoint registered in the configured org/workspace, and recon never creates endpoints. An unknown name fails with `ENDPOINT_NOT_FOUND`
+- **SDK retries are disabled on purpose**: Invokr gives an IMMEDIATE job with no `idempotency_key` a fresh key on the server, so an SDK retry could create the job twice. Pass a stable key when the caller may retry; re-creating with the same key returns the existing job. DELAYED jobs require a key
+- **`create_job` success means "registered"**, not "the endpoint call succeeded"
+- **Retries come from the endpoint's policy**: the Invokr server accepts a per-job `max_attempts` override, but the Smithy model (and so `invokr_sdk` v0.5.0) does not carry it. Add it to invokr's `CreateJobInput` and bump the tag rather than hand-rolling the request
+- **`api_token` is recon's own static API token**, one entry in Invokr's `INVOKR_API_STATIC_TOKENS`, not the shared `INVOKR_API_KEY`. Invokr keeps that key only as a legacy pre-OIDC fallback and will drop it. Both go out as a Bearer token, so switching needs no code change
+- **`api_token` goes through `SecretsHandler`**, so `scheduler` is a `SecretStateContainer` in `Config` (unlike `faas`, which holds no secrets)
 <!-- AI-UPDATED: 2025-03-13 - User client gotchas from refactor -->
 - **Config Breaking Change**: `[hyperswitch_client]` config section removed, replaced with `[user_client]`
 - **Mock User Response**: MockUserClient creates predictable test users with pattern: name="User {user_id}", email="{user_id}@test.com"

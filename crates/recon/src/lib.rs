@@ -5,7 +5,9 @@ use actix_web::{
     web, App,
 };
 use common_enums::{LinkingProcessorStatus, ReconProcessorStatus};
-use external_services::{faas::FaasHandler, file_storage::FileStorageHandler};
+use external_services::{
+    faas::FaasHandler, file_storage::FileStorageHandler, scheduler::SchedulerHandler,
+};
 use http::StatusCode;
 use recon_interfaces::secrets_interface::secret_state::{RawSecret, SecuredSecret};
 use routes::AppState;
@@ -15,9 +17,7 @@ use tracing_actix_web::TracingLogger;
 pub mod config;
 pub mod core;
 pub mod domain;
-pub mod env;
 pub mod errors;
-pub mod middleware;
 pub mod openapi;
 pub mod routes;
 pub mod secrets_transformers;
@@ -38,7 +38,7 @@ pub fn make_app(
 > {
     let mut app = App::new()
         .app_data(web::Data::new(state.clone()))
-        .wrap(middleware::RequestId)
+        .wrap(recon_env::request_id::RequestId)
         .wrap(TracingLogger::default())
         .wrap(ErrorHandlers::new().handler(
             StatusCode::METHOD_NOT_ALLOWED,
@@ -116,6 +116,10 @@ pub async fn initialize_server(
         .await
         .map_err(|e| format!("Failed to create FaaS client: {e}"))?;
 
+    // Create scheduler client
+    let scheduler = SchedulerHandler::from_config(config.scheduler.get_inner())
+        .map_err(|e| format!("Failed to create scheduler client: {e:?}"))?;
+
     // Create SFTP file storage handler for ingestion
     let sftp_file_storage =
         FileStorageHandler::from_config(&config.ingestion_service.sftp_file_storage)
@@ -150,6 +154,7 @@ pub async fn initialize_server(
         config: config.clone(),
         file_storage,
         faas,
+        scheduler,
         ingestion,
         recon_processor_status: sx,
         linking_processor_status: linking_sx,

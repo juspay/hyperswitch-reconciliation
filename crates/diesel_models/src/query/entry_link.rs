@@ -1,7 +1,8 @@
 use async_bb8_diesel::AsyncRunQueryDsl;
-use common_utils::{chunking::chunked, logging};
+use common_utils::chunking::chunked;
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
+use recon_env::logging;
 
 use crate::{
     connection::{ReadConnection, WriteConnection},

@@ -1,5 +1,5 @@
 use api_models::business_profile as api;
-use api_models::business_profile::ReconStatusResponse;
+use api_models::business_profile::{LinkingStatusResponse, ReconStatusResponse};
 use common_utils::{
     auth::AuthContext, id_generation::generate_id_with_default_len, id_type::MerchantId,
 };
@@ -8,7 +8,11 @@ use error_stack::ResultExt;
 use futures::future;
 use masking::PeekInterface;
 use recon_domain_models::{behaviour::ReverseConversion, business_profile::DomainBusinessProfile};
-use storage_impl::business_profile::{BusinessProfileReadInterface, BusinessProfileWriteInterface};
+use storage_impl::{
+    account::AccountReadInterface,
+    business_profile::{BusinessProfileReadInterface, BusinessProfileWriteInterface},
+    entry::EntryReadInterface,
+};
 
 use crate::{
     errors::{
@@ -208,5 +212,34 @@ pub async fn get_recon_status(
     Ok(ApplicationResponse::json(ReconStatusResponse {
         processor_status,
         pending_staging_entries,
+    }))
+}
+
+pub async fn get_linking_status(
+    state: AppState,
+    auth_context: AuthContext,
+) -> BusinessProfileResult<LinkingStatusResponse> {
+    let processor_status = *state.linking_processor_status.borrow();
+
+    let account_ids = state
+        .store
+        .list_accounts_by_profile_id(&auth_context.profile_id)
+        .await
+        .change_context(BusinessProfileError::InternalServerError)?
+        .into_iter()
+        .map(|account| account.id)
+        .collect::<Vec<_>>();
+
+    let count = state
+        .store
+        .count_linking_pending_entries_by_account_ids(&account_ids)
+        .await
+        .change_context(BusinessProfileError::InternalServerError)?;
+    let pending_entries =
+        u64::try_from(count).change_context(BusinessProfileError::InternalServerError)?;
+
+    Ok(ApplicationResponse::json(LinkingStatusResponse {
+        processor_status,
+        pending_entries,
     }))
 }

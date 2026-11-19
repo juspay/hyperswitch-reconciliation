@@ -11,9 +11,10 @@ use common_types::ingestion::{IngestionData, IngestionDataV1};
 
 use diesel_models::ingestion_config::{IngestionConfigData, IngestionConfigPsp, IngestionConfigV1};
 
-use common_utils::{errors::ReportSwitchExt, logging};
+use common_utils::errors::ReportSwitchExt;
 use diesel_models::ingestion_history::IngestionConfigHistoryView;
 use masking::PeekInterface;
+use recon_env::logging;
 
 use crate::{
     errors::ingestion::{IngestionResult, ParseStageError},

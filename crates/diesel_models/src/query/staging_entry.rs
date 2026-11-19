@@ -9,10 +9,11 @@ use common_types::{
     },
     units::MinorUnit,
 };
-use common_utils::{chunking::chunked, logging};
+use common_utils::chunking::chunked;
 use diesel::dsl::{case_when, count_star};
 use diesel::{debug_query, pg::Pg, prelude::*};
 use error_stack::ResultExt;
+use recon_env::logging;
 
 const STAGING_ENTRY_BATCH_CHUNK_SIZE: usize = 1000;
 

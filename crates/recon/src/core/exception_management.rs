@@ -74,7 +74,7 @@ use common_types::{
         TransactionData, TransactionDataV3,
     },
 };
-use common_utils::{auth::AuthContext, logging};
+use common_utils::auth::AuthContext;
 use diesel_models::{
     connection::WriteConnection,
     entry::EntryNew,
@@ -96,6 +96,7 @@ use recon_domain_models::{
     staging_entry::DomainStagingEntry,
     transaction::DomainTransaction,
 };
+use recon_env::logging;
 use strum::IntoEnumIterator;
 
 /// Get available resolution action types for a staging entry
