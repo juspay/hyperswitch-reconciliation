@@ -130,7 +130,9 @@ pub async fn initialize_server(
     let sftp_file_storage =
         FileStorageHandler::from_config(&config.ingestion_service.sftp_file_storage)
             .await
-            .map_err(|e| format!("Failed to create SFTP file storage client for ingestion: {e:?}"))?;
+            .map_err(|e| {
+                format!("Failed to create SFTP file storage client for ingestion: {e:?}")
+            })?;
 
     let ingestion = routes::IngestionState {
         config: config.ingestion_service.clone(),
