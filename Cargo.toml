@@ -37,3 +37,9 @@ wildcard_dependencies = "warn"
 unsafe_code = "forbid"
 unused_qualifications = "warn"
 async_fn_in_trait = "allow"
+
+# hyperswitch_masking 0.0.1 on crates.io pins serde = "=1.0.228", which blocks
+# invokr_sdk v0.6.0, whose Smithy dependencies need serde ^1.0.229.
+# framework-libs-rs main relaxes the pin. Remove once a newer version is published.
+[patch.crates-io]
+hyperswitch_masking = { git = "https://github.com/juspay/framework-libs-rs.git", rev = "8c17c20ba784b142db6d29e9c5079fa2feab5fb9" }
