@@ -523,9 +523,8 @@ impl ReconEngine for OneToOneSingleManyV1 {
                 ))?;
 
         conn.transaction(|txn| async move {
-            let conn = &txn;
             StagingEntry::update_by_id(
-                conn,
+                &txn,
                 &context.staging_entry_archive.0.id,
                 context.staging_entry_archive.1,
             )
@@ -538,7 +537,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
             // Insert the processed staging entry
             context
                 .processed_staging_entry
-                .insert(conn)
+                .insert(&txn)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to insert processed staging entry: {:?}", e);
@@ -547,7 +546,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
 
             context
                 .new_search_duplicate
-                .insert(conn)
+                .insert(&txn)
                 .await
                 .map_err(|e| {
                     logging::error!(
@@ -557,14 +556,14 @@ impl ReconEngine for OneToOneSingleManyV1 {
                     *e.current_context()
                 })?;
 
-            EntryNew::batch_insert_chunked(conn, context.new_entries)
+            EntryNew::batch_insert_chunked(&txn, context.new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert entries: {:?}", e);
                     *e.current_context()
                 })?;
 
-            SearchEntryKeyNew::batch_insert(context.new_search_entry_keys, conn)
+            SearchEntryKeyNew::batch_insert(context.new_search_entry_keys, &txn)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert searchable metadata: {:?}", e);
@@ -572,7 +571,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
                 })?;
 
             for expectation in context.new_search_expectations {
-                expectation.insert(conn).await.map_err(|e| {
+                expectation.insert(&txn).await.map_err(|e| {
                     logging::error!("Failed to insert search expectation: {:?}", e);
                     *e.current_context()
                 })?;
@@ -604,7 +603,6 @@ impl ReconEngine for OneToOneSingleManyV1 {
                 ))?;
 
         conn.transaction(|txn| async move {
-            let conn = &txn;
             state
                 .store
                 .discard_transaction_with_entries_and_expectations(
@@ -618,7 +616,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
                 })?;
 
             StagingEntry::update_by_id(
-                conn,
+                &txn,
                 &context.staging_entry_archive.0.id,
                 context.staging_entry_archive.1,
             )
@@ -631,7 +629,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
             // Insert the processed staging entry
             context
                 .processed_staging_entry
-                .insert(conn)
+                .insert(&txn)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to insert processed staging entry: {:?}", e);
@@ -640,7 +638,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
 
             context
                 .new_search_duplicate
-                .insert(conn)
+                .insert(&txn)
                 .await
                 .map_err(|e| {
                     logging::error!(
@@ -650,14 +648,14 @@ impl ReconEngine for OneToOneSingleManyV1 {
                     *e.current_context()
                 })?;
 
-            EntryNew::batch_insert_chunked(conn, context.new_entries)
+            EntryNew::batch_insert_chunked(&txn, context.new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert entries: {:?}", e);
                     *e.current_context()
                 })?;
 
-            SearchEntryKeyNew::batch_insert(context.new_search_entry_keys, conn)
+            SearchEntryKeyNew::batch_insert(context.new_search_entry_keys, &txn)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert searchable metadata: {:?}", e);
@@ -665,7 +663,7 @@ impl ReconEngine for OneToOneSingleManyV1 {
                 })?;
 
             for expectation in context.new_search_expectations {
-                expectation.insert(conn).await.map_err(|e| {
+                expectation.insert(&txn).await.map_err(|e| {
                     logging::error!("Failed to insert search expectation: {:?}", e);
                     *e.current_context()
                 })?;

@@ -446,7 +446,6 @@ pub async fn void_transaction_core(
 
     let void_transaction = conn
         .transaction(|txn| async move {
-            let conn = &txn;
             // Step 1: Archive old data using the centralized function
             let (
                 _archived_transaction,
@@ -487,7 +486,7 @@ pub async fn void_transaction_core(
             }
 
             // Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert new entries: {:?}", e);
@@ -538,7 +537,6 @@ pub async fn manual_post_transaction_core(
 
     let posted_transaction = conn
         .transaction(|txn| async move {
-            let conn = &txn;
             // Step 1: Archive old data using the centralized function
             let (
                 _archived_transaction,
@@ -579,7 +577,7 @@ pub async fn manual_post_transaction_core(
             }
 
             // Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert posted entries: {:?}", e);
