@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait LinkConfigReadInterface {
@@ -43,7 +43,7 @@ pub trait LinkConfigWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> LinkConfigReadInterface for T {
+impl LinkConfigReadInterface for Store {
     async fn list_link_configs_by_profile_id(
         &self,
         profile_id: &str,
@@ -78,7 +78,7 @@ impl<T: DatabaseRead> LinkConfigReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> LinkConfigWriteInterface for T {
+impl LinkConfigWriteInterface for Store {
     async fn update_link_config_by_profile_id_and_link_config_id(
         &self,
         profile_id: &str,

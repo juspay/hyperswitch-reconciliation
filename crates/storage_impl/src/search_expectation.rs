@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 pub struct SearchCriteria {
     pub rule_id: String,
@@ -58,7 +58,7 @@ pub trait SearchExpectationWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> SearchExpectationReadInterface for T {
+impl SearchExpectationReadInterface for Store {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchExpectation> {
         let conn = self.read_conn().await?;
         SearchExpectation::find_by_id(&conn, id.to_string()).await
@@ -132,7 +132,7 @@ impl<T: DatabaseRead> SearchExpectationReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> SearchExpectationWriteInterface for T {
+impl SearchExpectationWriteInterface for Store {
     async fn insert_search_expectation(
         &self,
         search_expectation: SearchExpectationNew,

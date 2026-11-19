@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait MerchantAccountReadInterface {
@@ -24,7 +24,7 @@ pub trait MerchantAccountWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> MerchantAccountReadInterface for T {
+impl MerchantAccountReadInterface for Store {
     async fn find_merchant_account_by_id(
         &self,
         merchant_id: &MerchantId,
@@ -36,7 +36,7 @@ impl<T: DatabaseRead> MerchantAccountReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> MerchantAccountWriteInterface for T {
+impl MerchantAccountWriteInterface for Store {
     async fn insert_merchant_account(
         &self,
         merchant_account: MerchantAccountNew,

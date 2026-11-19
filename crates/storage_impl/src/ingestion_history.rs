@@ -9,7 +9,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait IngestionHistoryReadInterface {
@@ -66,7 +66,7 @@ pub trait IngestionHistoryWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> IngestionHistoryReadInterface for T {
+impl IngestionHistoryReadInterface for Store {
     async fn find_ingestion_history_by_id_and_profile(
         &self,
         id: &str,
@@ -114,7 +114,7 @@ impl<T: DatabaseRead> IngestionHistoryReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> IngestionHistoryWriteInterface for T {
+impl IngestionHistoryWriteInterface for Store {
     async fn insert_ingestion_history(
         &self,
         ingestion_history: IngestionHistoryNew,

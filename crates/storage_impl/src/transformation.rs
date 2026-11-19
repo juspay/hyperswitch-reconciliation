@@ -17,7 +17,7 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait TransformationConfigReadInterface {
@@ -104,7 +104,7 @@ pub trait TransformationHistoryWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> TransformationConfigReadInterface for T {
+impl TransformationConfigReadInterface for Store {
     async fn find_transformation_config_by_id_and_profile_id(
         &self,
         id: &str,
@@ -143,7 +143,7 @@ impl<T: DatabaseRead> TransformationConfigReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> TransformationConfigWriteInterface for T {
+impl TransformationConfigWriteInterface for Store {
     async fn insert_transformation_config(
         &self,
         transformation_config: TransformationConfigNew,
@@ -198,7 +198,7 @@ impl<T: DatabaseWrite> TransformationConfigWriteInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> TransformationHistoryReadInterface for T {
+impl TransformationHistoryReadInterface for Store {
     async fn find_config_and_history_by_id_and_profile(
         &self,
         id: &str,
@@ -230,7 +230,7 @@ impl<T: DatabaseRead> TransformationHistoryReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> TransformationHistoryWriteInterface for T {
+impl TransformationHistoryWriteInterface for Store {
     async fn insert_transformation_history(
         &self,
         transformation_history: TransformationHistoryNew,

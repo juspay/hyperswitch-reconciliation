@@ -3,7 +3,6 @@ use diesel::PgConnection;
 use diesel_models::{connection::ReadConnection, errors::DatabaseError, StorageResult};
 use error_stack::{Report, ResultExt};
 
-use super::connection::DatabaseRead;
 use crate::config::Database;
 
 pub type PgPool = bb8::Pool<async_bb8_diesel::ConnectionManager<PgConnection>>;
@@ -31,7 +30,7 @@ impl Store {
     pub async fn health_check(&self) -> StorageResult<()> {
         let conn = self.read_conn().await?;
         diesel::select(diesel::dsl::sql::<diesel::sql_types::Integer>("1"))
-            .get_result_async::<i32>(conn.async_conn())
+            .get_result_async::<i32>(conn.inner())
             .await
             .map_err(Report::new)
             .change_context(DatabaseError::QueryFailed)

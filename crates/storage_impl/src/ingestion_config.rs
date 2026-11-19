@@ -7,7 +7,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait IngestionConfigReadInterface {
@@ -44,7 +44,7 @@ pub trait IngestionConfigWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> IngestionConfigReadInterface for T {
+impl IngestionConfigReadInterface for Store {
     async fn find_ingestion_config_by_id(
         &self,
         ingestion_id: &str,
@@ -73,7 +73,7 @@ impl<T: DatabaseRead> IngestionConfigReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> IngestionConfigWriteInterface for T {
+impl IngestionConfigWriteInterface for Store {
     async fn insert_ingestion_config(
         &self,
         ingestion_config: IngestionConfigNew,

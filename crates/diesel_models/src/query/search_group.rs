@@ -115,7 +115,7 @@ impl SearchGroupNew {
         generics::db_metrics::track_database_call::<search_group::table, _, _>(
             diesel::insert_into(search_group::table)
                 .values(search_groups)
-                .get_results_async(conn.async_conn()),
+                .get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Insert,
         )
         .await

@@ -8,7 +8,7 @@ use diesel_models::{
 };
 use error_stack::ResultExt;
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait ReconRuleReadInterface {
@@ -51,7 +51,7 @@ pub trait ReconRuleWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> ReconRuleReadInterface for T {
+impl ReconRuleReadInterface for Store {
     async fn find_recon_rule_by_id(&self, rule_id: &str) -> StorageResult<ReconRule> {
         let conn = self.read_conn().await?;
         ReconRule::find_by_rule_id(&conn, rule_id).await
@@ -86,7 +86,7 @@ impl<T: DatabaseRead> ReconRuleReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> ReconRuleWriteInterface for T {
+impl ReconRuleWriteInterface for Store {
     async fn insert_recon_rule(&self, recon_rule: ReconRuleNew) -> StorageResult<ReconRule> {
         let conn = self.write_conn().await?;
         recon_rule.insert(&conn).await

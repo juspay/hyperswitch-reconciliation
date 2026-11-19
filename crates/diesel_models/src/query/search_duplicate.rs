@@ -38,7 +38,7 @@ impl SearchDuplicate {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_duplicate::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -70,7 +70,7 @@ impl SearchDuplicate {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_duplicate::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -112,7 +112,7 @@ impl SearchDuplicateNew {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_duplicate::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Insert,
         )
         .await

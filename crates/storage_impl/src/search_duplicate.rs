@@ -6,7 +6,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait SearchDuplicateReadInterface {
@@ -36,7 +36,7 @@ pub trait SearchDuplicateWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> SearchDuplicateReadInterface for T {
+impl SearchDuplicateReadInterface for Store {
     async fn find_by_id(&self, search_duplicate_id: String) -> StorageResult<SearchDuplicate> {
         let conn = self.read_conn().await?;
         SearchDuplicate::find_by_id(&conn, search_duplicate_id).await
@@ -71,7 +71,7 @@ impl<T: DatabaseRead> SearchDuplicateReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> SearchDuplicateWriteInterface for T {
+impl SearchDuplicateWriteInterface for Store {
     async fn insert_search_duplicate(
         &self,
         search_duplicate: SearchDuplicateNew,

@@ -175,7 +175,7 @@ impl Transaction {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<transaction::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -213,7 +213,7 @@ impl Transaction {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transaction::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -262,7 +262,7 @@ impl Transaction {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transaction::table, _, _>(
-            query.get_result_async(conn.async_conn()),
+            query.get_result_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Update,
         )
         .await
@@ -349,7 +349,7 @@ impl Transaction {
                     account::all_columns,
                     recon_rule::all_columns,
                 ))
-                .get_results_async(conn.async_conn()),
+                .get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -417,7 +417,7 @@ impl Transaction {
 
         let rows: Vec<TransactionOverviewSummaryRowTuple> =
             generics::db_metrics::track_database_call::<transaction::table, _, _>(
-                query.get_results_async(conn.async_conn()),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -538,7 +538,7 @@ impl Transaction {
 
         let rows: Vec<RuleAccountTransactionOverviewSummaryRowTuple> =
             generics::db_metrics::track_database_call::<entry::table, _, _>(
-                query.get_results_async(conn.async_conn()),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -753,7 +753,7 @@ impl Transaction {
 
         let mut page_rows: Vec<(Self, ReconRule)> =
             generics::db_metrics::track_database_call::<transaction::table, _, _>(
-                query.get_results_async(conn.async_conn()),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -836,7 +836,7 @@ impl Transaction {
 
         let rows: Vec<TransactionOverviewRowTuple> =
             generics::db_metrics::track_database_call::<transaction::table, _, _>(
-                query.get_results_async(conn.async_conn()),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await

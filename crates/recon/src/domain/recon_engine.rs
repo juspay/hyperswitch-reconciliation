@@ -19,7 +19,6 @@ use recon_domain_models::{
     behaviour::ReverseConversion, staging_entry::DomainStagingEntry, transaction::DomainTransaction,
 };
 use recon_env::logging;
-use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::{
     metadata_schema::MetadataSchemaReadInterface, transformation::TransformationConfigReadInterface,
 };

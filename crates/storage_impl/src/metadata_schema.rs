@@ -7,7 +7,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait MetadataSchemaReadInterface {
@@ -52,7 +52,7 @@ pub trait MetadataSchemaWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> MetadataSchemaReadInterface for T {
+impl MetadataSchemaReadInterface for Store {
     async fn find_metadata_schema_by_id_and_profile_id(
         &self,
         id: &str,
@@ -82,7 +82,7 @@ impl<T: DatabaseRead> MetadataSchemaReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> MetadataSchemaWriteInterface for T {
+impl MetadataSchemaWriteInterface for Store {
     async fn insert_metadata_schema(
         &self,
         metadata_schema: MetadataSchemaNew,

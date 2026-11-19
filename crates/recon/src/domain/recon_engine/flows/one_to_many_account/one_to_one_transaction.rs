@@ -1,6 +1,5 @@
 use storage_impl::{
     account::AccountReadInterface,
-    database::connection::DatabaseWrite,
     entry::EntryReadInterface,
     search_expectation::SearchCriteria,
     transaction::{TransactionReadInterface, TransactionWriteInterface},

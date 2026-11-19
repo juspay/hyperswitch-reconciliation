@@ -4,7 +4,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait SearchGroupReadInterface {
@@ -47,7 +47,7 @@ pub trait SearchGroupWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> SearchGroupReadInterface for T {
+impl SearchGroupReadInterface for Store {
     async fn find_by_id(&self, id: &str) -> StorageResult<SearchGroup> {
         let conn = self.read_conn().await?;
         SearchGroup::find_by_id(&conn, id.to_string()).await
@@ -88,7 +88,7 @@ impl<T: DatabaseRead> SearchGroupReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> SearchGroupWriteInterface for T {
+impl SearchGroupWriteInterface for Store {
     async fn insert_search_group(
         &self,
         search_group: SearchGroupNew,

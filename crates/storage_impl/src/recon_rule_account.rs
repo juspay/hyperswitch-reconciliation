@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait ReconRuleAccountReadInterface {
@@ -25,7 +25,7 @@ pub trait ReconRuleAccountWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> ReconRuleAccountReadInterface for T {
+impl ReconRuleAccountReadInterface for Store {
     async fn list_recon_rule_accounts_by_account_id_and_type(
         &self,
         account_id: &str,
@@ -37,7 +37,7 @@ impl<T: DatabaseRead> ReconRuleAccountReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> ReconRuleAccountWriteInterface for T {
+impl ReconRuleAccountWriteInterface for Store {
     async fn insert_recon_rule_account(
         &self,
         recon_rule_account: ReconRuleAccountNew,

@@ -39,7 +39,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -80,7 +80,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         let result = generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await;
@@ -128,7 +128,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -149,7 +149,7 @@ impl SearchExpectation {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -173,7 +173,7 @@ impl SearchExpectationNew {
         generics::db_metrics::track_database_call::<search_expectation::table, _, _>(
             diesel::insert_into(search_expectation::table)
                 .values(search_expectations)
-                .get_results_async(conn.async_conn()),
+                .get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Insert,
         )
         .await

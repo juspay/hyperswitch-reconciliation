@@ -8,7 +8,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait EntryReadInterface {
@@ -65,7 +65,7 @@ pub trait EntryWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> EntryReadInterface for T {
+impl EntryReadInterface for Store {
     async fn find_entry_by_id(&self, entry_id: &str) -> StorageResult<Entry> {
         let conn = self.read_conn().await?;
         Entry::find_by_entry_id(&conn, entry_id.to_string()).await
@@ -150,7 +150,7 @@ impl<T: DatabaseRead> EntryReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> EntryWriteInterface for T {
+impl EntryWriteInterface for Store {
     async fn insert_entry(&self, entry: EntryNew) -> StorageResult<Entry> {
         let conn = self.write_conn().await?;
         entry.insert(&conn).await

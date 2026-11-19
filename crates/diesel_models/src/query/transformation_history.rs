@@ -42,7 +42,7 @@ impl TransformationHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_result_async::<(Self, TransformationConfig)>(conn.async_conn())
+            .get_result_async::<(Self, TransformationConfig)>(conn.inner())
             .await
             .map(|(history, config)| TransformationConfigHistoryView { config, history })
             .map_err(|err| match err {
@@ -85,7 +85,7 @@ impl TransformationHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<transformation_history::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -138,7 +138,7 @@ impl TransformationHistory {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_results_async::<(Self, TransformationConfig)>(conn.async_conn())
+            .get_results_async::<(Self, TransformationConfig)>(conn.inner())
             .await
             .map(|rows| {
                 rows.into_iter()

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use storage_impl::{
-    database::connection::DatabaseWrite,
     metadata_schema::MetadataSchemaReadInterface,
     recon_rule::ReconRuleReadInterface,
     transaction::{TransactionReadInterface, TransactionWriteInterface},
@@ -224,7 +223,6 @@ pub async fn force_reconcile_transaction(
 
     let reconciled_transaction = conn
         .transaction(|txn| async move {
-            let conn = &txn;
             // Step 1: Archive old data using the centralized function
             let transaction = domain_transaction.convert();
 
@@ -265,7 +263,7 @@ pub async fn force_reconcile_transaction(
                 .collect();
 
             // Step 3: Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert force reconciled entries: {:?}", e);
@@ -830,7 +828,6 @@ pub async fn manual_transaction_reconciliation(
 
     let final_transaction = conn
         .transaction(|txn| async move {
-            let conn = &txn;
             // Archive old transaction, entries, and expectations
             let (
                 _archived_transaction,
@@ -855,7 +852,7 @@ pub async fn manual_transaction_reconciliation(
                     original_data: staging_entry.data.clone(),
                 };
 
-                DieselStagingEntry::update_by_id(conn, &staging_entry.id, archive_update.into())
+                DieselStagingEntry::update_by_id(&txn, &staging_entry.id, archive_update.into())
                     .await
                     .map_err(|e| {
                         logging::error!("Failed to archive staging entry: {e}");
@@ -865,7 +862,7 @@ pub async fn manual_transaction_reconciliation(
                 // Insert processed staging entry
                 processed_staging_entry
                     .clone()
-                    .insert(conn)
+                    .insert(&txn)
                     .await
                     .map_err(|e| {
                         logging::error!("Failed to insert processed staging entry: {e}");
@@ -873,14 +870,14 @@ pub async fn manual_transaction_reconciliation(
                     })?;
 
                 // Insert search duplicate
-                search_duplicate.clone().insert(conn).await.map_err(|e| {
+                search_duplicate.clone().insert(&txn).await.map_err(|e| {
                     logging::error!("Failed to insert search duplicate: {e}");
                     *e.current_context()
                 })?;
             }
 
             // Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(conn, entries_to_create)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, entries_to_create)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert new entries: {e}");
@@ -1104,7 +1101,6 @@ pub async fn manual_transaction_reconciliation_v2(
 
     let transaction = conn
         .transaction(|txn| async move {
-            let conn = &txn;
             let (transaction, _, _, _) = state
                 .store
                 .discard_transaction_with_entries_and_expectations(&txn, existing_transaction)
@@ -1113,7 +1109,7 @@ pub async fn manual_transaction_reconciliation_v2(
 
             for link in staging_links.into_values() {
                 DieselStagingEntry::update_by_id(
-                    conn,
+                    &txn,
                     &link.snapshot.id,
                     StagingEntryUpdate::DiscardUpdate {
                         original_data: link.snapshot.data,
@@ -1123,16 +1119,16 @@ pub async fn manual_transaction_reconciliation_v2(
                 .await
                 .map_err(|e| *e.current_context())?;
                 link.processed
-                    .insert(conn)
+                    .insert(&txn)
                     .await
                     .map_err(|e| *e.current_context())?;
                 link.search_duplicate
-                    .insert(conn)
+                    .insert(&txn)
                     .await
                     .map_err(|e| *e.current_context())?;
             }
 
-            let inserted_entries = EntryNew::batch_insert_chunked(conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, new_entries)
                 .await
                 .map_err(|e| *e.current_context())?;
 
@@ -1160,7 +1156,7 @@ pub async fn manual_transaction_reconciliation_v2(
                 })
                 .collect();
 
-            SearchEntryKeyNew::batch_insert(search_entry_keys, conn)
+            SearchEntryKeyNew::batch_insert(search_entry_keys, &txn)
                 .await
                 .map_err(|e| *e.current_context())?;
 

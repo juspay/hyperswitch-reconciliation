@@ -31,7 +31,7 @@ impl BusinessProfile {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<business_profile::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

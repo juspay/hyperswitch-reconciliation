@@ -287,7 +287,7 @@ async fn update_account_balance(
                     .eq(account::dsl::matched_debits + deltas.matched_debits),
                 account::dsl::last_modified_at.eq(date_time::now()),
             ))
-            .execute_async(conn.async_conn()),
+            .execute_async(conn.inner()),
         generics::db_metrics::DatabaseOperation::Update,
     )
     .await
@@ -381,7 +381,7 @@ impl EntryNew {
                 let rows: Vec<Entry> =
                     generics::db_metrics::track_database_call::<entry::table, _, _>(
                         query
-                            .get_results_async(conn.async_conn()),
+                            .get_results_async(conn.inner()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await
@@ -503,7 +503,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -535,7 +535,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         match generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -652,7 +652,7 @@ impl Entry {
 
         let mut entries: Vec<Self> =
             generics::db_metrics::track_database_call::<entry::table, _, _>(
-                query.get_results_async(conn.async_conn()),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -691,7 +691,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -720,7 +720,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         let result: Self = generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_result_async(conn.async_conn()),
+            query.get_result_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -903,7 +903,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -923,7 +923,7 @@ impl Entry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<entry::table, _, _>(
-            query.get_result_async::<i64>(conn.async_conn()),
+            query.get_result_async::<i64>(conn.inner()),
             generics::db_metrics::DatabaseOperation::Count,
         )
         .await
@@ -941,7 +941,7 @@ impl Entry {
             .filter(entry::linking_status.eq(DieselEntryLinkingStatus::Pending))
             .order((entry::created_at.asc(), entry::id.asc()))
             .limit(i64::from(limit))
-            .load_async(conn.async_conn())
+            .load_async(conn.inner())
             .await
             .change_context(DatabaseError::Others)
     }

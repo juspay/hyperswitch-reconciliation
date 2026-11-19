@@ -51,7 +51,6 @@ use recon_domain_models::{
 use recon_env::logging;
 use storage_impl::{
     account::AccountReadInterface,
-    database::connection::DatabaseWrite,
     entry::EntryReadInterface,
     search_expectation::SearchCriteria,
     search_group::SearchGroupReadInterface,

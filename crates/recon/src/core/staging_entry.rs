@@ -1,6 +1,5 @@
 use diesel_models::connection::WriteConnection;
 use std::collections::HashSet;
-use storage_impl::database::connection::DatabaseWrite;
 
 use api_models::{
     account::AccountData,

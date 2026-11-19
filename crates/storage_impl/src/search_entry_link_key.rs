@@ -7,7 +7,7 @@ use diesel_models::{
 };
 use masking::{PeekInterface, Secret};
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[derive(Clone, Debug)]
 pub struct SearchEntryLinkSearchCriteria {
@@ -36,7 +36,7 @@ pub trait SearchEntryLinkKeyWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> SearchEntryLinkKeyReadInterface for T {
+impl SearchEntryLinkKeyReadInterface for Store {
     async fn list_search_entry_link_keys_for_linking(
         &self,
         search_criteria: &SearchEntryLinkSearchCriteria,
@@ -55,7 +55,7 @@ impl<T: DatabaseRead> SearchEntryLinkKeyReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> SearchEntryLinkKeyWriteInterface for T {
+impl SearchEntryLinkKeyWriteInterface for Store {
     async fn bulk_update_search_entry_link_keys_by_ids(
         &self,
         ids: Vec<String>,

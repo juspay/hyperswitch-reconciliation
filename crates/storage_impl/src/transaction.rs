@@ -8,7 +8,7 @@ use common_types::{
     transaction::{TransactionAccountFilters, TransactionListFiltersV2, TransactionListSortField},
 };
 use diesel_models::{
-    connection::{TransactionConnection, WriteConnection},
+    connection::WriteConnection,
     entry::{Entry, EntryNew, EntryUpdate},
     errors::DatabaseError,
     search_duplicate::{SearchDuplicate, SearchDuplicateUpdate},
@@ -27,7 +27,7 @@ use futures::future;
 use recon_env::logging;
 use time::PrimitiveDateTime;
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait TransactionReadInterface {
@@ -115,11 +115,12 @@ pub trait TransactionWriteInterface {
         search_entry_keys: Vec<SearchEntryKeyNew>,
     ) -> StorageResult<(Transaction, Vec<Entry>, Vec<SearchExpectation>)>;
 
-    /// Archives a transaction and everything linked to it. Must be called inside a database
-    /// transaction, so the archive commits or rolls back with the caller's other writes.
+    /// Archives a transaction and everything linked to it in its own database transaction.
+    /// Inside a caller's transaction this becomes a savepoint, so the archive commits or rolls
+    /// back with the caller's other writes.
     async fn discard_transaction_with_entries_and_expectations(
         &self,
-        conn: &TransactionConnection,
+        conn: &impl WriteConnection,
         transaction: Transaction,
     ) -> StorageResult<(
         Transaction,
@@ -131,7 +132,7 @@ pub trait TransactionWriteInterface {
 
 /// Any store that can hand out read connections can read transactions.
 #[async_trait]
-impl<T: DatabaseRead> TransactionReadInterface for T {
+impl TransactionReadInterface for Store {
     async fn find_by_id_and_profile(
         &self,
         id: &str,
@@ -276,7 +277,7 @@ impl<T: DatabaseRead> TransactionReadInterface for T {
 
 /// Any store that can hand out write connections can write transactions.
 #[async_trait]
-impl<T: DatabaseWrite> TransactionWriteInterface for T {
+impl TransactionWriteInterface for Store {
     async fn insert_transaction(&self, transaction: TransactionNew) -> StorageResult<Transaction> {
         let conn = self.write_conn().await?;
         transaction.insert(&conn).await
@@ -331,7 +332,7 @@ impl<T: DatabaseWrite> TransactionWriteInterface for T {
 
     async fn discard_transaction_with_entries_and_expectations(
         &self,
-        conn: &TransactionConnection,
+        conn: &impl WriteConnection,
         transaction: Transaction,
     ) -> StorageResult<(
         Transaction,
@@ -339,7 +340,7 @@ impl<T: DatabaseWrite> TransactionWriteInterface for T {
         Vec<SearchExpectation>,
         Option<SearchGroup>,
     )> {
-        // Nested inside the caller's transaction, so this becomes a savepoint.
+        // A savepoint if `conn` is already in a transaction, otherwise a new transaction.
         conn.transaction(|connection_pool| async move {
             // First, archive the existing transaction
             let archive_update = TransactionUpdate::DiscardUpdate {

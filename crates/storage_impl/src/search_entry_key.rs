@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use diesel_models::{search_entry_key::SearchEntryKey, StorageResult};
 
-use crate::database::connection::DatabaseRead;
+use crate::Store;
 
 #[async_trait]
 pub trait SearchEntryKeyReadInterface {
@@ -14,7 +14,7 @@ pub trait SearchEntryKeyReadInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> SearchEntryKeyReadInterface for T {
+impl SearchEntryKeyReadInterface for Store {
     async fn list_search_entry_keys_by_entry_ids_and_profile_id(
         &self,
         entry_ids: Vec<String>,

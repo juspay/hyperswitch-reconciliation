@@ -79,7 +79,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -146,7 +146,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         query
-            .get_results_async::<(Self, Account, TransformationConfig)>(conn.async_conn())
+            .get_results_async::<(Self, Account, TransformationConfig)>(conn.inner())
             .await
             .map(|results| {
                 results
@@ -305,7 +305,7 @@ impl StagingEntry {
 
         let mut views: Vec<StagingEntryAccountView> =
             generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-                query.get_results_async::<(Self, Account, TransformationConfig)>(conn.async_conn()),
+                query.get_results_async::<(Self, Account, TransformationConfig)>(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -356,7 +356,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await
@@ -376,7 +376,7 @@ impl StagingEntry {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-            query.get_result_async::<i64>(conn.async_conn()),
+            query.get_result_async::<i64>(conn.inner()),
             generics::db_metrics::DatabaseOperation::Count,
         )
         .await
@@ -444,7 +444,7 @@ impl StagingEntry {
 
         let rows: Vec<StagingEntryOverviewSummaryRowTuple> =
             generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-                query.get_results_async(conn.async_conn()),
+                query.get_results_async(conn.inner()),
                 generics::db_metrics::DatabaseOperation::Filter,
             )
             .await
@@ -496,7 +496,7 @@ impl StagingEntryNew {
 
                 let rows: Vec<StagingEntry> =
                     generics::db_metrics::track_database_call::<staging_entry::table, _, _>(
-                        query.get_results_async(conn.async_conn()),
+                        query.get_results_async(conn.inner()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await

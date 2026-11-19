@@ -13,7 +13,6 @@ use error_stack::ResultExt;
 use masking::Secret;
 use recon_domain_models::entry::DomainEntry;
 use recon_env::logging;
-use storage_impl::database::connection::DatabaseWrite;
 use storage_impl::search_entry_link_key::{
     SearchEntryLinkKeyReadInterface, SearchEntryLinkSearchCriteria,
 };

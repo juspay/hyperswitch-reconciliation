@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use storage_impl::{
-    database::connection::DatabaseWrite,
     recon_rule::ReconRuleReadInterface,
     transaction::{TransactionReadInterface, TransactionWriteInterface},
 };

@@ -5,7 +5,7 @@ use diesel_models::{
     StorageResult,
 };
 
-use crate::database::connection::{DatabaseRead, DatabaseWrite};
+use crate::Store;
 
 #[async_trait]
 pub trait ApiKeyReadInterface {
@@ -38,7 +38,7 @@ pub trait ApiKeyWriteInterface {
 }
 
 #[async_trait]
-impl<T: DatabaseRead> ApiKeyReadInterface for T {
+impl ApiKeyReadInterface for Store {
     async fn find_active_api_key_by_merchant_id_and_id(
         &self,
         merchant_id: &MerchantId,
@@ -66,7 +66,7 @@ impl<T: DatabaseRead> ApiKeyReadInterface for T {
 }
 
 #[async_trait]
-impl<T: DatabaseWrite> ApiKeyWriteInterface for T {
+impl ApiKeyWriteInterface for Store {
     async fn insert_api_key(&self, api_key: ApiKeyNew) -> StorageResult<ApiKey> {
         let conn = self.write_conn().await?;
 

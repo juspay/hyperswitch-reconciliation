@@ -83,7 +83,7 @@ where
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
     match track_database_call::<T, _, _>(
-        query.get_result_async(conn.async_conn()),
+        query.get_result_async(conn.inner()),
         DatabaseOperation::Insert,
     )
     .await
@@ -120,13 +120,10 @@ where
     let query = diesel::update(<T as HasTable>::table().filter(predicate)).set(values);
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    track_database_call::<T, _, _>(
-        query.execute_async(conn.async_conn()),
-        DatabaseOperation::Update,
-    )
-    .await
-    .change_context(errors::DatabaseError::Others)
-    .attach_with(|| format!("Error while updating {debug_values}"))
+    track_database_call::<T, _, _>(query.execute_async(conn.inner()), DatabaseOperation::Update)
+        .await
+        .change_context(errors::DatabaseError::Others)
+        .attach_with(|| format!("Error while updating {debug_values}"))
 }
 
 pub async fn generic_update_with_results<T, V, P, R>(
@@ -156,7 +153,7 @@ where
     let query = diesel::update(<T as HasTable>::table().filter(predicate)).set(values);
 
     match track_database_call::<T, _, _>(
-        query.to_owned().get_results_async(conn.async_conn()),
+        query.to_owned().get_results_async(conn.inner()),
         DatabaseOperation::UpdateWithResults,
     )
     .await
@@ -245,7 +242,7 @@ where
     let query = diesel::update(<T as HasTable>::table().find(id.to_owned())).set(values);
 
     match track_database_call::<T, _, _>(
-        query.to_owned().get_result_async(conn.async_conn()),
+        query.to_owned().get_result_async(conn.inner()),
         DatabaseOperation::UpdateOne,
     )
     .await
@@ -280,24 +277,19 @@ where
     let query = diesel::delete(<T as HasTable>::table().filter(predicate));
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    track_database_call::<T, _, _>(
-        query.execute_async(conn.async_conn()),
-        DatabaseOperation::Delete,
-    )
-    .await
-    .change_context(errors::DatabaseError::Others)
-    .attach("Error while deleting")
-    .and_then(|result| match result {
-        n if n > 0 => {
-            logging::debug!("{n} records deleted");
-            Ok(true)
-        }
-        0 => {
-            Err(error_stack::Report::new(errors::DatabaseError::NotFound)
-                .attach("No records deleted"))
-        }
-        _ => Ok(true), // n is usize, rustc requires this for exhaustive check
-    })
+    track_database_call::<T, _, _>(query.execute_async(conn.inner()), DatabaseOperation::Delete)
+        .await
+        .change_context(errors::DatabaseError::Others)
+        .attach("Error while deleting")
+        .and_then(|result| match result {
+            n if n > 0 => {
+                logging::debug!("{n} records deleted");
+                Ok(true)
+            }
+            0 => Err(error_stack::Report::new(errors::DatabaseError::NotFound)
+                .attach("No records deleted")),
+            _ => Ok(true), // n is usize, rustc requires this for exhaustive check
+        })
 }
 
 pub async fn generic_delete_one_with_result<T, P, R>(
@@ -317,7 +309,7 @@ where
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
     track_database_call::<T, _, _>(
-        query.get_results_async(conn.async_conn()),
+        query.get_results_async(conn.inner()),
         DatabaseOperation::DeleteWithResult,
     )
     .await
@@ -343,7 +335,7 @@ where
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
     match track_database_call::<T, _, _>(
-        query.first_async(conn.async_conn()),
+        query.first_async(conn.inner()),
         DatabaseOperation::FindOne,
     )
     .await
@@ -398,7 +390,7 @@ where
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
     track_database_call::<T, _, _>(
-        query.get_result_async(conn.async_conn()),
+        query.get_result_async(conn.inner()),
         DatabaseOperation::FindOne,
     )
     .await

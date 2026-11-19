@@ -17,7 +17,6 @@ use recon_domain_models::{
     behaviour::ReverseConversion, entry::DomainEntry, transaction::DomainTransaction,
 };
 use recon_env::logging;
-use storage_impl::database::connection::DatabaseWrite;
 use thiserror::Error;
 
 use storage_impl::{

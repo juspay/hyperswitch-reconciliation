@@ -36,7 +36,7 @@ impl SearchEntryKeyNew {
 
                 let chunk_rows: Vec<SearchEntryKey> =
                     generics::db_metrics::track_database_call::<search_entry_key::table, _, _>(
-                        query.get_results_async(conn.async_conn()),
+                        query.get_results_async(conn.inner()),
                         generics::db_metrics::DatabaseOperation::Insert,
                     )
                     .await
@@ -83,7 +83,7 @@ impl SearchEntryKey {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<search_entry_key::table, _, _>(
-            query.get_results_async(conn.async_conn()),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

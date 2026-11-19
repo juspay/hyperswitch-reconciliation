@@ -8,7 +8,7 @@ use crate::PgPooledConn;
 
 /// A connection that read queries can run on.
 pub trait ReadConnection: Send + Sync {
-    fn async_conn(&self) -> &PgPooledConn;
+    fn inner(&self) -> &PgPooledConn;
 }
 
 /// A connection that write queries can run on. Every write connection can also read.
@@ -23,7 +23,7 @@ pub trait WriteConnection: ReadConnection {
         F: FnOnce(TransactionConnection) -> Fut + Send,
         Fut: Future<Output = Result<R, E>> + Send,
     {
-        self.async_conn()
+        self.inner()
             .transaction_async(|conn| f(TransactionConnection(conn)))
             .await
     }
@@ -33,7 +33,7 @@ pub trait WriteConnection: ReadConnection {
 pub struct TransactionConnection(PgPooledConn);
 
 impl ReadConnection for TransactionConnection {
-    fn async_conn(&self) -> &PgPooledConn {
+    fn inner(&self) -> &PgPooledConn {
         &self.0
     }
 }
