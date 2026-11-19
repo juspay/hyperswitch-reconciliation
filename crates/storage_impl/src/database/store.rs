@@ -6,8 +6,6 @@ use error_stack::{Report, ResultExt};
 use crate::config::Database;
 
 pub type PgPool = bb8::Pool<async_bb8_diesel::ConnectionManager<PgConnection>>;
-pub type PgPooledConn<'a> =
-    bb8::PooledConnection<'a, async_bb8_diesel::ConnectionManager<PgConnection>>;
 
 #[derive(Clone)]
 pub struct Store {

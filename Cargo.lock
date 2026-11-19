@@ -1891,6 +1891,7 @@ version = "0.1.0"
 dependencies = [
  "async-bb8-diesel",
  "async-trait",
+ "bb8",
  "bigdecimal",
  "common_enums",
  "common_types",
