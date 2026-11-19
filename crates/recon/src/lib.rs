@@ -89,13 +89,13 @@ pub async fn initialize_server(
         .secrets_management
         .get_secret_management_client()
         .await
-        .map_err(|e| format!("Failed to create secret management client: {e}"))?;
+        .map_err(|e| format!("Failed to create secret management client: {e:?}"))?;
 
     // Transform secrets to raw state
     let config =
         secrets_transformers::fetch_raw_secrets(secured_config, &*secret_management_client)
             .await
-            .map_err(|e| format!("Failed to decrypt secrets: {e}"))?;
+            .map_err(|e| format!("Failed to decrypt secrets: {e:?}"))?;
 
     // Format is checked here, not in `Config::validate`: that runs before decryption (ciphertext under KMS).
     let api_key_hash_key = config
@@ -110,17 +110,17 @@ pub async fn initialize_server(
     let pool = Pool::builder()
         .build(manager)
         .await
-        .map_err(|e| format!("Failed to create connection pool: {e}"))?;
+        .map_err(|e| format!("Failed to create connection pool: {e:?}"))?;
 
     // Create file storage handler
     let file_storage = FileStorageHandler::from_config(&config.file_storage)
         .await
-        .map_err(|e| format!("Failed to create file storage client: {e}"))?;
+        .map_err(|e| format!("Failed to create file storage client: {e:?}"))?;
 
     // Create FaaS client for report generation
     let faas = FaasHandler::from_config(&config.faas)
         .await
-        .map_err(|e| format!("Failed to create FaaS client: {e}"))?;
+        .map_err(|e| format!("Failed to create FaaS client: {e:?}"))?;
 
     // Create scheduler client
     let scheduler = SchedulerHandler::from_config(config.scheduler.get_inner())
@@ -130,7 +130,7 @@ pub async fn initialize_server(
     let sftp_file_storage =
         FileStorageHandler::from_config(&config.ingestion_service.sftp_file_storage)
             .await
-            .map_err(|e| format!("Failed to create SFTP file storage client for ingestion: {e}"))?;
+            .map_err(|e| format!("Failed to create SFTP file storage client for ingestion: {e:?}"))?;
 
     let ingestion = routes::IngestionState {
         config: config.ingestion_service.clone(),
@@ -147,7 +147,7 @@ pub async fn initialize_server(
         .await
         .map_err(|e| {
             format!(
-                "Failed to initialize application encryption client. Please verify your encryption configuration. Error: {e}"
+                "Failed to initialize application encryption client. Please verify your encryption configuration. Error: {e:?}"
             )
         })?;
 
@@ -179,8 +179,8 @@ pub async fn initialize_server(
     let listener = std::net::TcpListener::bind((config.server.host.as_str(), config.server.port))
         .map_err(|e| {
         format!(
-            "Failed to bind to {}:{} - {}",
-            config.server.host, config.server.port, e
+            "Failed to bind to {}:{} - {e:?}",
+            config.server.host, config.server.port
         )
     })?;
 
