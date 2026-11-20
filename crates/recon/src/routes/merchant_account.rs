@@ -1,5 +1,6 @@
 use actix_web::{web, HttpRequest, Responder};
 use api_models::merchant_account::{MerchantAccountCreateRequest, MerchantAccountResponse};
+use common_types::permissions::Permission;
 use common_utils::id_type::MerchantId;
 use utoipa::OpenApi;
 
@@ -86,7 +87,7 @@ pub async fn get_merchant_account(
     let merchant_id = MerchantId::wrap(merchant_id.into_inner())
         .map_err(|_| actix_web::error::ErrorBadRequest("Invalid merchant_id format"))?;
     Ok(api::server_wrap(
-        JwtAuth::with_merchant_without_permission(merchant_id.clone()),
+        JwtAuth::with_merchant(merchant_id.clone(), Permission::ProfileAccountRead),
         &http_req,
         state,
         move |state, auth| async move {

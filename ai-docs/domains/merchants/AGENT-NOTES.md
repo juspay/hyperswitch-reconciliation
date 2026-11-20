@@ -55,6 +55,9 @@
 - `/auth/generate_token` requires existing merchant_id and profile_id (requires admin API key)
 - POST `/merchant_accounts` requires admin API key (not JWT)
 - GET `/merchant_accounts/{id}` requires JWT with matching merchant_id
+<!-- AI-UPDATED: 2026-11-17 - Permissions on the last two permission-less JWT routes -->
+- GET `/merchant_accounts/{id}` requires `ProfileAccountRead`, not `MerchantAccountRead`: mirrors Hyperswitch's merchant retrieve, which stays profile-level so profile-scoped users can still load their merchant.
+- GET `/business_profiles` requires `MerchantAccountRead` because it returns every profile of the merchant; profile-level users get 403 and must use GET `/business_profiles/{id}`.
 - Admin API key uses `Authorization: admin-api-key=<secret>`, NOT `Bearer`
 - Admin endpoints bypass JWT validation entirely - different auth flow
 - No "super admin" concept for JWT - each JWT scoped to one merchant

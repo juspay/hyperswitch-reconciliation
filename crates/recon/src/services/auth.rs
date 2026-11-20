@@ -145,21 +145,12 @@ impl JwtAuth {
         }
     }
 
-    /// Create basic JWT auth without permission (no additional field validation)
-    pub fn basic_without_permission() -> Self {
-        Self {
-            merchant_id: None,
-            profile_id: None,
-            permission: None,
-        }
-    }
-
-    /// Create JWT auth that validates merchant_id matches the provided value
-    pub fn with_merchant_without_permission(merchant_id: MerchantId) -> Self {
+    /// Create JWT auth that validates merchant_id matches the provided value and checks the permission
+    pub fn with_merchant(merchant_id: MerchantId, permission: Permission) -> Self {
         Self {
             merchant_id: Some(merchant_id),
             profile_id: None,
-            permission: None,
+            permission: Some(permission),
         }
     }
 

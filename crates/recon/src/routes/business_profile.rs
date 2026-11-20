@@ -64,7 +64,7 @@ pub async fn list_business_profiles(
     http_req: HttpRequest,
 ) -> impl Responder {
     api::server_wrap(
-        JwtAuth::basic_without_permission(),
+        JwtAuth::basic(Permission::MerchantAccountRead),
         &http_req,
         state,
         |state, auth| async move {
