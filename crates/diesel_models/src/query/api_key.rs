@@ -7,21 +7,22 @@ use recon_env::logging;
 
 use crate::{
     api_key::{ApiKey, ApiKeyNew, ApiKeyUpdateInternal},
+    connection::{ReadConnection, WriteConnection},
     errors,
     query::generics,
     schema::api_key::{self, dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl ApiKeyNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<ApiKey> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<ApiKey> {
         generics::generic_insert(conn, self).await
     }
 }
 
 impl ApiKey {
     pub async fn find_active_by_hashed_api_key(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         hashed_api_key: &str,
     ) -> StorageResult<Self> {
         generics::generic_find_one::<api_key::table, _, _>(
@@ -34,7 +35,7 @@ impl ApiKey {
     }
 
     pub async fn find_active_by_merchant_id_and_api_key_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         merchant_id: &MerchantId,
         api_key_id: &str,
     ) -> StorageResult<Self> {
@@ -49,7 +50,7 @@ impl ApiKey {
     }
 
     pub async fn update_active_by_merchant_id_and_api_key_id(
-        conn: &PgPooledConn,
+        conn: &impl WriteConnection,
         merchant_id: &MerchantId,
         api_key_id: &str,
         update: ApiKeyUpdateInternal,
@@ -67,7 +68,7 @@ impl ApiKey {
     }
 
     pub async fn list_active_by_merchant_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         merchant_id: &MerchantId,
     ) -> StorageResult<Vec<Self>> {
         let query = dsl::api_key
@@ -78,7 +79,7 @@ impl ApiKey {
         logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
         generics::db_metrics::track_database_call::<api_key::table, _, _>(
-            query.get_results_async(conn),
+            query.get_results_async(conn.inner()),
             generics::db_metrics::DatabaseOperation::Filter,
         )
         .await

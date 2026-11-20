@@ -5,7 +5,7 @@ use common_utils::{auth::AuthContext, date_time};
 use error_stack::{Report, ResultExt};
 use external_services::user::interfaces::UserInterface;
 use std::collections::HashSet;
-use storage_impl::recon_rule::ReconRuleInterface;
+use storage_impl::recon_rule::ReconRuleReadInterface;
 
 use crate::{
     config::ReportType,

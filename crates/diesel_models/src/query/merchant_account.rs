@@ -1,15 +1,16 @@
 use diesel::ExpressionMethods;
 
 use crate::{
+    connection::{ReadConnection, WriteConnection},
     merchant_account::{MerchantAccount, MerchantAccountNew},
     query::generics,
     schema::{merchant_account, merchant_account::dsl},
-    PgPooledConn, StorageResult,
+    StorageResult,
 };
 
 impl MerchantAccount {
     pub async fn find_by_merchant_id(
-        conn: &PgPooledConn,
+        conn: &impl ReadConnection,
         merchant_id: &common_utils::id_type::MerchantId,
     ) -> StorageResult<Self> {
         generics::generic_find_one::<merchant_account::table, _, _>(
@@ -21,7 +22,7 @@ impl MerchantAccount {
 }
 
 impl MerchantAccountNew {
-    pub async fn insert(self, conn: &PgPooledConn) -> StorageResult<MerchantAccount> {
+    pub async fn insert(self, conn: &impl WriteConnection) -> StorageResult<MerchantAccount> {
         generics::generic_insert(conn, self).await
     }
 }

@@ -7,7 +7,7 @@ use diesel_models::{
 };
 use masking::{PeekInterface, Secret};
 
-use super::Store;
+use crate::Store;
 
 #[derive(Clone, Debug)]
 pub struct SearchEntryLinkSearchCriteria {
@@ -19,13 +19,7 @@ pub struct SearchEntryLinkSearchCriteria {
 }
 
 #[async_trait]
-pub trait SearchEntryLinkKeyInterface {
-    async fn bulk_update_search_entry_link_keys_by_ids(
-        &self,
-        ids: Vec<String>,
-        search_entry_link_key_update: SearchEntryLinkKeyUpdate,
-    ) -> StorageResult<Vec<SearchEntryLinkKey>>;
-
+pub trait SearchEntryLinkKeyReadInterface {
     async fn list_search_entry_link_keys_for_linking(
         &self,
         search_criteria: &SearchEntryLinkSearchCriteria,
@@ -33,22 +27,21 @@ pub trait SearchEntryLinkKeyInterface {
 }
 
 #[async_trait]
-impl SearchEntryLinkKeyInterface for Store {
+pub trait SearchEntryLinkKeyWriteInterface {
     async fn bulk_update_search_entry_link_keys_by_ids(
         &self,
         ids: Vec<String>,
         search_entry_link_key_update: SearchEntryLinkKeyUpdate,
-    ) -> StorageResult<Vec<SearchEntryLinkKey>> {
-        let conn = self.get_connection().await?;
-        SearchEntryLinkKey::bulk_update_by_ids(&conn, ids, search_entry_link_key_update.into())
-            .await
-    }
+    ) -> StorageResult<Vec<SearchEntryLinkKey>>;
+}
 
+#[async_trait]
+impl SearchEntryLinkKeyReadInterface for Store {
     async fn list_search_entry_link_keys_for_linking(
         &self,
         search_criteria: &SearchEntryLinkSearchCriteria,
     ) -> StorageResult<Vec<SearchEntryLinkKey>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchEntryLinkKey::list_for_linking(
             &conn,
             &search_criteria.link_config_id,
@@ -58,5 +51,18 @@ impl SearchEntryLinkKeyInterface for Store {
             search_criteria.statuses.to_vec(),
         )
         .await
+    }
+}
+
+#[async_trait]
+impl SearchEntryLinkKeyWriteInterface for Store {
+    async fn bulk_update_search_entry_link_keys_by_ids(
+        &self,
+        ids: Vec<String>,
+        search_entry_link_key_update: SearchEntryLinkKeyUpdate,
+    ) -> StorageResult<Vec<SearchEntryLinkKey>> {
+        let conn = self.write_conn().await?;
+        SearchEntryLinkKey::bulk_update_by_ids(&conn, ids, search_entry_link_key_update.into())
+            .await
     }
 }

@@ -21,7 +21,7 @@ impl Store {
         &self,
         staging_entry: StagingEntryNew,
     ) -> StorageResult<StagingEntry> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         staging_entry.insert(&conn).await
     }
 
@@ -29,12 +29,12 @@ impl Store {
         &self,
         staging_entries: Vec<StagingEntryNew>,
     ) -> StorageResult<Vec<StagingEntry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         StagingEntryNew::batch_insert_chunked(&conn, staging_entries).await
     }
 
     pub async fn find_staging_entry_by_id(&self, id: String) -> StorageResult<StagingEntry> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::find_by_id(&conn, id).await
     }
 
@@ -43,7 +43,7 @@ impl Store {
         id: String,
         profile_id: String,
     ) -> StorageResult<StagingEntry> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::find_by_id_and_profile(&conn, id, profile_id).await
     }
 
@@ -53,7 +53,7 @@ impl Store {
         profile_id: &str,
         limit: Option<i64>,
     ) -> StorageResult<Vec<StagingEntry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::list_staging_entries_by_primary_ids_and_profile(&conn, ids, profile_id, limit)
             .await
     }
@@ -63,7 +63,7 @@ impl Store {
         id: &str,
         staging_entry_update: StagingEntryUpdate,
     ) -> StorageResult<StagingEntry> {
-        let conn = self.get_connection().await?;
+        let conn = self.write_conn().await?;
         let staging_entry_update_internal = staging_entry_update.into();
         StagingEntry::update_by_id(&conn, id, staging_entry_update_internal).await
     }
@@ -73,7 +73,7 @@ impl Store {
         status: Option<DieselStagingEntryStatus>,
         limit: u16,
     ) -> StorageResult<Vec<StagingEntry>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::list_all_staging_entries(&conn, status, limit).await
     }
 
@@ -83,7 +83,7 @@ impl Store {
         filters: ListStagingEntriesFilters,
         limit: Option<i64>,
     ) -> StorageResult<Vec<StagingEntryAccountView>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::list_with_account_by_profile_id(&conn, profile_id, filters, limit).await
     }
 
@@ -93,7 +93,7 @@ impl Store {
         filters: StagingEntryListFiltersV2,
         pagination: PaginationQuery<StagingEntryListSortField>,
     ) -> StorageResult<StagingEntryAccountViewPage> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::list_v2_paginated(&conn, profile_id, filters, pagination).await
     }
 
@@ -101,7 +101,7 @@ impl Store {
         &self,
         profile_id: &str,
     ) -> StorageResult<i64> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::count_pending_by_profile(&conn, profile_id).await
     }
 
@@ -112,7 +112,7 @@ impl Store {
         account_ids: Option<Vec<String>>,
         transformation_history_ids: Option<Vec<String>>,
     ) -> StorageResult<Vec<StagingEntryOverviewRow>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         StagingEntry::aggregate_status_counts_by_account(
             &conn,
             profile_id,

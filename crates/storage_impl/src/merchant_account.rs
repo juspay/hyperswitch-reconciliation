@@ -1,4 +1,3 @@
-use async_bb8_diesel::AsyncConnection;
 use async_trait::async_trait;
 use common_utils::id_type::MerchantId;
 use diesel_models::{
@@ -6,15 +5,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::Store;
 
 #[async_trait]
-pub trait MerchantAccountInterface {
-    async fn insert_merchant_account(
-        &self,
-        merchant_account: MerchantAccountNew,
-    ) -> StorageResult<MerchantAccount>;
-
+pub trait MerchantAccountReadInterface {
     async fn find_merchant_account_by_id(
         &self,
         merchant_id: &MerchantId,
@@ -22,22 +16,33 @@ pub trait MerchantAccountInterface {
 }
 
 #[async_trait]
-impl MerchantAccountInterface for Store {
+pub trait MerchantAccountWriteInterface {
     async fn insert_merchant_account(
         &self,
         merchant_account: MerchantAccountNew,
-    ) -> StorageResult<MerchantAccount> {
-        let conn = self.get_connection().await?;
+    ) -> StorageResult<MerchantAccount>;
+}
 
-        merchant_account.insert(conn.as_async_conn()).await
-    }
-
+#[async_trait]
+impl MerchantAccountReadInterface for Store {
     async fn find_merchant_account_by_id(
         &self,
         merchant_id: &MerchantId,
     ) -> StorageResult<MerchantAccount> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
 
-        MerchantAccount::find_by_merchant_id(conn.as_async_conn(), merchant_id).await
+        MerchantAccount::find_by_merchant_id(&conn, merchant_id).await
+    }
+}
+
+#[async_trait]
+impl MerchantAccountWriteInterface for Store {
+    async fn insert_merchant_account(
+        &self,
+        merchant_account: MerchantAccountNew,
+    ) -> StorageResult<MerchantAccount> {
+        let conn = self.write_conn().await?;
+
+        merchant_account.insert(&conn).await
     }
 }

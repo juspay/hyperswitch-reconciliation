@@ -20,8 +20,9 @@ use recon_env::logging;
 use thiserror::Error;
 
 use storage_impl::{
-    metadata_schema::MetadataSchemaInterface, search_entry_link_key::SearchEntryLinkSearchCriteria,
-    transaction::TransactionInterface, transformation::TransformationConfigInterface,
+    metadata_schema::MetadataSchemaReadInterface,
+    search_entry_link_key::SearchEntryLinkSearchCriteria, transaction::TransactionReadInterface,
+    transformation::TransformationConfigReadInterface,
 };
 
 use crate::{
@@ -193,7 +194,7 @@ pub async fn process_linking_error_context(
 
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(LinkingProcessorError::InternalServerError)?;
 

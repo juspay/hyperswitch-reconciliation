@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use storage_impl::{recon_rule::ReconRuleInterface, transaction::TransactionInterface};
+use storage_impl::{
+    recon_rule::ReconRuleReadInterface,
+    transaction::{TransactionReadInterface, TransactionWriteInterface},
+};
 
 use crate::{
     errors::{
@@ -25,7 +28,6 @@ use api_models::{
     },
     user::User,
 };
-use async_bb8_diesel::AsyncConnection;
 use common_enums::{DieselTransactionStatus, EntryStatus};
 use common_types::{
     entry::{EntryData, EntryDataV2},
@@ -36,6 +38,7 @@ use common_types::{
 };
 use common_utils::{auth::AuthContext, date_time, errors::ErrorSwitchFrom};
 use diesel_models::{
+    connection::WriteConnection,
     entry::EntryNew,
     transaction::{Transaction, TransactionNew},
 };
@@ -437,12 +440,12 @@ pub async fn void_transaction_core(
     // Execute all operations atomically in a database transaction
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(TransactionError::InternalServerError)?;
 
     let void_transaction = conn
-        .transaction_async(|conn| async move {
+        .transaction(|txn| async move {
             // Step 1: Archive old data using the centralized function
             let (
                 _archived_transaction,
@@ -452,7 +455,7 @@ pub async fn void_transaction_core(
             ) = state
                 .store
                 .discard_transaction_with_entries_and_expectations(
-                    &conn,
+                    &txn,
                     existing_transaction.clone(),
                 )
                 .await
@@ -483,7 +486,7 @@ pub async fn void_transaction_core(
             }
 
             // Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(&conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert new entries: {:?}", e);
@@ -501,7 +504,7 @@ pub async fn void_transaction_core(
                 TransactionNew::new_versioned(existing_transaction, update, modified_by);
 
             // Insert the void transaction
-            let db_transaction = void_transaction_new.insert(&conn).await.map_err(|e| {
+            let db_transaction = void_transaction_new.insert(&txn).await.map_err(|e| {
                 logging::error!("Failed to insert void transaction: {:?}", e);
                 *e.current_context()
             })?;
@@ -528,12 +531,12 @@ pub async fn manual_post_transaction_core(
     // Execute all operations atomically in a database transaction
     let conn = state
         .store
-        .get_connection()
+        .write_conn()
         .await
         .change_context(TransactionError::InternalServerError)?;
 
     let posted_transaction = conn
-        .transaction_async(|conn| async move {
+        .transaction(|txn| async move {
             // Step 1: Archive old data using the centralized function
             let (
                 _archived_transaction,
@@ -543,7 +546,7 @@ pub async fn manual_post_transaction_core(
             ) = state
                 .store
                 .discard_transaction_with_entries_and_expectations(
-                    &conn,
+                    &txn,
                     existing_transaction.clone(),
                 )
                 .await
@@ -574,7 +577,7 @@ pub async fn manual_post_transaction_core(
             }
 
             // Batch insert new entries
-            let inserted_entries = EntryNew::batch_insert_chunked(&conn, new_entries)
+            let inserted_entries = EntryNew::batch_insert_chunked(&txn, new_entries)
                 .await
                 .map_err(|e| {
                     logging::error!("Failed to batch insert posted entries: {:?}", e);
@@ -592,7 +595,7 @@ pub async fn manual_post_transaction_core(
                 TransactionNew::new_versioned(existing_transaction, update, modified_by);
 
             // Insert the posted transaction
-            let db_transaction = posted_transaction_new.insert(&conn).await.map_err(|e| {
+            let db_transaction = posted_transaction_new.insert(&txn).await.map_err(|e| {
                 logging::error!("Failed to insert posted transaction: {:?}", e);
                 *e.current_context()
             })?;

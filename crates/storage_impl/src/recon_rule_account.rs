@@ -5,15 +5,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::Store;
 
 #[async_trait]
-pub trait ReconRuleAccountInterface {
-    async fn insert_recon_rule_account(
-        &self,
-        recon_rule_account: ReconRuleAccountNew,
-    ) -> StorageResult<ReconRuleAccount>;
-
+pub trait ReconRuleAccountReadInterface {
     async fn list_recon_rule_accounts_by_account_id_and_type(
         &self,
         account_id: &str,
@@ -22,21 +17,32 @@ pub trait ReconRuleAccountInterface {
 }
 
 #[async_trait]
-impl ReconRuleAccountInterface for Store {
+pub trait ReconRuleAccountWriteInterface {
     async fn insert_recon_rule_account(
         &self,
         recon_rule_account: ReconRuleAccountNew,
-    ) -> StorageResult<ReconRuleAccount> {
-        let conn = self.get_connection().await?;
-        recon_rule_account.insert(&conn).await
-    }
+    ) -> StorageResult<ReconRuleAccount>;
+}
 
+#[async_trait]
+impl ReconRuleAccountReadInterface for Store {
     async fn list_recon_rule_accounts_by_account_id_and_type(
         &self,
         account_id: &str,
         account_type: ReconRuleAccountType,
     ) -> StorageResult<Vec<ReconRuleAccount>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         ReconRuleAccount::list_by_account_id_and_account_type(&conn, account_id, account_type).await
+    }
+}
+
+#[async_trait]
+impl ReconRuleAccountWriteInterface for Store {
+    async fn insert_recon_rule_account(
+        &self,
+        recon_rule_account: ReconRuleAccountNew,
+    ) -> StorageResult<ReconRuleAccount> {
+        let conn = self.write_conn().await?;
+        recon_rule_account.insert(&conn).await
     }
 }
