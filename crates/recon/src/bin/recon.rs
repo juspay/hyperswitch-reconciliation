@@ -37,6 +37,7 @@ async fn main() -> ApplicationResult<()> {
         conf.server,
         conf.logging
     );
+    logging::debug!(startup_config = ?conf);
 
     // Use the config that already respects environment variables
     match initialize_server(conf).await {
