@@ -76,6 +76,8 @@
 - **Critical**: Config secrets (jwt_secret, admin_api_key, internal_api_key, db_password) all use Secret<T>
 - **Pattern**: Secret transformers must wrap results in Secret::new()
 - **Pattern**: Secrets are serde transparent - deserialize to inner type automatically
+<!-- AI-UPDATED: 2026-11-19 - Don't flatten secrets -->
+- **Critical**: Never put `#[serde(flatten)]` on a field whose type is `Secret<T>`, `StrongSecret<T>`, an alias of one (e.g. `pii::SecretSerdeValue`), or an `Option` of one. Use a named field. Flattening a plain struct that has `Secret<T>` fields is fine
 
 ## Application Encryption System
 <!-- AI-UPDATED: 2025-01-29 - Encryption system integration -->

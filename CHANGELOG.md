@@ -4,6 +4,38 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.23.0
+
+### Miscellaneous Tasks
+
+- **docker:** Exclude config files from runtime image ([#54](https://github.com/juspay/hyperswitch-reconciliation/pull/54)) ([`bb9cd9b`](https://github.com/juspay/hyperswitch-reconciliation/commit/bb9cd9b6c5227408d0ed3595706b9f59c0c46e5a))
+
+**Full Changelog:** [`2026.11.19.0...2026.11.23.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.19.0...2026.11.23.0)
+
+- - -
+
+## 2026.11.19.0
+
+### Features
+
+- **scheduler:** Add support for `invokr` job scheduler ([#38](https://github.com/juspay/hyperswitch-reconciliation/pull/38)) ([`d4efd19`](https://github.com/juspay/hyperswitch-reconciliation/commit/d4efd191c967d5620976b086c61ceed7b19bfe2a))
+
+### Bug Fixes
+
+- **security:** Harden CI workflows and redact test diagnostics ([#52](https://github.com/juspay/hyperswitch-reconciliation/pull/52)) ([`34bcfb2`](https://github.com/juspay/hyperswitch-reconciliation/commit/34bcfb2cf7edc60af2bab78d5e14da57956f690d))
+
+### Refactors
+
+- **recon-env:** Centralize logging, env, request ID, and config in `recon_env` ([#48](https://github.com/juspay/hyperswitch-reconciliation/pull/48)) ([`4972285`](https://github.com/juspay/hyperswitch-reconciliation/commit/49722856ebcc210d00116e406f3f97837ae4892f))
+
+### Miscellaneous Tasks
+
+- **deps:** Upgrade `invokr_sdk` to v0.6.0 ([#53](https://github.com/juspay/hyperswitch-reconciliation/pull/53)) ([`eb9379b`](https://github.com/juspay/hyperswitch-reconciliation/commit/eb9379bf5cf760fde74dae463ff8c34d63997e22))
+
+**Full Changelog:** [`2026.11.17.1...2026.11.19.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.17.1...2026.11.19.0)
+
+- - -
+
 ## 2026.11.17.1
 
 ### Features

@@ -68,18 +68,12 @@ fn create_recon_rule_request(
             // OneToOne SingleSingle requires exactly one source and one target
             let source_account_id = match source_account_ids.as_slice() {
                 [source_account_id] => source_account_id,
-                _ => panic!(
-                    "OneToOneSingleSingle requires exactly 1 source account, got {}",
-                    source_account_ids.len()
-                ),
+                _ => panic!("OneToOneSingleSingle requires exactly 1 source account"),
             };
 
             let target_account_id = match target_account_ids.as_slice() {
                 [target_account_id] => target_account_id,
-                _ => panic!(
-                    "OneToOneSingleSingle requires exactly 1 target account, got {}",
-                    target_account_ids.len()
-                ),
+                _ => panic!("OneToOneSingleSingle requires exactly 1 target account"),
             };
 
             ReconStrategyApi::OneToOne(OneToOneStrategyApi::SingleSingle(OneToOneSingleSingleApi {
@@ -115,18 +109,12 @@ fn create_recon_rule_request(
             // OneToOne SingleMany also requires exactly one source and one target
             let source_account_id = match source_account_ids.as_slice() {
                 [source_account_id] => source_account_id,
-                _ => panic!(
-                    "OneToOneSingleMany requires exactly 1 source account, got {}",
-                    source_account_ids.len()
-                ),
+                _ => panic!("OneToOneSingleMany requires exactly 1 source account"),
             };
 
             let target_account_id = match target_account_ids.as_slice() {
                 [target_account_id] => target_account_id,
-                _ => panic!(
-                    "OneToOneSingleMany requires exactly 1 target account, got {}",
-                    target_account_ids.len()
-                ),
+                _ => panic!("OneToOneSingleMany requires exactly 1 target account"),
             };
 
             ReconStrategyApi::OneToOne(OneToOneStrategyApi::SingleMany(OneToOneSingleManyApi {
@@ -156,18 +144,12 @@ fn create_recon_rule_request(
         ReconRuleEngine::OneToOneManySingleV1(_) => {
             let source_account_id = match source_account_ids.as_slice() {
                 [source_account_id] => source_account_id,
-                _ => panic!(
-                    "OneToOneManySingle requires exactly 1 source account, got {}",
-                    source_account_ids.len()
-                ),
+                _ => panic!("OneToOneManySingle requires exactly 1 source account"),
             };
 
             let target_account_id = match target_account_ids.as_slice() {
                 [target_account_id] => target_account_id,
-                _ => panic!(
-                    "OneToOneManySingle requires exactly 1 target account, got {}",
-                    target_account_ids.len()
-                ),
+                _ => panic!("OneToOneManySingle requires exactly 1 target account"),
             };
 
             ReconStrategyApi::OneToOne(OneToOneStrategyApi::ManySingle(OneToOneManySingleApi {
@@ -210,18 +192,12 @@ fn create_recon_rule_request(
         ReconRuleEngine::OneToOneManyManyV1(_) => {
             let source_account_id = match source_account_ids.as_slice() {
                 [source_account_id] => source_account_id,
-                _ => panic!(
-                    "OneToOneManyMany requires exactly 1 source account, got {}",
-                    source_account_ids.len()
-                ),
+                _ => panic!("OneToOneManyMany requires exactly 1 source account"),
             };
 
             let target_account_id = match target_account_ids.as_slice() {
                 [target_account_id] => target_account_id,
-                _ => panic!(
-                    "OneToOneManyMany requires exactly 1 target account, got {}",
-                    target_account_ids.len()
-                ),
+                _ => panic!("OneToOneManyMany requires exactly 1 target account"),
             };
 
             ReconStrategyApi::OneToOne(OneToOneStrategyApi::ManyMany(OneToOneManyManyApi {
@@ -264,16 +240,11 @@ fn create_recon_rule_request(
             // OneToMany SingleSingle requires exactly one source and one target
             let source_account_id = match source_account_ids.as_slice() {
                 [source_account_id] => source_account_id,
-                _ => panic!(
-                    "OneToManySingleSingle requires exactly 1 source account, got {}",
-                    source_account_ids.len()
-                ),
+                _ => panic!("OneToManySingleSingle requires exactly 1 source account"),
             };
-            assert_ne!(
-                target_account_ids.len(),
-                0,
-                "OneToManySingleSingle requires at least 1 target account, got {}",
-                target_account_ids.len()
+            assert!(
+                !target_account_ids.is_empty(),
+                "OneToManySingleSingle requires at least 1 target account"
             );
 
             ReconStrategyApi::OneToMany(OneToManyStrategyApi::SingleSingle(
@@ -1681,11 +1652,10 @@ async fn update_recon_rule_strategy_success() {
         ReconStrategyApi::OneToOne(OneToOneStrategyApi::SingleSingle(s)) => {
             assert!(
                 matches!(s.source_account.trigger, Trigger::V2(_)),
-                "Expected Trigger::V2 after strategy update, got: {:?}",
-                s.source_account.trigger
+                "Expected Trigger::V2 after strategy update"
             );
         }
-        other => panic!("Expected OneToOne::SingleSingle, got: {:?}", other),
+        _ => panic!("Expected OneToOne::SingleSingle after strategy update"),
     }
 }
 
