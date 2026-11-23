@@ -15,8 +15,21 @@ pub fn builder(
         .set_override("env", environment)
 }
 
-/// Config path.
+/// Directory of config files when `CONFIG_DIR` is not set.
+pub const DEFAULT_CONFIG_DIR: &str = "config";
+
+/// Config path, with `config/` as the default config directory.
 pub fn config_path(environment: &str, explicit_config_path: Option<PathBuf>) -> PathBuf {
+    config_path_in(environment, explicit_config_path, DEFAULT_CONFIG_DIR)
+}
+
+/// Config path, with `default_config_dir` used when `CONFIG_DIR` is not set.
+/// A binary whose config files live outside `config/` passes its own directory here.
+pub fn config_path_in(
+    environment: &str,
+    explicit_config_path: Option<PathBuf>,
+    default_config_dir: &str,
+) -> PathBuf {
     let mut config_path = PathBuf::new();
     if let Some(explicit_config_path_val) = explicit_config_path {
         config_path.push(explicit_config_path_val);
@@ -27,7 +40,7 @@ pub fn config_path(environment: &str, explicit_config_path: Option<PathBuf>) -> 
             _ => "config.toml",
         };
 
-        let config_directory = get_config_directory();
+        let config_directory = get_config_directory_or(default_config_dir);
         config_path.push(config_directory);
         config_path.push(config_file_name);
     }
@@ -37,9 +50,16 @@ pub fn config_path(environment: &str, explicit_config_path: Option<PathBuf>) -> 
 /// Get the Directory for the config file
 /// Read the env variable `CONFIG_DIR` or fallback to `config`
 pub fn get_config_directory() -> PathBuf {
+    get_config_directory_or(DEFAULT_CONFIG_DIR)
+}
+
+/// Read the env variable `CONFIG_DIR` or fall back to `default_config_dir`, relative to the
+/// workspace root.
+pub fn get_config_directory_or(default_config_dir: &str) -> PathBuf {
     let mut config_path = PathBuf::new();
 
-    let config_directory = std::env::var(env::vars::CONFIG_DIR).unwrap_or_else(|_| "config".into());
+    let config_directory =
+        std::env::var(env::vars::CONFIG_DIR).unwrap_or_else(|_| default_config_dir.into());
 
     config_path.push(env::workspace_path());
     config_path.push(config_directory);

@@ -1,0 +1,31 @@
+# Reporting service, sandbox. Replace the placeholder hosts and keys before deploying.
+
+[server]
+host = "0.0.0.0"
+port = 8081
+workers = 8
+shutdown_timeout = 30
+
+[logging]
+log_level = "DEBUG"
+console_output = true
+format = "json"
+
+[secrets_management]
+secrets_manager = "aws_kms" # Options: aws_kms, oci_kms, no_encryption
+
+[secrets_management.aws_kms]
+key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+region = "us-east-1"
+
+[secrets_management.oci_kms]
+vault_crypto_endpoint = "https://example-crypto.kms.ap-hyderabad-1.oci.oraclecloud.com"
+key_id = "ocid1.key.oc1.ap-hyderabad-1.example"
+
+[database]
+username = "recon_sandbox_user"
+# Use environment variable for now, encrypt with KMS for actual deployment
+password = "${DB_PASSWORD}"
+host = "recon-sandbox-db.cluster-xxxxx.us-east-1.rds.amazonaws.com"
+port = 5432
+dbname = "recon_sandbox"
