@@ -6,15 +6,10 @@ use diesel_models::{
     StorageResult,
 };
 
-use super::Store;
+use crate::Store;
 
 #[async_trait]
-pub trait SearchDuplicateInterface {
-    async fn insert_search_duplicate(
-        &self,
-        search_duplicate: SearchDuplicateNew,
-    ) -> StorageResult<SearchDuplicate>;
-
+pub trait SearchDuplicateReadInterface {
     async fn find_by_id(&self, search_duplicate_id: String) -> StorageResult<SearchDuplicate>;
 
     async fn list_by_staging_entry_id(
@@ -33,17 +28,17 @@ pub trait SearchDuplicateInterface {
 }
 
 #[async_trait]
-impl SearchDuplicateInterface for Store {
+pub trait SearchDuplicateWriteInterface {
     async fn insert_search_duplicate(
         &self,
         search_duplicate: SearchDuplicateNew,
-    ) -> StorageResult<SearchDuplicate> {
-        let conn = self.get_connection().await?;
-        search_duplicate.insert(&conn).await
-    }
+    ) -> StorageResult<SearchDuplicate>;
+}
 
+#[async_trait]
+impl SearchDuplicateReadInterface for Store {
     async fn find_by_id(&self, search_duplicate_id: String) -> StorageResult<SearchDuplicate> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchDuplicate::find_by_id(&conn, search_duplicate_id).await
     }
 
@@ -52,7 +47,7 @@ impl SearchDuplicateInterface for Store {
         staging_entry_id: &str,
         status: Option<SearchDuplicateStatus>,
     ) -> StorageResult<Vec<SearchDuplicate>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchDuplicate::list_by_staging_entry_id(&conn, staging_entry_id, status).await
     }
 
@@ -63,7 +58,7 @@ impl SearchDuplicateInterface for Store {
         hashed_field_value: &str,
         status: Option<SearchDuplicateStatus>,
     ) -> StorageResult<Vec<SearchDuplicate>> {
-        let conn = self.get_connection().await?;
+        let conn = self.read_conn().await?;
         SearchDuplicate::list_by_transformation_id_field_path_hashed_field_value(
             &conn,
             transformation_id,
@@ -72,5 +67,16 @@ impl SearchDuplicateInterface for Store {
             status,
         )
         .await
+    }
+}
+
+#[async_trait]
+impl SearchDuplicateWriteInterface for Store {
+    async fn insert_search_duplicate(
+        &self,
+        search_duplicate: SearchDuplicateNew,
+    ) -> StorageResult<SearchDuplicate> {
+        let conn = self.write_conn().await?;
+        search_duplicate.insert(&conn).await
     }
 }

@@ -28,8 +28,9 @@ use recon_domain_models::{
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use storage_impl::{
-    metadata_schema::MetadataSchemaInterface, search_expectation::SearchExpectationInterface,
-    transformation::TransformationConfigInterface,
+    metadata_schema::MetadataSchemaReadInterface,
+    search_expectation::SearchExpectationReadInterface,
+    transformation::TransformationConfigReadInterface,
 };
 use time::PrimitiveDateTime;
 

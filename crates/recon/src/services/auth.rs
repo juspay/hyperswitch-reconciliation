@@ -13,8 +13,8 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use masking::{PeekInterface, Secret};
 use serde::{Deserialize, Serialize};
 use storage_impl::{
-    api_key::ApiKeyInterface, business_profile::BusinessProfileInterface,
-    merchant_account::MerchantAccountInterface,
+    api_key::ApiKeyReadInterface, business_profile::BusinessProfileReadInterface,
+    merchant_account::MerchantAccountReadInterface,
 };
 
 use super::option_ext::OptionExt;

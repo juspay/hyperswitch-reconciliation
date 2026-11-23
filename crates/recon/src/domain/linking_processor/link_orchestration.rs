@@ -3,7 +3,7 @@ use diesel_models::link_config::LinkConfig;
 use error_stack::ResultExt;
 use recon_domain_models::{entry::DomainEntry, transaction::DomainTransaction};
 
-use storage_impl::link_config::LinkConfigInterface;
+use storage_impl::link_config::LinkConfigReadInterface;
 
 use crate::{
     domain::linking_processor::{

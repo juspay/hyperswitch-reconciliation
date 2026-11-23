@@ -2,7 +2,7 @@ use api_models::{audit_trail::AuditTrailFilters, AccountData};
 use common_utils::auth::AuthContext;
 use error_stack::ResultExt;
 use std::collections::{HashMap, HashSet};
-use storage_impl::account::AccountInterface;
+use storage_impl::account::AccountReadInterface;
 
 use crate::{
     errors::audit_trail::{AuditTrailError, AuditTrailResponse},

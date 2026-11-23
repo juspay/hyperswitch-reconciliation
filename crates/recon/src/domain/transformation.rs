@@ -7,7 +7,7 @@ use common_utils::{encryption::Encryption, id_type::MerchantId};
 use diesel_models::staging_entry::StagingEntryNew;
 use error_stack::ResultExt;
 use rustc_hash::FxHashMap;
-use storage_impl::metadata_schema::MetadataSchemaInterface;
+use storage_impl::metadata_schema::MetadataSchemaReadInterface;
 
 pub mod types;
 

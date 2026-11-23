@@ -22,7 +22,10 @@ use diesel::{
 use error_stack::ResultExt;
 use recon_env::logging;
 
-use crate::{errors, PgPooledConn, StorageResult};
+use crate::{
+    connection::{ReadConnection, WriteConnection},
+    errors, StorageResult,
+};
 
 pub mod db_metrics {
     use recon_env::logging;
@@ -64,7 +67,7 @@ pub mod db_metrics {
 
 use db_metrics::*;
 
-pub async fn generic_insert<T, V, R>(conn: &PgPooledConn, values: V) -> StorageResult<R>
+pub async fn generic_insert<T, V, R>(conn: &impl WriteConnection, values: V) -> StorageResult<R>
 where
     T: HasTable<Table = T> + Table + 'static + Debug,
     V: Debug + Insertable<T>,
@@ -79,8 +82,11 @@ where
     let query = diesel::insert_into(<T as HasTable>::table()).values(values);
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    match track_database_call::<T, _, _>(query.get_result_async(conn), DatabaseOperation::Insert)
-        .await
+    match track_database_call::<T, _, _>(
+        query.get_result_async(conn.inner()),
+        DatabaseOperation::Insert,
+    )
+    .await
     {
         Ok(value) => Ok(value),
         Err(err) => match err {
@@ -95,7 +101,7 @@ where
 }
 
 pub async fn generic_update<T, V, P>(
-    conn: &PgPooledConn,
+    conn: &impl WriteConnection,
     predicate: P,
     values: V,
 ) -> StorageResult<usize>
@@ -114,14 +120,14 @@ where
     let query = diesel::update(<T as HasTable>::table().filter(predicate)).set(values);
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    track_database_call::<T, _, _>(query.execute_async(conn), DatabaseOperation::Update)
+    track_database_call::<T, _, _>(query.execute_async(conn.inner()), DatabaseOperation::Update)
         .await
         .change_context(errors::DatabaseError::Others)
         .attach_with(|| format!("Error while updating {debug_values}"))
 }
 
 pub async fn generic_update_with_results<T, V, P, R>(
-    conn: &PgPooledConn,
+    conn: &impl WriteConnection,
     predicate: P,
     values: V,
 ) -> StorageResult<Vec<R>>
@@ -147,7 +153,7 @@ where
     let query = diesel::update(<T as HasTable>::table().filter(predicate)).set(values);
 
     match track_database_call::<T, _, _>(
-        query.to_owned().get_results_async(conn),
+        query.to_owned().get_results_async(conn.inner()),
         DatabaseOperation::UpdateWithResults,
     )
     .await
@@ -171,7 +177,7 @@ where
 }
 
 pub async fn generic_update_with_unique_predicate_get_result<T, V, P, R>(
-    conn: &PgPooledConn,
+    conn: &impl WriteConnection,
     predicate: P,
     values: V,
 ) -> StorageResult<R>
@@ -207,7 +213,7 @@ where
 }
 
 pub async fn generic_update_by_id<T, V, Pk, R>(
-    conn: &PgPooledConn,
+    conn: &impl WriteConnection,
     id: Pk,
     values: V,
 ) -> StorageResult<R>
@@ -236,7 +242,7 @@ where
     let query = diesel::update(<T as HasTable>::table().find(id.to_owned())).set(values);
 
     match track_database_call::<T, _, _>(
-        query.to_owned().get_result_async(conn),
+        query.to_owned().get_result_async(conn.inner()),
         DatabaseOperation::UpdateOne,
     )
     .await
@@ -259,7 +265,7 @@ where
     }
 }
 
-pub async fn generic_delete<T, P>(conn: &PgPooledConn, predicate: P) -> StorageResult<bool>
+pub async fn generic_delete<T, P>(conn: &impl WriteConnection, predicate: P) -> StorageResult<bool>
 where
     T: FilterDsl<P> + HasTable<Table = T> + Table + 'static,
     Filter<T, P>: IntoUpdateTarget,
@@ -271,7 +277,7 @@ where
     let query = diesel::delete(<T as HasTable>::table().filter(predicate));
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    track_database_call::<T, _, _>(query.execute_async(conn), DatabaseOperation::Delete)
+    track_database_call::<T, _, _>(query.execute_async(conn.inner()), DatabaseOperation::Delete)
         .await
         .change_context(errors::DatabaseError::Others)
         .attach("Error while deleting")
@@ -287,7 +293,7 @@ where
 }
 
 pub async fn generic_delete_one_with_result<T, P, R>(
-    conn: &PgPooledConn,
+    conn: &impl WriteConnection,
     predicate: P,
 ) -> StorageResult<R>
 where
@@ -303,7 +309,7 @@ where
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
     track_database_call::<T, _, _>(
-        query.get_results_async(conn),
+        query.get_results_async(conn.inner()),
         DatabaseOperation::DeleteWithResult,
     )
     .await
@@ -317,7 +323,7 @@ where
     })
 }
 
-async fn generic_find_by_id_core<T, Pk, R>(conn: &PgPooledConn, id: Pk) -> StorageResult<R>
+async fn generic_find_by_id_core<T, Pk, R>(conn: &impl ReadConnection, id: Pk) -> StorageResult<R>
 where
     T: FindDsl<Pk> + HasTable<Table = T> + LimitDsl + Table + 'static,
     Find<T, Pk>: LimitDsl + QueryFragment<Pg> + RunQueryDsl<PgConnection> + Send + 'static,
@@ -328,7 +334,11 @@ where
     let query = <T as HasTable>::table().find(id.to_owned());
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    match track_database_call::<T, _, _>(query.first_async(conn), DatabaseOperation::FindOne).await
+    match track_database_call::<T, _, _>(
+        query.first_async(conn.inner()),
+        DatabaseOperation::FindOne,
+    )
+    .await
     {
         Ok(value) => Ok(value),
         Err(err) => match err {
@@ -341,7 +351,7 @@ where
     .attach_with(|| format!("Error finding record by primary key: {id:?}"))
 }
 
-pub async fn generic_find_by_id<T, Pk, R>(conn: &PgPooledConn, id: Pk) -> StorageResult<R>
+pub async fn generic_find_by_id<T, Pk, R>(conn: &impl ReadConnection, id: Pk) -> StorageResult<R>
 where
     T: FindDsl<Pk> + HasTable<Table = T> + LimitDsl + Table + 'static,
     Find<T, Pk>: LimitDsl + QueryFragment<Pg> + RunQueryDsl<PgConnection> + Send + 'static,
@@ -353,7 +363,7 @@ where
 }
 
 pub async fn generic_find_by_id_optional<T, Pk, R>(
-    conn: &PgPooledConn,
+    conn: &impl ReadConnection,
     id: Pk,
 ) -> StorageResult<Option<R>>
 where
@@ -367,7 +377,10 @@ where
     to_optional(generic_find_by_id_core::<T, _, _>(conn, id).await)
 }
 
-async fn generic_find_one_core<T, P, R>(conn: &PgPooledConn, predicate: P) -> StorageResult<R>
+async fn generic_find_one_core<T, P, R>(
+    conn: &impl ReadConnection,
+    predicate: P,
+) -> StorageResult<R>
 where
     T: FilterDsl<P> + HasTable<Table = T> + Table + 'static,
     Filter<T, P>: LoadQuery<'static, PgConnection, R> + QueryFragment<Pg> + Send + 'static,
@@ -376,18 +389,21 @@ where
     let query = <T as HasTable>::table().filter(predicate);
     logging::debug!(query = %debug_query::<Pg, _>(&query).to_string());
 
-    track_database_call::<T, _, _>(query.get_result_async(conn), DatabaseOperation::FindOne)
-        .await
-        .map_err(|err| match err {
-            DieselError::NotFound => {
-                error_stack::Report::new(err).change_context(errors::DatabaseError::NotFound)
-            }
-            _ => error_stack::Report::new(err).change_context(errors::DatabaseError::Others),
-        })
-        .attach("Error finding record by predicate")
+    track_database_call::<T, _, _>(
+        query.get_result_async(conn.inner()),
+        DatabaseOperation::FindOne,
+    )
+    .await
+    .map_err(|err| match err {
+        DieselError::NotFound => {
+            error_stack::Report::new(err).change_context(errors::DatabaseError::NotFound)
+        }
+        _ => error_stack::Report::new(err).change_context(errors::DatabaseError::Others),
+    })
+    .attach("Error finding record by predicate")
 }
 
-pub async fn generic_find_one<T, P, R>(conn: &PgPooledConn, predicate: P) -> StorageResult<R>
+pub async fn generic_find_one<T, P, R>(conn: &impl ReadConnection, predicate: P) -> StorageResult<R>
 where
     T: FilterDsl<P> + HasTable<Table = T> + Table + 'static,
     Filter<T, P>: LoadQuery<'static, PgConnection, R> + QueryFragment<Pg> + Send + 'static,
@@ -397,7 +413,7 @@ where
 }
 
 pub async fn generic_find_one_optional<T, P, R>(
-    conn: &PgPooledConn,
+    conn: &impl ReadConnection,
     predicate: P,
 ) -> StorageResult<Option<R>>
 where

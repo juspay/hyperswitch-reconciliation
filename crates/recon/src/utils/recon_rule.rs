@@ -27,7 +27,7 @@ use common_types::recon_rule::{
 };
 use diesel_models::recon_rule::ReconRule;
 use futures::future;
-use storage_impl::account::AccountInterface;
+use storage_impl::account::AccountReadInterface;
 pub mod one_to_many;
 pub mod one_to_one;
 

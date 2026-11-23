@@ -8,7 +8,7 @@ use common_utils::auth::AuthContext;
 use diesel_models::{staging_entry::StagingEntry, transaction::Transaction};
 use error_stack::{Report, ResultExt};
 use futures::StreamExt;
-use storage_impl::transaction::TransactionInterface;
+use storage_impl::transaction::TransactionReadInterface;
 
 use std::collections::HashSet;
 use std::ops::Not;

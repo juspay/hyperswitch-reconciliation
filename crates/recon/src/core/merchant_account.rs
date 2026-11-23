@@ -7,7 +7,7 @@ use recon_domain_models::{
     behaviour::ReverseConversion, merchant_account::DomainMerchantAccount,
     ApplicationEncryptionInterface,
 };
-use storage_impl::merchant_account::MerchantAccountInterface;
+use storage_impl::merchant_account::{MerchantAccountReadInterface, MerchantAccountWriteInterface};
 
 use crate::{
     errors::merchant_account::{MerchantAccountError, MerchantAccountResult},

@@ -40,7 +40,7 @@ use diesel_models::{
     transformation_history::{TransformationConfigHistoryView, TransformationHistoryUpdate},
 };
 use error_stack::ResultExt;
-use storage_impl::transformation::TransformationHistoryInterface;
+use storage_impl::transformation::TransformationHistoryWriteInterface;
 
 use crate::{
     errors::transformation::{TransformationError, TransformationResult},
