@@ -48,7 +48,7 @@ async fn main() -> ApplicationResult<()> {
             }
         }
         Err(e) => {
-            logging::error!("Failed to initialize server: {e}");
+            logging::error!("Failed to initialize server: {e:?}");
             return Err(ReconAppError::InternalServerError.into());
         }
     }

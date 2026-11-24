@@ -4,6 +4,16 @@ All notable changes to Hyperswitch Reconciliation will be documented here.
 
 - - -
 
+## 2026.11.23.0
+
+### Miscellaneous Tasks
+
+- **docker:** Exclude config files from runtime image ([#54](https://github.com/juspay/hyperswitch-reconciliation/pull/54)) ([`bb9cd9b`](https://github.com/juspay/hyperswitch-reconciliation/commit/bb9cd9b6c5227408d0ed3595706b9f59c0c46e5a))
+
+**Full Changelog:** [`2026.11.19.0...2026.11.23.0`](https://github.com/juspay/hyperswitch-reconciliation/compare/2026.11.19.0...2026.11.23.0)
+
+- - -
+
 ## 2026.11.19.0
 
 ### Features
