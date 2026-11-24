@@ -23,7 +23,8 @@ Ingestion service handles automated file retrieval from external sources (primar
 
 - Manual ingestion configs support direct file uploads via `/ingestions/{id}/upload` endpoint
   - Upload endpoint ONLY works with `Manual` ingestion config type, not `Psp` configs
-  - File size limited to 10MB at multipart form level
+<!-- AI-UPDATED: 2026-11-24 - Upload limit is 25MB, not 10MB -->
+  - File size limited to 25MB: `#[multipart(limit = "25MB")]` on the form field (`api_models/src/ingestion.rs`) plus the matching `INGESTION_UPLOAD_*_LIMIT_BYTES` multipart config in `routes/app.rs`. Change both together, or the lower one silently wins
   - Empty files are rejected with validation error
 - Manual uploads trigger transformation service via HTTP call after successful storage
   - Uses fire-and-forget pattern - upload succeeds even if transformation trigger fails

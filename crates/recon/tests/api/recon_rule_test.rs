@@ -2,6 +2,7 @@ use crate::{
     api::{
         account_test::create_test_account,
         recon_engine_test::types::{ReconRuleCustomConfig, ReconRuleEngine, ReconRuleEngineExt},
+        staging_entry_test::{list_staging_entries_v2, list_staging_entries_v2_request},
         transformation_test::create_transformation_config,
     },
     common::{TestApp, TestClient},
@@ -30,10 +31,17 @@ use api_models::{
         OneToOneStrategy as OneToOneStrategyApi, ReconRuleCreateRequest, ReconRuleUpdateRequest,
         ReconStrategy as ReconStrategyApi,
     },
-    staging_entry::{GetStagingEntryResponse, StagingEntryCreateRequest},
+    staging_entry::{
+        ApiStagingEntryListFiltersV2, ApiStagingEntryStatus, GetStagingEntryResponse,
+        StagingEntryCreateRequest,
+    },
     AccountCreateRequest, GetAccountResponse,
 };
 use common_enums::{BalanceDirection, Currency, StagingEntryProcessingMode};
+use common_types::{
+    pagination::{CursorDirection, SortOrder},
+    staging_entry::{status::StagingEntryManualReviewData, StagingEntryListSortField},
+};
 use common_types::{
     recon_rule::{
         entry_field::EntryField,
@@ -703,6 +711,137 @@ async fn process_transaction_uses_v2_any_trigger_when_any_condition_matches() {
         recon_trigger_response,
         ReconTriggerResponse::Success(_)
     ));
+}
+
+#[actix_web::test]
+async fn process_transaction_skips_inactive_rule() {
+    let app = TestApp::new().await;
+    let client = app.api_client();
+    let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
+
+    let source_account_id =
+        create_test_account(&client, &token, "OMS", BalanceDirection::Debit).await;
+    let target_account_id =
+        create_test_account(&client, &token, "PSP", BalanceDirection::Credit).await;
+
+    let rule_request = ReconRuleCreateRequest {
+        rule_name: "Inactive Rule".to_string(),
+        rule_description: "Matches the entry but is deactivated".to_string(),
+        priority: 10,
+        strategy: ReconStrategyApi::OneToOne(OneToOneStrategyApi::SingleSingle(
+            OneToOneSingleSingleApi {
+                source_account: OneToOneSingleSingleSourceApi {
+                    account_id: source_account_id.clone(),
+                    trigger: valid_trigger_v2_any(),
+                },
+                target_account: OneToOneSingleSingleTargetApi {
+                    account_id: target_account_id.clone(),
+                    tolerance_config: None,
+                },
+                match_rules: valid_match_rules(),
+                search_identifier: valid_search_identifier(),
+            },
+        )),
+        aging_config: AgingConfigApiRequest::NoAging,
+    };
+
+    let response = client
+        .post("/recon_rules/v2")
+        .with_auth(&token)
+        .json(&rule_request)
+        .send()
+        .await;
+    assert_eq!(response.status(), 201);
+    let rule: GetReconRuleResponse = response.json().await.unwrap();
+
+    let deactivate = ReconRuleUpdateRequest {
+        rule_name: None,
+        rule_description: None,
+        aging_config: None,
+        priority: None,
+        is_active: Some(false),
+        strategy: None,
+    };
+    let response = client
+        .put(&format!("/recon_rules/{}", rule.rule_id))
+        .with_auth(&token)
+        .json(&deactivate)
+        .send()
+        .await;
+    assert_eq!(response.status(), 200);
+
+    let transformation = create_transformation_config(
+        &profile_id,
+        &source_account_id,
+        None,
+        &merchant_id,
+        &token,
+        &client,
+        "metadata.transaction_id".parse().unwrap(),
+        StagingEntryProcessingMode::Transaction,
+        vec![],
+    )
+    .await;
+
+    let staging_entry_request = StagingEntryCreateRequest {
+        account_id: source_account_id,
+        entry_type: BalanceDirection::Debit,
+        processing_mode: StagingEntryProcessingMode::Transaction,
+        amount: FloatMajorUnit::new(100.0),
+        currency: Currency::USD,
+        effective_at: common_utils::date_time::now(),
+        metadata: Secret::new(serde_json::json!({
+            "transaction_id": "test_value",
+            "match_rules_field_1": "match_value"
+        })),
+        transformation_id: transformation.transformation_id,
+        transformation_history_id: None,
+        order_id: "order_inactive".to_string(),
+    };
+
+    let staging_entry_response = client
+        .post("/staging_entries")
+        .with_auth(&token)
+        .json(&staging_entry_request)
+        .send()
+        .await;
+    assert_eq!(staging_entry_response.status(), 201);
+    let staging_entry: GetStagingEntryResponse = staging_entry_response.json().await.unwrap();
+
+    let process_response = client
+        .post(&format!("/recon_engine/{}/process", staging_entry.id))
+        .with_auth(&token)
+        .send()
+        .await;
+    assert_eq!(process_response.status(), 200);
+    let recon_trigger_response: ReconTriggerResponse = process_response.json().await.unwrap();
+    assert!(matches!(
+        recon_trigger_response,
+        ReconTriggerResponse::Failure(_)
+    ));
+
+    // Processing archives the original version, so read the latest one.
+    let latest_version = list_staging_entries_v2(
+        &client,
+        &token,
+        list_staging_entries_v2_request(
+            ApiStagingEntryListFiltersV2 {
+                staging_entry_id: Some(staging_entry.staging_entry_id),
+                ..Default::default()
+            },
+            StagingEntryListSortField::Version { cursor_value: None },
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
+    assert_eq!(
+        latest_version.items.first().map(|entry| entry.status),
+        Some(ApiStagingEntryStatus::NeedsManualReview(Some(
+            StagingEntryManualReviewData::NoRulesFound
+        )))
+    );
 }
 
 #[actix_web::test]
