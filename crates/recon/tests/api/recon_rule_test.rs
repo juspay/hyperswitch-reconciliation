@@ -2,6 +2,7 @@ use crate::{
     api::{
         account_test::create_test_account,
         recon_engine_test::types::{ReconRuleCustomConfig, ReconRuleEngine, ReconRuleEngineExt},
+        staging_entry_test::{list_staging_entries_v2, list_staging_entries_v2_request},
         transformation_test::create_transformation_config,
     },
     common::{TestApp, TestClient},
@@ -30,11 +31,17 @@ use api_models::{
         OneToOneStrategy as OneToOneStrategyApi, ReconRuleCreateRequest, ReconRuleUpdateRequest,
         ReconStrategy as ReconStrategyApi,
     },
-    staging_entry::{ApiStagingEntryStatus, GetStagingEntryResponse, StagingEntryCreateRequest},
+    staging_entry::{
+        ApiStagingEntryListFiltersV2, ApiStagingEntryStatus, GetStagingEntryResponse,
+        StagingEntryCreateRequest,
+    },
     AccountCreateRequest, GetAccountResponse,
 };
 use common_enums::{BalanceDirection, Currency, StagingEntryProcessingMode};
-use common_types::staging_entry::status::StagingEntryManualReviewData;
+use common_types::{
+    pagination::{CursorDirection, SortOrder},
+    staging_entry::{status::StagingEntryManualReviewData, StagingEntryListSortField},
+};
 use common_types::{
     recon_rule::{
         entry_field::EntryField,
@@ -813,16 +820,27 @@ async fn process_transaction_skips_inactive_rule() {
         ReconTriggerResponse::Failure(_)
     ));
 
-    let response = client
-        .get(&format!("/staging_entries/{}", staging_entry.id))
-        .with_auth(&token)
-        .send()
-        .await;
-    assert_eq!(response.status(), 200);
-    let staging_entry: GetStagingEntryResponse = response.json().await.unwrap();
+    // Processing archives the original version, so read the latest one.
+    let latest_version = list_staging_entries_v2(
+        &client,
+        &token,
+        list_staging_entries_v2_request(
+            ApiStagingEntryListFiltersV2 {
+                staging_entry_id: Some(staging_entry.staging_entry_id),
+                ..Default::default()
+            },
+            StagingEntryListSortField::Version { cursor_value: None },
+            Some(1),
+            CursorDirection::Next,
+            SortOrder::Desc,
+        ),
+    )
+    .await;
     assert_eq!(
-        staging_entry.status,
-        ApiStagingEntryStatus::NeedsManualReview(Some(StagingEntryManualReviewData::NoRulesFound))
+        latest_version.items.first().map(|entry| entry.status),
+        Some(ApiStagingEntryStatus::NeedsManualReview(Some(
+            StagingEntryManualReviewData::NoRulesFound
+        )))
     );
 }
 
