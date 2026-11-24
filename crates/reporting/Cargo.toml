@@ -1,0 +1,47 @@
+[package]
+name = "reporting"
+description = "Report generation and delivery service, driven by Invokr"
+version = "0.1.0"
+edition = "2021"
+default-run = "reporting"
+
+[dependencies]
+# First party deps
+api_models = { path = "../api_models" }
+common_utils = { path = "../common_utils" }
+external_services = { path = "../external_services" }
+masking = { package = "hyperswitch_masking", version = "0.0.1", features = ["serde"] }
+recon_env = { path = "../recon_env" }
+recon_interfaces = { path = "../recon_interfaces" }
+storage_impl = { path = "../storage_impl" }
+
+# Third party deps
+actix-web = "4.11.0"
+async-trait = "0.1.92"
+clap = { version = "4.0", features = ["derive"] }
+config = "0.14"
+error-stack = "0.8.0"
+futures = "0.3"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_path_to_error = "0.1"
+strum = { version = "0.27.1", features = ["derive"] }
+thiserror = "2.0"
+tokio = { version = "1.51.6", features = ["full"] }
+tracing = "0.1.41"
+tracing-actix-web = "0.7.18"
+utoipa = { version = "6.0.0", features = ["actix_extras"] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+reqwest = { version = "0.13.5", features = ["json"] }
+serde_json = "1.0"
+
+[[bin]]
+name = "reporting"
+path = "src/bin/reporting.rs"
+
+[lints]
+workspace = true

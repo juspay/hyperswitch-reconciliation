@@ -1,0 +1,23 @@
+# Reporting service, integration tests (`just test`).
+# The database is `recon_test`, which `just test` recreates and migrates.
+
+[server]
+host = "127.0.0.1"
+port = 0
+workers = 1
+shutdown_timeout = 1
+
+[logging]
+log_level = "ERROR"
+console_output = false
+format = "json"
+
+[secrets_management]
+secrets_manager = "no_encryption"
+
+[database]
+username = "postgres"
+password = "postgres"
+host = "localhost"
+port = 5432
+dbname = "recon_test"

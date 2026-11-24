@@ -1,0 +1,23 @@
+# Reporting service, local development.
+# The database is the local recon database. Recon owns the migrations.
+
+[server]
+host = "localhost"
+port = 8081
+workers = 4
+shutdown_timeout = 5
+
+[logging]
+log_level = "DEBUG"
+console_output = true
+format = "pretty"
+
+[secrets_management]
+secrets_manager = "no_encryption"
+
+[database]
+username = "db_user"
+password = "db_pass"
+host = "localhost"
+port = 5432
+dbname = "recon"

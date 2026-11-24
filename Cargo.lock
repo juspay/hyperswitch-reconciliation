@@ -4162,6 +4162,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "reporting"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "api_models",
+ "async-trait",
+ "clap",
+ "common_utils",
+ "config",
+ "error-stack",
+ "external_services",
+ "futures",
+ "hyperswitch_masking",
+ "pretty_assertions",
+ "recon_env",
+ "recon_interfaces",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "storage_impl",
+ "strum 0.27.2",
+ "thiserror 2.0.17",
+ "tikv-jemallocator",
+ "tokio",
+ "tracing",
+ "tracing-actix-web",
+ "utoipa 6.0.0",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
