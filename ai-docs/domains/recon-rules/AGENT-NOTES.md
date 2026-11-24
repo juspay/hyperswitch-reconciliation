@@ -139,6 +139,8 @@
   - Updatable: `rule_name`, `rule_description`, `aging_config`, `priority`, `is_active`, `strategy`. Omitted fields are left untouched.
   - `strategy` is replaced **wholesale** — whatever `ReconStrategy` the caller sends is written as-is, with no validation (account existence, currency consistency, trigger checks are all skipped). This is intentional: the endpoint is currently driven only by trusted internal callers. Validation parity with the create path is deferred.
   - `recon_rule_account` rows are NOT re-synced on a strategy update — a strategy update that changes source/target account_ids leaves that index stale. Callers must not do that until the validation/sync work lands.
+<!-- AI-UPDATED: 2026-11-24 - is_active only gates transaction mode -->
+  - **`is_active: false` only stops a rule from opening new transactions.** `rule_orchestration_v2` filters inactive rules in transaction mode, but confirmation mode still uses them, so expectations opened before deactivation can close instead of being stranded in `expected`. `list_recon_rules_by_ids` itself does not filter (the overview needs inactive rule names), so don't move the check into the query.
   - **Not transactional** — each provided field fires its own DB write and bumps `last_modified_at`, so a multi-field PUT is N writes and a partial failure leaves a partial update.
 - **Response Structure**:
   - Includes all sources and targets with their generated IDs

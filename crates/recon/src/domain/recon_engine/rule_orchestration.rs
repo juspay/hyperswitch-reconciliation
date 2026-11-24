@@ -74,9 +74,11 @@ pub async fn rule_orchestration_v2(
                 .await
                 .change_context(ProcessingError::DatabaseError)?;
 
-            // Filter the Recon Rules based on the trigger and get the highest priority rule
+            // Only active rules may open new transactions. Confirmation mode below deliberately
+            // skips this check so expectations opened before a rule was deactivated can still close.
             let recon_rule = recon_rules
                 .into_iter()
+                .filter(|recon_rule| recon_rule.is_active)
                 .filter(|recon_rule| {
                     recon_rule
                         .strategy
