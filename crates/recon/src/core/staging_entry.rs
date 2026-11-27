@@ -191,7 +191,6 @@ pub async fn create_staging_entry(
         )
         .change_context(StagingEntryError::InternalServerError)?,
         status: domain_staging_entry.status.to_api_response(),
-        detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
         metadata: domain_staging_entry.metadata,
@@ -207,9 +206,6 @@ pub async fn create_staging_entry(
         version: domain_staging_entry.version,
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
-            .discarded_status
-            .map(DomainStagingEntryStatus::to_api_response),
-        detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
         discarded_data: domain_staging_entry
@@ -281,7 +277,6 @@ pub async fn get_staging_entry_by_id(
         )
         .change_context(StagingEntryError::InternalServerError)?,
         status: domain_staging_entry.status.to_api_response(),
-        detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
         metadata: domain_staging_entry.metadata,
@@ -297,9 +292,6 @@ pub async fn get_staging_entry_by_id(
         version: domain_staging_entry.version,
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
-            .discarded_status
-            .map(DomainStagingEntryStatus::to_api_response),
-        detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
         discarded_data: domain_staging_entry
@@ -437,7 +429,6 @@ pub(super) async fn staging_entry_views_to_response(
                     )
                     .change_context(StagingEntryError::InternalServerError)?,
                     status: domain_staging_entry.status.to_api_response(),
-                    detailed_status: domain_staging_entry.status.to_api_response(),
                     processing_mode: domain_staging_entry.processing_mode,
                     effective_at: domain_staging_entry.effective_at,
                     metadata: domain_staging_entry.metadata,
@@ -453,9 +444,6 @@ pub(super) async fn staging_entry_views_to_response(
                     version: domain_staging_entry.version,
                     discarded_at: domain_staging_entry.discarded_at,
                     discarded_status: domain_staging_entry
-                        .discarded_status
-                        .map(DomainStagingEntryStatus::to_api_response),
-                    detailed_discarded_status: domain_staging_entry
                         .discarded_status
                         .map(DomainStagingEntryStatus::to_api_response),
                     discarded_data: domain_staging_entry
@@ -552,7 +540,6 @@ pub async fn void_staging_entry(
         )
         .change_context(StagingEntryError::InternalServerError)?,
         status: domain_staging_entry.status.to_api_response(),
-        detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
         metadata: domain_staging_entry.metadata,
@@ -568,9 +555,6 @@ pub async fn void_staging_entry(
         version: domain_staging_entry.version,
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
-            .discarded_status
-            .map(DomainStagingEntryStatus::to_api_response),
-        detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
         discarded_data: domain_staging_entry
@@ -810,7 +794,6 @@ pub async fn update_staging_entry(
         )
         .change_context(StagingEntryError::InternalServerError)?,
         status: domain_staging_entry.status.to_api_response(),
-        detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
         metadata: domain_staging_entry.metadata,
@@ -826,9 +809,6 @@ pub async fn update_staging_entry(
         version: domain_staging_entry.version,
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
-            .discarded_status
-            .map(DomainStagingEntryStatus::to_api_response),
-        detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
         discarded_data: domain_staging_entry
@@ -959,7 +939,6 @@ pub async fn create_staging_entry_with_validation(
         )
         .change_context(StagingEntryError::InternalServerError)?,
         status: domain_staging_entry.status.to_api_response(),
-        detailed_status: domain_staging_entry.status.to_api_response(),
         processing_mode: domain_staging_entry.processing_mode,
         effective_at: domain_staging_entry.effective_at,
         metadata: domain_staging_entry.metadata,
@@ -975,9 +954,6 @@ pub async fn create_staging_entry_with_validation(
         version: domain_staging_entry.version,
         discarded_at: domain_staging_entry.discarded_at,
         discarded_status: domain_staging_entry
-            .discarded_status
-            .map(DomainStagingEntryStatus::to_api_response),
-        detailed_discarded_status: domain_staging_entry
             .discarded_status
             .map(DomainStagingEntryStatus::to_api_response),
         discarded_data: domain_staging_entry

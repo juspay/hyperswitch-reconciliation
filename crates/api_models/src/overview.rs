@@ -116,7 +116,6 @@ pub struct AccountStagingEntriesOverview {
     pub account_name: String,
     pub account_type: BalanceDirection,
     pub status_breakdown: Vec<StagingEntryStatusAmount>,
-    pub detailed_status_breakdown: Vec<StagingEntryStatusAmount>,
 }
 
 pub type StagingEntriesOverviewResponse = Vec<AccountStagingEntriesOverview>;

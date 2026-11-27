@@ -67,7 +67,6 @@ pub struct GetStagingEntryResponse {
     pub amount: AmountResponse,
     #[serde(flatten)]
     pub status: ApiStagingEntryStatus,
-    pub detailed_status: ApiStagingEntryStatus,
     pub processing_mode: StagingEntryProcessingMode,
     #[schema(value_type = String, example = "2024-01-01T00:00:00Z")]
     #[serde(with = "common_utils::custom_serde::iso8601")]
@@ -88,7 +87,6 @@ pub struct GetStagingEntryResponse {
     #[serde(with = "common_utils::custom_serde::iso8601::option")]
     pub discarded_at: Option<PrimitiveDateTime>,
     pub discarded_status: Option<ApiStagingEntryStatus>,
-    pub detailed_discarded_status: Option<ApiStagingEntryStatus>,
     pub discarded_data: Option<StagingEntryData>,
     #[schema(example = "order_123456")]
     pub order_id: String,
@@ -229,8 +227,6 @@ impl ApiListStagingEntriesFilters {
 pub struct ApiStagingEntryListFiltersV2 {
     #[serde(default)]
     pub status: Option<Vec<ApiStagingEntryStatus>>,
-    #[serde(default)]
-    pub detailed_status: Option<Vec<ApiStagingEntryStatus>>,
     #[serde(default)]
     pub entry_type: Option<Vec<BalanceDirection>>,
     #[serde(default)]

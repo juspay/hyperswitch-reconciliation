@@ -394,8 +394,7 @@ pub async fn get_staging_entries_overview(
                 account_id: account.id,
                 account_name: account.name,
                 account_type: account.balance_direction,
-                status_breakdown: status_breakdown.clone(),
-                detailed_status_breakdown: status_breakdown,
+                status_breakdown,
             })
         })
         .collect::<OverviewResult<_>>()?;

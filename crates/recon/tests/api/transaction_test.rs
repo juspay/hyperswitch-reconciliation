@@ -3876,7 +3876,7 @@ async fn test_search_duplicate_for_composite_unique_constraint() {
         &token,
         list_staging_entries_v2_request(
             ApiStagingEntryListFiltersV2 {
-                detailed_status: Some(vec![ApiStagingEntryStatus::NeedsManualReview(Some(
+                status: Some(vec![ApiStagingEntryStatus::NeedsManualReview(Some(
                     StagingEntryManualReviewData::DuplicateEntry,
                 ))]),
                 account_ids: Some(vec![source_account_id.clone()]),
@@ -3896,12 +3896,6 @@ async fn test_search_duplicate_for_composite_unique_constraint() {
         .expect("duplicate composite-key entry should be NeedsManualReview/DuplicateEntry");
     assert_eq!(
         duplicate_entry.status,
-        ApiStagingEntryStatus::NeedsManualReview(Some(
-            StagingEntryManualReviewData::DuplicateEntry
-        ))
-    );
-    assert_eq!(
-        duplicate_entry.detailed_status,
         ApiStagingEntryStatus::NeedsManualReview(Some(
             StagingEntryManualReviewData::DuplicateEntry
         ))

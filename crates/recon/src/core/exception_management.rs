@@ -391,7 +391,6 @@ pub async fn list_linkable_staging_entries_for_transaction(
                     )
                     .change_context(TransactionError::InternalServerError)?,
                     status: domain_staging_entry.status.to_api_response(),
-                    detailed_status: domain_staging_entry.status.to_api_response(),
                     processing_mode: domain_staging_entry.processing_mode,
                     effective_at: domain_staging_entry.effective_at,
                     metadata: domain_staging_entry.metadata,
@@ -407,9 +406,6 @@ pub async fn list_linkable_staging_entries_for_transaction(
                     version: domain_staging_entry.version,
                     discarded_at: domain_staging_entry.discarded_at,
                     discarded_status: domain_staging_entry
-                        .discarded_status
-                        .map(DomainStagingEntryStatus::to_api_response),
-                    detailed_discarded_status: domain_staging_entry
                         .discarded_status
                         .map(DomainStagingEntryStatus::to_api_response),
                     discarded_data: domain_staging_entry

@@ -936,7 +936,6 @@ async fn test_list_staging_entries_v2_filters_status_account_order_and_time_rang
         list_staging_entries_v2_request(
             ApiStagingEntryListFiltersV2 {
                 status: Some(vec![ApiStagingEntryStatus::Pending]),
-                detailed_status: None,
                 entry_type: Some(vec![BalanceDirection::Credit]),
                 account_ids: Some(vec![account_id]),
                 transformation_config_ids: Some(vec![included
@@ -1005,7 +1004,7 @@ async fn test_list_staging_entries_v2_rejects_invalid_filters() {
 }
 
 #[actix_web::test]
-async fn test_list_staging_entries_v2_filters_by_detailed_status() {
+async fn test_list_staging_entries_v2_filters_by_sub_status() {
     let app = TestApp::new().await;
     let client = app.api_client();
     let (merchant_id, profile_id, token) = client.bootstrap("Test Merchant", "Test Profile").await;
@@ -1065,10 +1064,8 @@ async fn test_list_staging_entries_v2_filters_by_detailed_status() {
     ));
 
     assert_eq!(duplicate.status, duplicate_status);
-    assert_eq!(duplicate.detailed_status, duplicate_status);
 
-    // `status` is flattened into the entry, so its `sub_status` is a top-level key, while
-    // `detailed_status` nests the same value in its own object.
+    // `status` is flattened into the entry, so its `sub_status` is a top-level key.
     let raw_entry: serde_json::Value = client
         .get(&format!("/staging_entries/{}", duplicate.id))
         .with_auth(&token)
@@ -1080,72 +1077,46 @@ async fn test_list_staging_entries_v2_filters_by_detailed_status() {
     assert_eq!(raw_entry["status"], json!("needs_manual_review"));
     assert_eq!(raw_entry["sub_status"], json!("duplicate_entry"));
     assert_eq!(raw_entry["discarded_status"], json!(null));
-    assert_eq!(
-        raw_entry["detailed_status"],
-        json!({ "status": "needs_manual_review", "sub_status": "duplicate_entry" })
-    );
-    assert_eq!(raw_entry["detailed_discarded_status"], json!(null));
 
-    for filters in [
-        ApiStagingEntryListFiltersV2 {
-            status: Some(vec![duplicate_status]),
-            ..Default::default()
-        },
-        ApiStagingEntryListFiltersV2 {
-            detailed_status: Some(vec![duplicate_status]),
-            ..Default::default()
-        },
-        // When both are sent, `detailed_status` is used and `status` is ignored.
-        ApiStagingEntryListFiltersV2 {
-            status: Some(vec![ApiStagingEntryStatus::NeedsManualReview(Some(
-                StagingEntryManualReviewData::NoRulesFound,
-            ))]),
-            detailed_status: Some(vec![duplicate_status]),
-            ..Default::default()
-        },
-    ] {
-        let duplicates_only = staging_entry_ids(
-            &list_staging_entries_v2(
-                &client,
-                &token,
-                list_staging_entries_v2_request(
-                    filters,
-                    StagingEntryListSortField::Id { id: None },
-                    Some(50),
-                    CursorDirection::Next,
-                    SortOrder::Desc,
-                ),
-            )
-            .await,
-        );
-        assert!(duplicates_only.contains(&duplicate.id));
-        assert!(!duplicates_only.contains(&no_rules_found.id));
-    }
+    let duplicates_only = staging_entry_ids(
+        &list_staging_entries_v2(
+            &client,
+            &token,
+            list_staging_entries_v2_request(
+                ApiStagingEntryListFiltersV2 {
+                    status: Some(vec![duplicate_status]),
+                    ..Default::default()
+                },
+                StagingEntryListSortField::Id { id: None },
+                Some(50),
+                CursorDirection::Next,
+                SortOrder::Desc,
+            ),
+        )
+        .await,
+    );
+    assert!(duplicates_only.contains(&duplicate.id));
+    assert!(!duplicates_only.contains(&no_rules_found.id));
 
     // A parent status with the `sub_status` key omitted entirely - what a caller that has not
     // migrated yet sends - must still match every sub-status.
-    for filter_field in ["status", "detailed_status"] {
-        let bare_parent_response = client
-            .post("/staging_entries/v2/list")
-            .with_auth(&token)
-            .json(&json!({
-                "filters": { filter_field: [{ "status": "needs_manual_review" }] },
-                "cursor_payload": {
-                    "limit": 50,
-                    "direction": "next",
-                    "order": "desc",
-                    "sort_by": { "sort_field": "id", "id": null }}}))
-            .send()
-            .await;
+    let bare_parent_response = client
+        .post("/staging_entries/v2/list")
+        .with_auth(&token)
+        .json(&json!({
+            "filters": { "status": [{ "status": "needs_manual_review" }] },
+            "cursor_payload": {
+                "limit": 50,
+                "direction": "next",
+                "order": "desc",
+                "sort_by": { "sort_field": "id", "id": null }}}))
+        .send()
+        .await;
 
-        assert_eq!(bare_parent_response.status(), 200, "{filter_field}");
-        let all_manual_review = staging_entry_ids(&bare_parent_response.json().await.unwrap());
-        assert!(all_manual_review.contains(&duplicate.id), "{filter_field}");
-        assert!(
-            all_manual_review.contains(&no_rules_found.id),
-            "{filter_field}"
-        );
-    }
+    assert_eq!(bare_parent_response.status(), 200);
+    let all_manual_review = staging_entry_ids(&bare_parent_response.json().await.unwrap());
+    assert!(all_manual_review.contains(&duplicate.id));
+    assert!(all_manual_review.contains(&no_rules_found.id));
 
     // The v1 query param carries only the parent status, which also matches every sub-status.
     let v1_response = client
@@ -1273,12 +1244,7 @@ async fn test_list_staging_entries_v2_without_status_filter_includes_archived_ve
         .find(|item| item.id == fixture.superseded.id)
         .unwrap();
     assert_eq!(archived.status, ApiStagingEntryStatus::Archived);
-    assert_eq!(archived.detailed_status, ApiStagingEntryStatus::Archived);
     assert_eq!(archived.discarded_status, Some(fixture.superseded.status));
-    assert_eq!(
-        archived.detailed_discarded_status,
-        archived.discarded_status
-    );
 }
 
 #[actix_web::test]
@@ -1296,24 +1262,8 @@ async fn test_list_staging_entries_v2_filters_archived_status() {
         },
     )
     .await;
-    let detailed_page = list_staging_entries_v2_with_filters(
-        &client,
-        &fixture.token,
-        ApiStagingEntryListFiltersV2 {
-            detailed_status: Some(vec![ApiStagingEntryStatus::Archived]),
-            ..Default::default()
-        },
-    )
-    .await;
 
-    assert_eq!(
-        staging_entry_ids(&status_page),
-        vec![fixture.superseded.id.clone()]
-    );
-    assert_eq!(
-        staging_entry_ids(&detailed_page),
-        vec![fixture.superseded.id]
-    );
+    assert_eq!(staging_entry_ids(&status_page), vec![fixture.superseded.id]);
 }
 
 #[actix_web::test]

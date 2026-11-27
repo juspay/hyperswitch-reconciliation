@@ -874,10 +874,6 @@ async fn staging_entries_summary_groups_by_account() {
     // One row per granular status, so every manual-review reason gets its own row, and Archived is
     // excluded from the breakdown entirely (superseded versions aren't counted).
     assert_eq!(touched.status_breakdown.len(), 13);
-    assert_eq!(
-        serde_json::to_value(&touched.status_breakdown).unwrap(),
-        serde_json::to_value(&touched.detailed_status_breakdown).unwrap()
-    );
     assert!(touched
         .status_breakdown
         .iter()
