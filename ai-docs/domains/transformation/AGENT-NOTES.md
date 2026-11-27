@@ -470,7 +470,8 @@ The pipeline is **per-row**, not per-collection. `DefaultTransformationEngine::t
 <!-- AI-UPDATED: 2025-11-17 - New metadata retrieval endpoint added -->
 ## Metadata Retrieval API
 
-- **GET /transformations/configs/{transformation_id}/metadata endpoint**:
+- **GET /transformations/configs/{transformation_id}/metadata_schema endpoint**:
+  - The route is `/metadata_schema` (`routes/app.rs`); the OpenAPI annotation once said `/metadata`, which 404s
   - Retrieves metadata schema associated with a transformation config
   - Uses JWT Bearer authentication for tenant isolation (profile_id from auth context)
   - Returns complete `MetadataSchemaResponse` with schema configuration

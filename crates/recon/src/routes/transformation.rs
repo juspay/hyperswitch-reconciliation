@@ -337,7 +337,7 @@ pub async fn update_transformation_config(
 /// Get Metadata by transformation config ID
 #[utoipa::path(
     get,
-    path = "/transformations/configs/{transformation_id}/metadata",
+    path = "/transformations/configs/{transformation_id}/metadata_schema",
     params(
         ("transformation_id" = String, Path, description = "Transformation Config ID")
     ),
