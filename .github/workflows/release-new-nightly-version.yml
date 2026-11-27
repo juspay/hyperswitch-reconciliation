@@ -15,12 +15,12 @@ jobs:
   tests:
     name: Test release source
     if: github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/ci-tests.yml
+    uses: $/.github/workflows/ci-tests.yml
 
   create-nightly-tag:
     name: Create a nightly tag
     needs: tests
-    uses: juspay/hyperswitch/.github/workflows/release-nightly-version-reusable.yml@main
+    uses: juspay/hyperswitch/.github/workflows/release-nightly-version-reusable.yml@98282e20b41d2977d44c02adcd9c9f7ba4ab5673
     secrets:
       client_id: ${{ secrets.HYPERSWITCH_BOT_APP_ID }}
       app_private_key: ${{ secrets.HYPERSWITCH_BOT_APP_PRIVATE_KEY }}
