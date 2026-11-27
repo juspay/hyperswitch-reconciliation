@@ -196,7 +196,7 @@ impl ForeignFrom<ApiListStagingEntriesFilters> for ListStagingEntriesFilters {
 impl ForeignFrom<ApiStagingEntryListFiltersV2> for StagingEntryListFiltersV2 {
     fn foreign_from(value: ApiStagingEntryListFiltersV2) -> Self {
         Self {
-            status: to_diesel_statuses(value.detailed_status.or(value.status)),
+            status: to_diesel_statuses(value.status),
             entry_type: value.entry_type,
             account_ids: value.account_ids,
             transformation_config_ids: value.transformation_config_ids,
